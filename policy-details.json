@@ -1,0 +1,28 @@
+{
+  "DE": [
+    {
+      "name": "Renewable Energy Act (EEG)",
+      "description": "A major German law that promotes the generation of renewable energy through a feed-in tariff scheme."
+    },
+    {
+      "name": "Combined Heat and Power Act (KWKG)",
+      "description": "Promotes the use of combined heat and power (CHP) systems to increase energy efficiency."
+    }
+  ],
+  "FR": [
+    {
+      "name": "Energy Transition Law for Green Growth",
+      "description": "A comprehensive law aiming to reduce France's greenhouse gas emissions and increase the share of renewable energy."
+    },
+    {
+        "name": "Multiannual Energy Plan (PPE)",
+        "description": "Sets the priorities for the French government's energy policy for the next 10 years."
+    }
+  ],
+    "US": [
+    {
+      "name": "Inflation Reduction Act (IRA)",
+      "description": "Includes major provisions to boost clean energy and reduce carbon emissions through tax credits and investments."
+    }
+  ]
+} 
