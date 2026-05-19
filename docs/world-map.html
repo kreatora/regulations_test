@@ -20,27 +20,31 @@
             transition: stroke-width 0.2s;
         }
         .map-controls {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            z-index: 20; /* Keep inside map box and under modal */
+            position: relative;
+            z-index: 20; /* Keep above the map surface and under modal */
             display: flex;
-            justify-content: flex-start;
+            justify-content: center;
             align-items: flex-start;
+            padding: 12px 16px 16px;
         }
-        
+
         /* Modern Toggle Switch Container */
         .toggle-switch-container {
+            position: relative;
             display: flex;
             align-items: center;
+            justify-content: center;
         }
-        
+
         /* Toggle Switch Track */
         .toggle-switch {
             position: relative;
             display: inline-block;
-            /* Width/height will be adapted via JS to ~10% of map width for 4 options */
-            width: 520px;
+            /* Responsive width; JS clamps further if needed.
+               Old code used absolute positioning over the SVG and forced
+               a width via adaptToggleSize. The bar now lives in its own
+               header row above the map / regulations surface. */
+            width: clamp(360px, 86vw, 760px);
             height: 52px;
             background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(241, 245, 249, 0.98) 100%);
             border-radius: 24px;
@@ -64,8 +68,8 @@
             position: absolute;
             top: 2px;
             left: 2px;
-            /* Slider width tracks one quarter of the toggle width for 4 options */
-            width: calc(25% - 4px);
+            /* Slider width tracks one fifth of the toggle width for 5 options */
+            width: calc(20% - 4px);
             height: calc(100% - 8px);
             background: linear-gradient(135deg, rgb(30, 41, 59) 0%, rgb(51, 65, 85) 100%);
             border-radius: 20px;
@@ -87,7 +91,7 @@
             transform: translateY(-50%);
             font-weight: 700;
             /* Scale text slightly with viewport while keeping bounds */
-            font-size: clamp(9px, 1.4vw, 11px);
+            font-size: clamp(8px, 1.2vw, 10px);
             letter-spacing: 0.2px;
             transition: all 0.3s ease;
             cursor: pointer;
@@ -97,7 +101,7 @@
             z-index: 10;
             padding: 4px 6px;
             border-radius: 12px;
-            min-width: 60px;
+            min-width: 0;
             text-align: center;
             white-space: nowrap;
         }
@@ -109,25 +113,31 @@
         }
         
         .toggle-option.first {
-            left: 12.5%;
+            left: 10%;
             transform: translate(-50%, -50%);
             color: white;
         }
         
         .toggle-option.second {
-            left: 37.5%;
+            left: 30%;
             transform: translate(-50%, -50%);
             color: rgb(30, 41, 59);
         }
         
         .toggle-option.third {
-            left: 62.5%;
+            left: 50%;
             transform: translate(-50%, -50%);
             color: rgb(30, 41, 59);
         }
         
         .toggle-option.fourth {
-            left: 87.5%;
+            left: 70%;
+            transform: translate(-50%, -50%);
+            color: rgb(30, 41, 59);
+        }
+
+        .toggle-option.fifth {
+            left: 90%;
             transform: translate(-50%, -50%);
             color: rgb(30, 41, 59);
         }
@@ -144,18 +154,20 @@
         
         .toggle-switch[data-active="policies"] .toggle-option.second,
         .toggle-switch[data-active="policies"] .toggle-option.third,
-        .toggle-switch[data-active="policies"] .toggle-option.fourth {
+        .toggle-switch[data-active="policies"] .toggle-option.fourth,
+        .toggle-switch[data-active="policies"] .toggle-option.fifth {
             color: rgb(100, 116, 139);
             opacity: 0.7;
         }
         
         .toggle-switch[data-active="ev"] .toggle-slider {
-            left: calc(25% + 2px);
+            left: calc(20% + 2px);
         }
         
         .toggle-switch[data-active="ev"] .toggle-option.first,
         .toggle-switch[data-active="ev"] .toggle-option.third,
-        .toggle-switch[data-active="ev"] .toggle-option.fourth {
+        .toggle-switch[data-active="ev"] .toggle-option.fourth,
+        .toggle-switch[data-active="ev"] .toggle-option.fifth {
             color: rgb(100, 116, 139);
             opacity: 0.7;
         }
@@ -166,12 +178,13 @@
         }
         
         .toggle-switch[data-active="targets"] .toggle-slider {
-            left: calc(50% + 2px);
+            left: calc(40% + 2px);
         }
         
         .toggle-switch[data-active="targets"] .toggle-option.first,
         .toggle-switch[data-active="targets"] .toggle-option.second,
-        .toggle-switch[data-active="targets"] .toggle-option.fourth {
+        .toggle-switch[data-active="targets"] .toggle-option.fourth,
+        .toggle-switch[data-active="targets"] .toggle-option.fifth {
             color: rgb(100, 116, 139);
             opacity: 0.7;
         }
@@ -182,17 +195,35 @@
         }
         
         .toggle-switch[data-active="climateTargets"] .toggle-slider {
-            left: calc(75% + 2px);
+            left: calc(60% + 2px);
         }
         
         .toggle-switch[data-active="climateTargets"] .toggle-option.first,
         .toggle-switch[data-active="climateTargets"] .toggle-option.second,
-        .toggle-switch[data-active="climateTargets"] .toggle-option.third {
+        .toggle-switch[data-active="climateTargets"] .toggle-option.third,
+        .toggle-switch[data-active="climateTargets"] .toggle-option.fifth {
             color: rgb(100, 116, 139);
             opacity: 0.7;
         }
         
         .toggle-switch[data-active="climateTargets"] .toggle-option.fourth {
+            color: white;
+            opacity: 1;
+        }
+
+        .toggle-switch[data-active="regulations"] .toggle-slider {
+            left: calc(80% + 2px);
+        }
+
+        .toggle-switch[data-active="regulations"] .toggle-option.first,
+        .toggle-switch[data-active="regulations"] .toggle-option.second,
+        .toggle-switch[data-active="regulations"] .toggle-option.third,
+        .toggle-switch[data-active="regulations"] .toggle-option.fourth {
+            color: rgb(100, 116, 139);
+            opacity: 0.7;
+        }
+
+        .toggle-switch[data-active="regulations"] .toggle-option.fifth {
             color: white;
             opacity: 1;
         }
@@ -207,7 +238,8 @@
         }
         
         /* Targets Submenu Styles */
-        .targets-submenu {
+        .targets-submenu,
+        .regulations-submenu {
             position: absolute;
             top: 60px;
             left: 0;
@@ -226,12 +258,14 @@
             overflow: hidden;
         }
         
-        .targets-submenu.visible {
+        .targets-submenu.visible,
+        .regulations-submenu.visible {
             opacity: 0.92; /* slightly transparent when not hovered */
             visibility: visible;
             transform: translateY(0) scale(1);
         }
-        .targets-submenu.visible:hover { opacity: 1; }
+        .targets-submenu.visible:hover,
+        .regulations-submenu.visible:hover { opacity: 1; }
         
         .submenu-header {
             display: flex;
@@ -568,48 +602,21 @@
             display: block;
         }
 
-        /* ---------- Build Codes view switcher ---------- */
-        .bc-view-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 18px;
-            background: #ffffff;
-            border: 1.5px solid rgba(148, 163, 184, 0.6);
-            border-radius: 999px;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            font-weight: 600;
-            font-size: 13px;
-            color: #1e293b;
-            cursor: pointer;
-            transition: all 0.2s ease;
+        .regulations-content {
+            display: none;
+            min-height: 620px;
+            text-align: left;
         }
-        .bc-view-btn:hover {
-            background: #f1f5f9;
-            border-color: rgba(100, 116, 139, 0.7);
+        .regulations-content.visible {
+            display: block;
         }
-        .bc-view-btn-active,
-        .bc-view-btn-active:hover {
-            background: rgb(30, 41, 59);
-            border-color: rgb(30, 41, 59);
-            color: #fff;
-        }
-        .bc-view-btn-tag {
-            font-size: 10px;
-            font-weight: 500;
-            letter-spacing: 0.4px;
-            padding: 2px 8px;
-            border-radius: 999px;
-            background: rgba(148, 163, 184, 0.2);
-            color: inherit;
-        }
-        .bc-view-btn-active .bc-view-btn-tag {
-            background: rgba(255,255,255,0.18);
+        #world-map.regulations-hidden {
+            display: none;
         }
     </style>
-  <script type="module" crossorigin src="./assets/worldMap.CSxTOHrK.js"></script>
-  <link rel="modulepreload" crossorigin href="./assets/input.BDlyS9RD.js">
-  <link rel="stylesheet" crossorigin href="./assets/main.DHiLpJzB.css">
+  <script type="module" crossorigin src="./assets/worldMap.B2jXtB0r.js"></script>
+  <link rel="modulepreload" crossorigin href="./assets/input.DwfNlbg-.js">
+  <link rel="stylesheet" crossorigin href="./assets/main.D2nVXO0x.css">
   <link rel="stylesheet" crossorigin href="./assets/shared.BoYeBbxS.css">
 </head>
 <body class="bg-stone-800 text-neutral-700">
@@ -639,19 +646,6 @@
         <section class="max-w-7xl mx-auto py-6 text-center">
             <h2 class="text-3xl md:text-4xl font-bold text-[rgb(42,58,42)] title-underline text-center mb-6 md:mb-8">Climate Policy Atlas</h2>
 
-            <!-- View switcher: World Map vs Build Codes vs Buildable Land -->
-            <div class="mx-auto max-w-5xl mb-3 flex items-center justify-center gap-2 flex-wrap" id="bc-view-switcher">
-                <button id="bc-show-worldmap" class="bc-view-btn bc-view-btn-active" type="button">World Map</button>
-                <button id="bc-show-buildcodes" class="bc-view-btn" type="button">
-                    Build Codes
-                    <span class="bc-view-btn-tag">DE · IE · EL · NUTS-1/3</span>
-                </button>
-                <button id="bc-show-buildable" class="bc-view-btn" type="button">
-                    Buildable Land
-                    <span class="bc-view-btn-tag">OSM · NREL-style</span>
-                </button>
-            </div>
-
             <!-- How to use: persistent helper (no background, smaller italic text) -->
             <div class="mx-auto max-w-5xl mb-4" id="bc-worldmap-help">
                 <p class="text-left italic" style="font-size: 0.85rem; color: #334155;">
@@ -662,7 +656,7 @@
             <div class="mx-auto max-w-5xl mb-4 hidden" id="bc-buildcodes-help">
                 <p class="text-left italic" style="font-size: 0.85rem; color: #334155;">
                     Sub-national renewable &amp; EV build regulations for Germany, Ireland, and Greece.
-                    Pick one of the ten lenses below — each is built from the actual rule rows in the dataset.
+                    The Build Codes subsection shows regulation counts by surveyed region.
                 </p>
             </div>
             <div class="mx-auto max-w-5xl mb-4 hidden" id="bc-buildable-help">
@@ -688,62 +682,91 @@
                         <input type="radio" name="mapType" value="targets">
                         <span>TARGETS</span>
                     </label>
+                    <label style="display: none;">
+                        <input type="radio" name="mapType" value="climateTargets">
+                        <span>CLIMATE TARGETS</span>
+                    </label>
+                    <label style="display: none;">
+                        <input type="radio" name="mapType" value="regulations">
+                        <span>REGULATIONS</span>
+                    </label>
                 
                 <div id="loading-message">Loading data, please wait a moment...</div>
-                
-                <!-- Map box wrapper to anchor controls inside the SVG area -->
-                <div id="world-map-container" class="relative">
-                    <svg id="world-map"></svg>
-                    
-                    <!-- Map Type Controls - Fully inside the map box -->
-                    <div class="map-controls">
-                        <div class="toggle-switch-container">
-                            <div class="toggle-switch" data-active="policies" id="mapTypeToggle">
-                                <div class="toggle-slider"></div>
-                                <div class="toggle-option first">RE Support</div>
-                                <div class="toggle-option second">EV Support</div>
-                                <div class="toggle-option third">Renewables Targets</div>
-                                <div class="toggle-option fourth">Climate Targets</div>
+
+                <!-- Map mode bar: lives in its own header row so it stays visually
+                     stable when the surface below switches between the world-map
+                     SVG and the regulations panel. -->
+                <div class="map-controls">
+                    <div class="toggle-switch-container">
+                        <div class="toggle-switch" data-active="policies" id="mapTypeToggle">
+                            <div class="toggle-slider"></div>
+                            <div class="toggle-option first">RE Support</div>
+                            <div class="toggle-option second">EV Support</div>
+                            <div class="toggle-option third">RE Targets</div>
+                            <div class="toggle-option fourth">Climate</div>
+                            <div class="toggle-option fifth">Regulations</div>
+                        </div>
+
+                        <!-- Targets Submenu -->
+                        <div class="targets-submenu" id="targetsSubmenu">
+                            <div class="submenu-header">
+                                <span class="submenu-title">Target Types</span>
+                                <button class="submenu-close" id="submenuClose">&times;</button>
                             </div>
-                            
-                            <!-- Targets Submenu -->
-                            <div class="targets-submenu" id="targetsSubmenu">
-                                <div class="submenu-header">
-                                    <span class="submenu-title">Target Types</span>
-                                    <button class="submenu-close" id="submenuClose">&times;</button>
-                                </div>
-                                <div class="year-group-wrapper" id="yearGroupWrapper">
-                                    <div class="year-group-title">Targeted Year</div>
-                                    <div class="year-group-options" id="yearGroupOptions"></div>
-                                </div>
-                                <div class="submenu-options" id="submenuOptions">
-                                    <!-- Target type options will be dynamically populated -->
-                                </div>
+                            <div class="year-group-wrapper" id="yearGroupWrapper">
+                                <div class="year-group-title">Targeted Year</div>
+                                <div class="year-group-options" id="yearGroupOptions"></div>
                             </div>
-                            
-                            <!-- Climate Targets Submenu -->
-                            <div class="climate-targets-submenu" id="climateTargetsSubmenu">
-                                <div class="submenu-header">
-                                    <span class="submenu-title">Emission Targets <span class="submenu-note">(% Change compared to 1990 emissions baseline)</span></span>
-                                    <button class="submenu-close" id="climateSubmenuClose">&times;</button>
-                                </div>
-                                <div class="year-group-wrapper" id="climateYearGroupWrapper">
-                                    <div class="year-group-title">Targeted Year</div>
-                                    <div class="year-group-options" id="climateYearGroupOptions"></div>
-                                </div>
+                            <div class="submenu-options" id="submenuOptions">
+                                <!-- Target type options will be dynamically populated -->
+                            </div>
+                        </div>
+
+                        <!-- Climate Targets Submenu -->
+                        <div class="climate-targets-submenu" id="climateTargetsSubmenu">
+                            <div class="submenu-header">
+                                <span class="submenu-title">Emission Targets <span class="submenu-note">(% Change compared to 1990 emissions baseline)</span></span>
+                                <button class="submenu-close" id="climateSubmenuClose">&times;</button>
+                            </div>
+                            <div class="year-group-wrapper" id="climateYearGroupWrapper">
+                                <div class="year-group-title">Targeted Year</div>
+                                <div class="year-group-options" id="climateYearGroupOptions"></div>
+                            </div>
+                        </div>
+
+                        <!-- Regulations Submenu -->
+                        <div class="regulations-submenu" id="regulationsSubmenu">
+                            <div class="submenu-header">
+                                <span class="submenu-title">Regulations</span>
+                                <button class="submenu-close" id="regulationsSubmenuClose">&times;</button>
+                            </div>
+                            <div class="submenu-options">
+                                <button class="submenu-option active" id="showBuildCodesRegulations" type="button">
+                                    Build Codes<br>
+                                    <span style="font-size: 0.75em; opacity: 0.8; font-weight: normal;">Constraint pressure by surveyed NUTS region using regulation, policy/source, and binding counts</span>
+                                </button>
+                                <button class="submenu-option" id="showBuildableLandRegulations" type="button">
+                                    Buildable Land<br>
+                                    <span style="font-size: 0.75em; opacity: 0.8; font-weight: normal;">OSM-based buildable land from regulation rules</span>
+                                </button>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-            <!-- Build Codes view (hidden by default) -->
-            <div id="build-codes-view" class="hidden bg-custom p-2 md:p-4 rounded-lg shadow-xl mx-auto max-w-7xl text-left relative" style="min-height: 80vh;">
-                <!-- mounted by src/build-codes.ts -->
-            </div>
 
-            <!-- Buildable Land view (hidden by default) -->
-            <div id="buildable-land-view" class="hidden bg-custom p-2 md:p-4 rounded-lg shadow-xl mx-auto max-w-7xl text-left relative" style="min-height: 80vh;">
-                <!-- mounted by src/buildable-land.ts -->
+                <!-- Surface wrapper: holds either the world-map SVG or the regulations panel. -->
+                <div id="world-map-container" class="relative">
+                    <svg id="world-map"></svg>
+                    <div id="regulations-content" class="regulations-content">
+                        <div id="build-codes-view" class="bg-custom p-2 md:p-4 rounded-lg text-left relative" style="min-height: 560px;">
+                            <!-- mounted by src/build-codes.ts -->
+                        </div>
+
+                        <div id="buildable-land-view" class="hidden bg-custom p-2 md:p-4 rounded-lg text-left relative" style="min-height: 560px;">
+                            <!-- mounted by src/buildable-land.ts -->
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div id="panel-backdrop"></div>

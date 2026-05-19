@@ -1,0 +1,709 @@
+/* Remove global body styles that interfere with page layout */
+#ontology-container {
+    font-family: var(--font-body);
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 500px;
+}
+
+.viewport {
+    width: 100%;
+    flex-grow: 1; /* This should make it take available vertical space */
+    min-height: 500px; /* Re-added a safety min-height, slightly larger */
+    overflow: hidden;
+    position: relative;
+    background: #D8E0D8; /* Light Green/Beige for viewport background */
+    border: 1px solid #B0C0B0; /* Border to complement beige */
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1); /* Softer shadow */
+    cursor: grab;
+    display: flex; /* Make viewport a flex container if its children need flex layout */
+    flex-direction: column; /* (If its children are stacked, e.g. visualization-container and zoom-controls) */
+}
+
+.visualization-container {
+    flex-grow: 1; /* This should expand within the viewport */
+    position: relative; /* Changed from absolute for better flow in flex parent */
+    overflow: visible;
+    background: transparent; /* Transparent, so viewport color shows through */
+    /* Subtle dark green grid lines for light beige background */
+    background-image: radial-gradient(rgba(42, 58, 42, 0.2) 0.5px, transparent 0.5px);
+    background-size: 25px 25px; /* Adjusted grid size slightly */
+    transform-origin: 0 0;
+    left: 0;
+    top: 0;
+}
+
+.ontology-toolbar {
+    /* Remove the "top bar" look: keep the middle fully transparent.
+       Only the left and right control groups get their own small backplates. */
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    font-family: var(--font-body);
+    pointer-events: none; /* allow panning/zooming through empty area */
+}
+
+.card.overlapping {
+    opacity: 0.82;
+}
+
+.card.overlapping:hover,
+.card.selected {
+    opacity: 1;
+}
+
+.view-toggle {
+    display: inline-flex;
+    border: 1px solid #90a090;
+    border-radius: 10px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.82);
+    backdrop-filter: blur(6px);
+    box-shadow: 0 1px 10px rgba(0,0,0,0.10);
+    pointer-events: auto;
+}
+
+.view-toggle-button {
+    appearance: none;
+    border: none;
+    background: transparent;
+    color: #1A3A1A;
+    padding: 8px 12px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.view-toggle-button:hover {
+    background: rgba(42, 58, 42, 0.08);
+}
+
+.view-toggle-button.active {
+    background: rgb(50, 70, 53);
+    color: oklch(0.99 0.02 97.77);
+}
+
+.toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    pointer-events: auto;
+}
+
+.pdf-cta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.82);
+    border: 1px solid #90a090;
+    border-radius: 12px;
+    padding: 6px 8px;
+    backdrop-filter: blur(6px);
+    box-shadow: 0 1px 10px rgba(0,0,0,0.10);
+}
+
+.pdf-cta-text {
+    font-size: 13px;
+    color: #1A3A1A;
+    opacity: 0.9;
+    white-space: nowrap;
+}
+
+.pdf-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    border: 1px solid #90a090;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: 700;
+    background-color: #e0e8e0;
+    color: #1A3A1A;
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
+}
+
+.pdf-button:hover {
+    background-color: #c8d0c8;
+    border-color: #7a8a7a;
+}
+
+.pdf-button.disabled,
+.pdf-button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.ontology-table-wrap {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    /* Leave room for the overlay controls at the top */
+    padding: 72px 12px 12px;
+}
+
+.ontology-table-controls {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+    font-family: var(--font-body);
+}
+
+.ontology-table-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.ontology-mini-button {
+    border-radius: 10px;
+    border: 1px solid #90a090;
+    padding: 8px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    background-color: rgba(255, 255, 255, 0.75);
+    color: #1A3A1A;
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.ontology-mini-button:hover {
+    background-color: rgba(216, 224, 216, 0.9);
+    border-color: #7a8a7a;
+}
+
+.ontology-interactive-cell {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding-left: 8px;
+}
+
+.ontology-indent-guides {
+    align-self: stretch;
+    flex: 0 0 auto;
+    border-radius: 6px;
+    background-image: repeating-linear-gradient(
+        to right,
+        rgba(42, 58, 42, 0.16) 0px,
+        rgba(42, 58, 42, 0.16) 1px,
+        transparent 1px,
+        transparent 18px
+    );
+    opacity: 0.7;
+}
+
+.ontology-disclosure {
+    width: 26px;
+    height: 26px;
+    flex: 0 0 26px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    border: 1px solid rgba(176, 192, 176, 0.95);
+    background: rgba(216, 224, 216, 0.75);
+    color: #1A3A1A;
+    cursor: pointer;
+    margin-top: 2px;
+}
+
+.ontology-disclosure:hover {
+    background: rgba(216, 224, 216, 0.98);
+}
+
+.ontology-disclosure-spacer {
+    width: 26px;
+    height: 26px;
+    flex: 0 0 26px;
+}
+
+.ontology-search {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 260px;
+    flex: 1 1 360px;
+}
+
+.ontology-search-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #1A3A1A;
+    opacity: 0.9;
+}
+
+.ontology-search-input {
+    width: 100%;
+    border: 1px solid #B0C0B0;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 14px;
+    background: rgba(255, 255, 255, 0.85);
+    color: #1A3A1A;
+    outline: none;
+}
+
+.ontology-search-input:focus {
+    border-color: #7a8a7a;
+    box-shadow: 0 0 0 3px rgba(100, 140, 88, 0.22);
+}
+
+.ontology-table-meta {
+    font-size: 12px;
+    color: #2A3A2A;
+    opacity: 0.9;
+    white-space: nowrap;
+}
+
+.ontology-table-card {
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid #B0C0B0;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.10);
+}
+
+.ontology-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-family: var(--font-body);
+}
+
+.ontology-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    text-align: left;
+    font-size: 12px;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: #1A3A1A;
+    background: rgba(216, 224, 216, 0.96);
+    border-bottom: 1px solid #B0C0B0;
+    padding: 10px 12px;
+}
+
+.ontology-table tbody td {
+    padding: 12px;
+    border-bottom: 1px solid rgba(176, 192, 176, 0.65);
+    vertical-align: top;
+    color: #1A3A1A;
+    font-size: 13px;
+}
+
+.ontology-table tbody tr:hover {
+    background: rgba(42, 58, 42, 0.05);
+}
+
+.ontology-table tbody tr.selected {
+    background: rgba(100, 140, 88, 0.14);
+}
+
+.ontology-table-interactive tbody tr:nth-child(even) {
+    background: rgba(216, 224, 216, 0.22);
+}
+
+.ontology-table tbody tr.just-revealed td {
+    animation: ontologyRowReveal 180ms ease-out both;
+}
+
+@keyframes ontologyRowReveal {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.ontology-table-empty {
+    text-align: center;
+    padding: 20px 12px;
+    color: #2A3A2A;
+    opacity: 0.85;
+}
+
+.ontology-table-concept {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ontology-table-name {
+    font-weight: 700;
+    font-size: 14px;
+    font-family: var(--font-heading);
+    color: var(--color-text);
+}
+
+.ontology-table-path {
+    font-size: 12px;
+    color: #2A3A2A;
+    opacity: 0.85;
+    line-height: 1.4;
+}
+
+.ontology-table-parent {
+    white-space: nowrap;
+    opacity: 0.9;
+}
+
+.ontology-table-level {
+    white-space: nowrap;
+    opacity: 0.9;
+}
+
+.ontology-table-definition {
+    color: #1A3A1A;
+    opacity: 0.92;
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.ontology-definition-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ontology-table-interactive .ontology-table-definition {
+    -webkit-line-clamp: 2;
+}
+
+.ontology-table-definition.expanded {
+    display: block;
+    -webkit-line-clamp: unset;
+    -webkit-box-orient: unset;
+    overflow: visible;
+}
+
+.ontology-more-button {
+    align-self: flex-start;
+    border: 1px solid rgba(176, 192, 176, 0.95);
+    background: rgba(216, 224, 216, 0.65);
+    color: #1A3A1A;
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.ontology-more-button:hover {
+    background: rgba(216, 224, 216, 0.95);
+}
+
+.card {
+    position: absolute;
+    width: 220px; /* Increased width */
+    height: auto; /* Adjust height based on content */
+    min-height: 115px;
+    background: #1A3A1A; /* Dark green cards (contrast with beige viewport) */
+    border-radius: 4px; /* Less rounded, more formal */
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+    padding: 15px;
+    transition: box-shadow 0.3s ease, transform 0.3s ease;
+    border: 1px solid #3A623A; /* Darker green border for cards */
+    z-index: 10;
+    cursor: pointer;
+    overflow: hidden; /* Hide overflow, text will be managed by card-definition */
+    user-select: none;
+    pointer-events: auto;
+    color: #E8F5E9; /* Light text on dark green cards */
+}
+
+.card-definition {
+    font-size: 15px; /* Slightly larger for serif readability */
+    color: #E8F5E9; /* Light text for definition */
+    line-height: 1.5;
+    padding-right: 15px; /* Adjusted space for expand icon */
+    max-height: 70px; /* Adjusted height to fit larger card */
+    overflow-y: auto; /* Scroll if definition is long */
+    overflow-x: hidden; /* Prevent horizontal scrolling */
+}
+
+/* Custom scrollbar for card definition - dark theme (for dark cards) */
+.card-definition::-webkit-scrollbar {
+    width: 6px;
+}
+.card-definition::-webkit-scrollbar-track {
+    background: #1A3A1A; /* Match card background */
+}
+.card-definition::-webkit-scrollbar-thumb {
+    background: #3A623A; /* Darker green scrollbar thumb */
+    border-radius: 3px;
+}
+
+.card.hidden {
+    display: none;
+}
+
+.expand-icon {
+    position: absolute;
+    right: 10px;
+    top: 10px;
+    width: 20px;
+    height: 20px;
+    background: #2A522A; /* Dark green background for icon on dark card */
+    color: #E8F5E9; /* Light icon color */
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: transform 0.2s ease, background-color 0.2s ease;
+    border: 1px solid #3A623A;
+    box-shadow: none;
+}
+
+.expand-icon::after {
+    content: '+'; /* Plus for expand */
+    display: block;
+    transform-origin: center;
+    transition: transform 0.2s ease;
+}
+
+.card:not(.collapsed) .expand-icon::after {
+    content: '−'; /* Minus for collapse (Unicode U+2212) */
+}
+
+/* No rotation needed for + / - icons */
+/*.card.collapsed .expand-icon::after {
+    transform: rotate(-90deg);
+}*/
+
+.card:hover {
+    box-shadow: 0 3px 6px rgba(0,0,0,0.35), 0 2px 4px rgba(0,0,0,0.25);
+    border-color: #4A724A; /* Slightly lighter green border on hover */
+    /* transform: translateY(-1px); */ /* Subtle lift, optional */
+}
+
+.card.selected {
+    background: #2A5A2A; /* Lighter green for selected node */
+    border-color: #5A8A5A; /* Lighter border for selected node */
+    box-shadow: 0 4px 8px rgba(0,0,0,0.4), 0 3px 5px rgba(0,0,0,0.3);
+}
+
+.card.root-card {
+    border-color: #90EE90; /* LightGreen border for root card (stands out on dark card) */
+    background: #204020; /* Slightly different dark green for root */
+}
+
+.card.root-card.selected {
+    background: #306030; /* Lighter green for selected root node */
+    border-color: #A0FFA0; /* Even lighter border when root is selected */
+}
+
+/* Remove unused styles */
+.card-title, .card-id {
+    display: none;
+}
+
+.connection-line {
+    position: absolute;
+    height: 1.5px; /* Thinner lines */
+    transform-origin: 0 0;
+    pointer-events: none;
+    z-index: 1; /* Ensure lines are below cards but above container grid */
+}
+
+/* Connection lines for dark theme - shades of light green/gray (visible on beige BG) */
+.connection-line-level-0 {
+    background: #3A623A; /* Darker green lines for good contrast on beige */
+    height: 2px;
+}
+.connection-line-level-1 {
+    background: #4A724A;
+}
+.connection-line-level-2 {
+    background: #5A825A;
+}
+.connection-line-level-3 {
+    background: #6A926A;
+}
+.connection-line-level-4 {
+    background: #7AA27A;
+}
+.connection-line-level-5 {
+    background: #8AB28A; /* Lightest of these dark greens */
+}
+
+.zoom-controls {
+    position: fixed;
+    bottom: 25px;
+    right: 25px;
+    z-index: 1000;
+    display: flex;
+    gap: 10px;
+    background: rgba(216, 224, 216, 0.85); /* Semi-transparent light beige */
+    padding: 10px;
+    border-radius: 6px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+    border: 1px solid #B0C0B0;
+}
+
+.zoom-button {
+    display: none; /* Still hidden */
+    /* Styles for zoom buttons if they were enabled */
+    /* font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; */
+    /* border: 1px solid #B0C0B0; */
+    /* border-radius: 4px; */
+    /* background: #E8F5E9; */ /* Very light button background */
+    /* color: #1A3A1A; */ /* Dark green text */
+    /* padding: 8px 12px; */
+}
+
+.reset-button {
+    display: flex !important;
+    font-family: var(--font-body);
+    border-radius: var(--radius-sm);
+    border: 1px solid #90a090; /* Slightly darker border for button */
+    padding: 0.6em 1.2em;
+    font-size: 0.9em;
+    font-weight: 500;
+    background-color: #e0e8e0; /* Pale greenish-beige button */
+    color: #1A3A1A; /* Dark green text */
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.reset-button:hover {
+    background-color: #c8d0c8; /* Slightly darker on hover */
+    border-color: #7a8a7a;
+}
+
+.zoom-level {
+    width: 60px;
+    height: auto;
+    padding: 8px 0;
+    display: none;  /* Hide zoom level display */
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: normal;
+    color: var(--color-text-muted);
+    font-family: var(--font-body);
+}
+
+/* Banner styles - adjust as needed or remove if not used */
+.left-banner, .top-banner {
+    display: none; /* Hiding banners for a cleaner academic look, can be re-enabled */
+    /*
+    position: fixed;
+    z-index: 1001;
+    max-width: 200px;
+    padding: 10px;
+    */
+}
+
+/*.left-banner {
+    top: 0;
+    left: 0;
+}
+
+.top-banner {
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: 400px;
+}*/
+
+/* Ensure root card visibility if it was an issue */
+.card.root-card {
+    display: block !important;
+}
+
+.card.root-card .card-definition {
+    /* specific styles for root card definition if needed */
+}
+
+.card-name {
+    font-size: 1.4em; /* Increased font size for better readability */
+    font-weight: 700;
+    font-family: var(--font-heading);
+    color: #E8F5E9; /* Light text */
+    margin-bottom: 0.5em;
+    text-align: center;
+}
+
+/* Definition Panel Styles */
+.definition-panel {
+    position: fixed;
+    top: 50%;
+    right: 20px;
+    transform: translateY(-50%);
+    width: 350px;
+    max-height: 80%; /* Adjust as needed */
+    background-color: rgb(240, 245, 235); /* Light, subtle background */
+    opacity: 0.89;
+    border: 1px solid rgb(180, 190, 180);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    padding: 25px;
+    /* Must be above the toolbar (toolbar uses z-index: 2000), so the definition panel
+       never gets covered by the "Download ontology as PDF" button. */
+    z-index: 3000;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    font-family: var(--font-body);
+}
+
+.definition-panel .panel-title {
+    font-size: 1.6em;
+    font-weight: 700;
+    font-family: var(--font-heading);
+    color: var(--color-text-muted);
+    margin-bottom: 15px;
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: 10px;
+}
+
+.definition-panel .panel-definition {
+    font-size: 1.05em;
+    line-height: 1.7;
+    color: #333;
+    flex-grow: 1; /* Allows definition to take available space */
+    margin-bottom: 15px;
+    overflow-y: auto;
+}
+
+.definition-panel .close-panel-button {
+    align-self: flex-end; /* Position to the right */
+    background: rgb(100, 140, 88);
+    color: white;
+    border: none;
+    border-radius: 50%; /* Make it circular */
+    width: 30px;
+    height: 30px;
+    font-size: 1.2em;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease;
+}
+
+.definition-panel .close-panel-button:hover {
+    background-color: rgb(141, 192, 133);
+} 

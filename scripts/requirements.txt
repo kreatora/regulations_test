@@ -1,0 +1,28 @@
+# Dependencies for the buildable-land raster pipeline (NREL-style).
+#
+# Install with:   python -m pip install -r scripts/requirements.txt
+#
+# Tested on Windows / macOS / Linux with Python 3.10+.
+# All packages have prebuilt wheels on PyPI (no compiler needed on Windows).
+
+# Core geo stack
+geopandas>=1.0.0
+shapely>=2.0
+pyproj>=3.6
+rasterio>=1.3.10
+fiona>=1.10
+
+# OSM PBF reading is done via GDAL's OSM driver, accessed through
+# pyogrio which is already installed by geopandas>=1.0. No pyrosm/osmium
+# build dependency required.
+pyogrio>=0.10.0
+
+# Numerical / imaging
+numpy>=1.26
+Pillow>=10.0
+matplotlib>=3.8
+
+# Workbook / JSON / HTTP
+pandas>=2.1
+requests>=2.32
+tqdm>=4.66
