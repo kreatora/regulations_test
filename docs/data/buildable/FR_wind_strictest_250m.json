@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-05-06T14:50:22.148211+00:00",
+  "region": "FR",
+  "tech": "wind",
+  "mode": "strictest",
+  "resolution_m": 250,
+  "turbine_geometry": {
+    "tip_height_m": 150.0,
+    "blade_length_m": 60.0
+  },
+  "georef": {
+    "epsg_image": 3857,
+    "epsg_source": 3035,
+    "bounds_3857": [
+      -7311279.648728339,
+      -3485410.915957041,
+      8316402.746619917,
+      6679538.287355136
+    ],
+    "bounds_wgs84": [
+      -65.67834254924672,
+      -29.858785465508685,
+      74.70751696182239,
+      51.32810547192934
+    ],
+    "width": 62797,
+    "height": 40846,
+    "resolution_m_source": 250
+  },
+  "pixel_stats": {
+    "total_pixels_grid": 1277185494,
+    "region_pixels": 10213922,
+    "buildable_pixels": 9831418,
+    "wpa_pixels": 0,
+    "excluded_pixels": 382504,
+    "buildable_fraction_of_region": 0.962550722435515,
+    "buildable_km2": 614463.625,
+    "region_km2": 638370.125,
+    "pixel_area_km2": 0.0625
+  },
+  "applied_rules": [
+    {
+      "variable": "1_distance_residential buildings",
+      "layer": "residential",
+      "setback_m": 500.0,
+      "condition": null,
+      "year": 2011,
+      "legally_binding": true,
+      "source_name": null,
+      "source_link": "https://publications.jrc.ec.europa.eu/repository/bitstream/JRC109698/kjna29083enn_1.pdf",
+      "raw_value": 500.0,
+      "raw_unit": "m",
+      "multiplier_resolved": false,
+      "feature_count": 8752,
+      "applied": true
+    }
+  ],
+  "schema_notes": {
+    "values_png_legend": {
+      "0": "outside region (bounding-box padding)",
+      "64": "inside region & excluded by setbacks/exclusion areas",
+      "128": "inside region & WPA additive override (encouraged build)",
+      "255": "inside region & buildable"
+    },
+    "styled_png_legend": {
+      "transparent": "buildable OR outside region",
+      "brick_red rgba(155,60,50,190)": "excluded (regulations forbid)",
+      "site_green rgba(141,192,133,140)": "WPA additive (encouraged)"
+    },
+    "styled_png": "RGBA overlay tuned to the Climate Policy Atlas forest-green theme; the red regions read as 'no-build'."
+  }
+}

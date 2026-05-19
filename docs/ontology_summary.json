@@ -1,0 +1,810 @@
+{
+    "name": "Policy",
+    "children": [
+        {
+            "name": "Public policies: Public policies...",
+            "parent": "Policy",
+            "children": [
+                {
+                    "name": "Policy goals are a...",
+                    "parent": "Public policies: Public policies are efforts made by governments to alter aspects of their own or social behaviour in order to carry out some end or purpose and are comprised of complex arrangements of policy goals and policy means. (based on Howlett: https://www.sfu.ca/~howlett/documents/chapter%209.MH%20copy.pdf).",
+                    "children": [
+                        {
+                            "name": "Target: A target is...",
+                            "parent": "Policy goals are a public policy wherein governments determine operationalizable policy objectives including specific policy targets. The aim of these goals is to guide decision-making.",
+                            "children": [
+                                {
+                                    "name": "Binding target: A binding...",
+                                    "parent": "Target: A target is a policy goal that contains statements about a desired future state of a system that an organization/association/municipality/region/country commits to in either a legally binding or non-legally binding way (OEO, adapted)",
+                                    "children": [],
+                                    "original_name": "Binding target: A binding target is a target that is legally enforceable. (adjusted from CPDB)"
+                                }
+                            ],
+                            "original_name": "Target: A target is a policy goal that contains statements about a desired future state of a system that an organization/association/municipality/region/country commits to in either a legally binding or non-legally binding way (OEO, adapted)"
+                        }
+                    ],
+                    "original_name": "Policy goals are a public policy wherein governments determine operationalizable policy objectives including specific policy targets. The aim of these goals is to guide decision-making. (See in Howlett: https://www.sfu.ca/~howlett/documents/chapter%209.MH%20copy.pdf)"
+                }
+            ],
+            "original_name": "Public policies: Public policies are efforts made by governments to alter aspects of their own or social behaviour in order to carry out some end or purpose and are comprised of complex arrangements of policy goals and policy means. (based on Howlett: https://www.sfu.ca/~howlett/documents/chapter%209.MH%20copy.pdf)."
+        },
+        {
+            "name": "Public policies",
+            "parent": "Policy",
+            "children": [
+                {
+                    "name": "Policy goals are a...",
+                    "parent": "Public policies",
+                    "children": [
+                        {
+                            "name": "Target: A target is...",
+                            "parent": "Policy goals are a public policy wherein governments determine operationalizable policy objectives including specific policy targets. The aim of these goals is to guide decision-making. (See in Howlett: https://www.sfu.ca/~howlett/documents/chapter%209.MH%20copy.pdf)",
+                            "children": [
+                                {
+                                    "name": "Non-binding target: A non-binding...",
+                                    "parent": "Target: A target is a policy goal that contains statements about a desired future state of a system that an organization/association/municipality/region/country commits to in either a legally binding or non-legally binding way (OEO, adapted)",
+                                    "children": [],
+                                    "original_name": "Non-binding target: A non-binding is a target that is not legally enforceable. (adjusted from CPDB)"
+                                },
+                                {
+                                    "name": "Economy-wide target: An economy-wide...",
+                                    "children": [],
+                                    "original_name": "Economy-wide target: An economy-wide target is a target that focuses on a whole country/economy-wide (adapted from CPDB)"
+                                },
+                                {
+                                    "name": "Phase-out target: A phase-out...",
+                                    "children": [],
+                                    "original_name": "Phase-out target: A phase-out target is a target that focuses on phasing out of a specific energy technology within a defined timeframe. Examples include fossil fuel, nuclear phase-out, etc. (OWN ADDITION)"
+                                },
+                                {
+                                    "name": "Technology adoption target: An...",
+                                    "children": [
+                                        {
+                                            "name": "Renewable energy target: Renewable...",
+                                            "children": [],
+                                            "original_name": "Renewable energy target: Renewable energy target is an adoption target for renewable energy within a defined timeframe."
+                                        }
+                                    ],
+                                    "original_name": "Technology adoption target: An adoption target is a target that focuses on the adoption of a specific energy technology within a defined timeframe. Examples include renewable energy, nuclear adoption, etc. OWN ADDITION)"
+                                },
+                                {
+                                    "name": "Energy efficiency target: A...",
+                                    "children": [],
+                                    "original_name": "Energy efficiency target: A energy efficiency target is a target that focuses on efficient energy use within a defined timeframe (adapted from CPDB)"
+                                },
+                                {
+                                    "name": "Climate target: A climate...",
+                                    "children": [],
+                                    "original_name": "Climate target: A climate target is a target that focuses on GHG emission reduction within a defined timeframe. Examples include NDC commitment, net-zero GHG emission, and climate-neutrality targets (adapted from CPDB)"
+                                }
+                            ],
+                            "original_name": "Target: A target is a policy goal that contains statements about a desired future state of a system that an organization/association/municipality/region/country commits to in either a legally binding or non-legally binding way (OEO, adapted)"
+                        }
+                    ],
+                    "original_name": "Policy goals are a public policy wherein governments determine operationalizable policy objectives including specific policy targets. The aim of these goals is to guide decision-making."
+                },
+                {
+                    "name": "Policy instruments are specific...",
+                    "children": [
+                        {
+                            "name": "Information instrument: An information...",
+                            "children": [
+                                {
+                                    "name": "Public information campaigns: Public...",
+                                    "children": [],
+                                    "original_name": "Public information campaigns: Public information campaigns are an information instrument where governments direct and sponsor efforts to communicate information to large numbers of citizens (in Bemelmans-Vedec, Rist and Vedung, p. 12). (own addition). Example: The Irish government published advertisements across media platforms to encourage energy savings and provide advice on energy-saving measures. https://www.iea.org/policies/15459-a-nationwide-campaign-to-encourage-energy-efficiency-and-highlight-available-supports"
+                                }
+                            ],
+                            "original_name": "Information instrument: An information instrument is a policy instrument that aims at providing knowledge to persons and/or institutions. (OEO; equivalent to CPR Information / Hood Nodality; CPDB \"Information provision\"; in Vedung \"A fundamental policy instrument involving measures undertaken to influence addressees through the transfer of knowledge, communication of reasoned argument, persuasion, advice\" (Public Policy and Program evaluation, p. 300)"
+                        }
+                    ],
+                    "original_name": "Policy instruments are specific policy tools by which the government aims to achieve its objectives (partially draws from Howlett: https://www.sfu.ca/~howlett/documents/chapter%209.MH%20copy.pdf )"
+                },
+                {
+                    "name": "Policy instruments are specific...",
+                    "children": [
+                        {
+                            "name": "Information instrument: An information...",
+                            "children": [
+                                {
+                                    "name": "Education instrument: An education...",
+                                    "children": [
+                                        {
+                                            "name": "Implementation aid: Implementation aid...",
+                                            "children": [],
+                                            "original_name": "Implementation aid: Implementation aid is an educational policy instrument that provides assistance to actors engaging in mitigation-related activities  (CPDB, slightly modified to fit OEO terminology & put within new subcategory of information \"education instrument\"). For example, people or businesses who want to improve building efficiency can ask for advice from experts employed by the German government (\"Energieberatung\": https://www.energiewechsel.de/KAENEF/Redaktion/DE/Dossier/energieberatung-uebersicht.html) ."
+                                        },
+                                        {
+                                            "name": "Changes to public education:...",
+                                            "children": [],
+                                            "original_name": "Changes to public education: Changes to public education are an education policy instrument which changes what is taught in public schooling to focus on climate change, for example curricula or learning objectives (own category/definition). For examples see : https://unesdoc.unesco.org/ark:/48223/pf0000379591"
+                                        },
+                                        {
+                                            "name": "Training program: A training...",
+                                            "children": [
+                                                {
+                                                    "name": "Vocational training: Vocational training...",
+                                                    "children": [],
+                                                    "original_name": "Vocational training: Vocational training is a training program that prepares people with specific skills for technical or trades work (own definintion). Example: https://www.iea.org/policies/17844-cooperative-training-at-coal-sites-in-north-rhine-westphalia"
+                                                }
+                                            ],
+                                            "original_name": "Training program: A training program is an educational policy instrument that promotes learning for professionals to obtain, improve or retain skills, knowledge, tools, equipment or other resources to do their work competently (adapted from CPDB, professional training and qualification; part of definition from EEA: https://climate-adapt.eea.europa.eu/en/metadata/adaptation-options/capacity-building-on-climate-change-adaptation)"
+                                        }
+                                    ],
+                                    "original_name": "Education instrument: An education instrument is an information policy instrument that aims at teaching skills to specific groups of people (OEO). [NOTE: merged categories, sub-category of Information]"
+                                }
+                            ],
+                            "original_name": "Information instrument: An information instrument is a policy instrument that aims at providing knowledge to persons and/or institutions. (OEO; equivalent to CPR Information / Hood Nodality; CPDB \"Information provision\"; in Vedung \"A fundamental policy instrument involving measures undertaken to influence addressees through the transfer of knowledge, communication of reasoned argument, persuasion, advice\" (Public Policy and Program evaluation, p. 300)"
+                        },
+                        {
+                            "name": "Economic: An economic instrument...",
+                            "children": [
+                                {
+                                    "name": "Fiscal and financial incentives:...",
+                                    "children": [
+                                        {
+                                            "name": "Levy (fee/charge): A levy...",
+                                            "children": [
+                                                {
+                                                    "name": "Carbon tax and GHG...",
+                                                    "children": [],
+                                                    "original_name": "Carbon tax and GHG emissions taxes: A carbon tax is a tax on carbon or other greenhouse gas emissions, measured in CO2 equivalent values (combination of OEO and CPDB definition; CPDB, slightly tweaked to include OEO terminology)"
+                                                },
+                                                {
+                                                    "name": "Energy and other tax:...",
+                                                    "children": [],
+                                                    "original_name": "Energy and other tax: An energy tax is a levy on energy or goods and services that are carbon-intensive. This instrument includes several forms of environmental taxation such as energy or fuel that reduce total emissions or emissions intensity (CPDB, slightly tweaked to include OEO terminology)"
+                                                },
+                                                {
+                                                    "name": "Resource tax: (DEFINITION) =>...",
+                                                    "children": [],
+                                                    "original_name": "Resource tax: (DEFINITION) => Resource tax is a tax policy tool levied on taxable natural resources that aims to adjust the difference between income and resource levels and improve the efficiency of resource development and utilization. (paper coding row 592)."
+                                                },
+                                                {
+                                                    "name": "Increased charge for dirty...",
+                                                    "children": [],
+                                                    "original_name": "Increased charge for dirty infrastructure or technologies: An increased charge for dirty infrastructure or technologies is a levy on the use of dirtier technologies like fossil combustion engines, or government-owned or provided goods and services like highways (adapted from \"user charges\", CPDB)"
+                                                }
+                                            ],
+                                            "original_name": "Levy (fee/charge): A levy is an economic instrument that consists of a compulsory financial charge imposed on an agent or institution by a governmental organisation. [OEO]"
+                                        },
+                                        {
+                                            "name": "Feebate (Bonus/Malus): A feebate...",
+                                            "children": [],
+                                            "original_name": "Feebate (Bonus/Malus): A feebate or bonus malus scheme is an economic instrument that imposes fees on a high-emitting technology and provides rebates for low-emitting technologies. An emissions \u201cnull-point\u201d is set,\nwhere the buyer gets neither a bonus nor a malus. The idea is that the system would be neutral on public finances. See: https://academic.oup.com/ej/article-abstract/124/578/F444/5076980, https://www.tandfonline.com/doi/pdf/10.1080/15568318.2018.1437237"
+                                        },
+                                        {
+                                            "name": "Removal of fossil fuel...",
+                                            "children": [],
+                                            "original_name": "Removal of fossil fuel subsidies: removal of fossil fuel subsidies is an economic policy instrument which abolishes or reduces existing subsidies either at the production or consumption ends (CPDB, moved from Section \"Barrier removal\", slightly tweaked for OEO)"
+                                        },
+                                        {
+                                            "name": "Fee decreases and exemptions:...",
+                                            "children": [],
+                                            "original_name": "Fee decreases and exemptions: Fee decreases and exemptions are fiscal incentives where the government supports mitigation activities by reducing or exempting green activities from existing fees or charges. For example, the German 9 Euro ticket to promote using public transport, or the removal of vehicle registration fees for electric vehicles (OWN ADDITION)"
+                                        },
+                                        {
+                                            "name": "Tax incentive: A tax...",
+                                            "children": [
+                                                {
+                                                    "name": "Tax reduction: A tax...",
+                                                    "children": [
+                                                        {
+                                                            "name": "Accelerated depreciation rule: Accelerated...",
+                                                            "children": [],
+                                                            "original_name": "Accelerated depreciation rule: Accelerated depreciation rule is a tax rebate where the government allows sustainable projects to depreciate (part of) the investment in the early years of the asset\u2019s life, effectively reducing their taxable income during these years (Hafner & Lilliestam 2019, tweaked for OEO and moved)"
+                                                        },
+                                                        {
+                                                            "name": "Tax rebate (rebate is...",
+                                                            "children": [],
+                                                            "original_name": "Tax rebate (rebate is on purchasing, upfront, credit is later https://www.cleanenergyresourceteams.org/what-you-need-know-about-ira-tax-credit-vs-rebate )"
+                                                        },
+                                                        {
+                                                            "name": "Tax credit - for...",
+                                                            "children": [],
+                                                            "original_name": "Tax credit - for income tax declaration"
+                                                        }
+                                                    ],
+                                                    "original_name": "Tax reduction: A tax reduction is a fiscal incentive where the government reduces taxes or tax rates for selected activities or actors, with the purpose of incentivizing mitigation activities (CPDB, moved from Section \"Fiscal and Financial incentives\" and split in to reduction and exemption)"
+                                                },
+                                                {
+                                                    "name": "Tax exemption: A tax...",
+                                                    "children": [
+                                                        {
+                                                            "name": "Value added tax exemption:...",
+                                                            "children": [],
+                                                            "original_name": "Value added tax exemption: A value added tax (VAT) exemption is a fiscal incentive where the government does not collect VAT for mitigation activities (in Hafner & Lilliestam)"
+                                                        },
+                                                        {
+                                                            "name": "Individual tax exemptions: tax...",
+                                                            "children": [],
+                                                            "original_name": "Individual tax exemptions: tax exemptions for indivduals for sustainable behaviors, such as energy efficient home renovations or electric vehicle purchases https://www.energiewechsel.de/KAENEF/Redaktion/DE/Foerderprogramme/steuerliche-foerderung-fuer-energetische-gebaeudesanierung.html (OWN ADDITION)."
+                                                        }
+                                                    ],
+                                                    "original_name": "Tax exemption: A tax exemption is a fiscal incentive where the government exempts selected activities or actors from taxes, with the purpose of incentivizing mitigation activities (CPDB, moved from Section \"Fiscal and Financial incentives\" and split in to reduction and exemption)"
+                                                }
+                                            ],
+                                            "original_name": "Tax incentive: A tax incentive is a fiscal incentive where the government reduces or exempts selected activities or actors from taxes, with the purpose of incentivizing mitigation activities (CPDB)"
+                                        },
+                                        {
+                                            "name": "Retirement premium: A retirement...",
+                                            "children": [
+                                                {
+                                                    "name": "Product retirement premium: a...",
+                                                    "children": [],
+                                                    "original_name": "Product retirement premium: a retirement premium for emissions-intensive products used by consumers such as fossil fuel vehicle swap or scrappage schemes (own addition, in conversation with CPDB)"
+                                                },
+                                                {
+                                                    "name": "Infrastructure retirement premium: a...",
+                                                    "children": [],
+                                                    "original_name": "Infrastructure retirement premium: a retirement premium for emissions-intensive infrastructures to close early such as coal-fired power plants (own addition, in conversation with CPDB)"
+                                                }
+                                            ],
+                                            "original_name": "Retirement premium: A retirement premium is a fiscal incentive where the government provides support for the early retirement of emissions-intensive or inefficient assets (CPDB, moved from Section \"Economic-Fiscal and Financial Incentives\" and tweaked slightly for OEO)"
+                                        },
+                                        {
+                                            "name": "Market premium: A market...",
+                                            "children": [
+                                                {
+                                                    "name": "Capacity premium: A capacity...",
+                                                    "children": [],
+                                                    "original_name": "Capacity premium: A capacity premium is a market premium that guarantees remuneration for reserving capacity of energy transformation units to be available for unexpected events (OEO)."
+                                                },
+                                                {
+                                                    "name": "2-way Contract for Difference...",
+                                                    "children": [],
+                                                    "original_name": "2-way Contract for Difference (or 2-sided contract for difference, symmetrical market premium): A 2-way contract for difference is a market premium in which both positive and negative deviations from a fixed reference price are paid out to the contractual partner. This means that a minimum compensation is guaranteed, but revenues are capped. (own addition; definition via:  https://www.next-kraftwerke.com/knowledge/contract-for-difference)."
+                                                },
+                                                {
+                                                    "name": "Feed-in Tariff: A feed-in...",
+                                                    "children": [],
+                                                    "original_name": "Feed-in Tariff: A feed-in tariff is a market premium where energy producers are paid fixed prices for every unit of energy fed into the grid for a number of years in the future (Lilliestam definition; different from OEO; and differs from CPDB: \"Renewable electricity price surcharge to benefit producers\")"
+                                                },
+                                                {
+                                                    "name": "Feed-in Premium (also called...",
+                                                    "children": [],
+                                                    "original_name": "Feed-in Premium (also called one-sided Contract for Difference): A feed-in premium is a market premium where energy generators are paid a premium on top of the price they achieve in the electricity market, for electricity fed into the grid for a number of years in the future (Lilliestam definition)"
+                                                },
+                                                {
+                                                    "name": "Auction with FIT or...",
+                                                    "children": [],
+                                                    "original_name": "Auction with FIT or FIP: An auction with a feed-in tariff or FIP is a market premium granted in a bidding competition or auction, wherein tendered capacity includes additional support through FITs or FIPs (edited to fit OEO typology, from Hafner & Lilliestam 2019)"
+                                                }
+                                            ],
+                                            "original_name": "Market premium: A market premium is a fiscal incentive that ensures additional remuneration on top of market prices, or a guaranteed renumeration by paying to the producing agent the difference between a guaranteed return on a good/product and the monetary price for which the good/product is traded on the market."
+                                        },
+                                        {
+                                            "name": "Grant: a grant is...",
+                                            "children": [
+                                                {
+                                                    "name": "Purchase grant: A purchase...",
+                                                    "children": [],
+                                                    "original_name": "Purchase grant: A purchase grant is a grant that provides financial support to consumers for purchasing climate-mitigation-related goods and services."
+                                                }
+                                            ],
+                                            "original_name": "Grant: a grant is fiscal incentive where the government provides non-repayable funding for specific purposes (CPDB, split from \"grants and subsidies\" into \"grants\" and \"subsidies\", slightly modified to fit OEO terminology)"
+                                        },
+                                        {
+                                            "name": "Soft loan: A soft...",
+                                            "children": [],
+                                            "original_name": "Soft loan: A soft loan is an economic policy instrument where the government provides loans for at preferential conditions to lower financing costs. (Example: low-interest loan for a company to build charging infrastructure, or for a person to purchase an EV). (Hafner & Lilliestam 2019, tweaked to include different kinds of financing)"
+                                        },
+                                        {
+                                            "name": "Loan guarantee: A loan...",
+                                            "children": [],
+                                            "original_name": "Loan guarantee: A loan guarantee is an economic policy instrument where the government guarantees to pay the loan should the project go bankrupt, lowering the default risk and therefore the required returns on debt and/or equity (Hafner & Lilliestam 2019, tweaked for OEO)"
+                                        },
+                                        {
+                                            "name": "Insurance: An insurance mechanism...",
+                                            "children": [],
+                                            "original_name": "Insurance: An insurance mechanism is a fiscal/financial investment where the government provides insurance to projects (CPR, from section Economic:Incentives and direct investment and tweaked slightly for OEO definitions)"
+                                        }
+                                    ],
+                                    "original_name": "Fiscal and financial incentives: Fiscal and financial incentives are economic policy instruments through which the state provides various forms of economic support to other actors for climate-mitigation-related activities. Beneficiaries typically receive funding in the form of soft loans, grants, market premiums, tax reductions, or similar mechanisms (own definition)"
+                                },
+                                {
+                                    "name": "Direct investment: a direct...",
+                                    "children": [
+                                        {
+                                            "name": "Direct infrastructure investment: infrastructure...",
+                                            "children": [],
+                                            "original_name": "Direct infrastructure investment: infrastructure investment is a direct investment by the government in infrastructure projects (CPDB, tweaked slightly)"
+                                        }
+                                    ],
+                                    "original_name": "Direct investment: a direct investment is an economic policy instrument where the government supports mitigation activities by funding activities directly, ie. its own public agencies or institions."
+                                },
+                                {
+                                    "name": "Direct investment: a direct...",
+                                    "children": [
+                                        {
+                                            "name": "Direct R&D funding: R&D...",
+                                            "children": [],
+                                            "original_name": "Direct R&D funding: R&D funding is a direct investment by the government in government green R&D programmes or projects (CPDB - relocated and tweaked for OEO)"
+                                        },
+                                        {
+                                            "name": "Green public procurement: government...",
+                                            "children": [],
+                                            "original_name": "Green public procurement: government purchases a green good or service directly. This can include power purchase agreements if the offtaker is a state entity. Another example is that a city or state will buy a fleet of electric buses for public transport (tweaked/combined CPR \"green procurement\", CPDB \"procurement rules\")."
+                                        }
+                                    ],
+                                    "original_name": "Direct investment: a direct investment is an economic policy instrument where the government supports mitigation activities by funding activities directly."
+                                },
+                                {
+                                    "name": "Trading scheme: A trading...",
+                                    "children": [
+                                        {
+                                            "name": "GHG emissions trading (carbon...",
+                                            "children": [],
+                                            "original_name": "GHG emissions trading (carbon markets): An greenhouse gas emissions trading scheme is a trading scheme wherein governments establish emissions limits or caps on specific actors which can be traded to incentivize cost-effective emissions reductions (CPDB, tweaked a bit)"
+                                        },
+                                        {
+                                            "name": "White certificate trading scheme:...",
+                                            "children": [],
+                                            "original_name": "White certificate trading scheme: A white certificate scheme is a trading scheme where the government has established a quota for the generation of tradable energy savings certificates produced by energy efficiency activities OR reduced energy consumption measured against a baseline; these can be traded to incentivize emissions reducations (CPDB, tweaked to conform with other definitions and to include Chinese energy consumption trading scheme)"
+                                        },
+                                        {
+                                            "name": "Green certificate trading scheme:...",
+                                            "children": [],
+                                            "original_name": "Green certificate trading scheme: a green certificate scheme is a trading scheme where the government has established a quota for the generation of tradable renewable energy certificates; these can be traded to incentivize emissions reducation (CPDB)"
+                                        },
+                                        {
+                                            "name": "Offsetting scheme: An offsetting...",
+                                            "children": [],
+                                            "original_name": "Offsetting scheme: An offsetting scheme is a trading scheme where mitigation activities can calculate their impact against a baseline to obtain credits which can be sold for offsetting purposes such as Baseline-and-Credit schemes (CPDB, slightly changed following discussion)"
+                                        }
+                                    ],
+                                    "original_name": "Trading scheme: A trading scheme is an economic policy instrument where a limit or standard has been established for environmental performance; certificates of performance or credits can then be traded in a marketplace to incentivize environmentally-friendly performance (own definition, gathered from CPDB definitions of sub-instrument types)"
+                                }
+                            ],
+                            "original_name": "Economic: An economic instrument is a policy instrument that hands out or takes away material resources while the addressees are not obligated to take the measures involved (Vedung)."
+                        },
+                        {
+                            "name": "Regulatory: A regulatory instrument...",
+                            "children": [
+                                {
+                                    "name": "Zoning and spatial planning...",
+                                    "children": [
+                                        {
+                                            "name": "Infrastructure location regulation: An...",
+                                            "children": [
+                                                {
+                                                    "name": "User change: A user...",
+                                                    "children": [],
+                                                    "original_name": "User change: A user change is a zoning and spatial planning instrument that fosters changes in user behaviour, for example reduction of available parking places (CPDB, tweaked for OEO)"
+                                                },
+                                                {
+                                                    "name": "Setback distance: A setback...",
+                                                    "children": [],
+                                                    "original_name": "Setback distance: A setback distance is a zoning and spatial planning instrument that sets a minimum distance between objects, Examples include the distances between a wind turbine and a residential building, railroads, transmission line, and bodies of water (Own addition)\n\nhttps://www.nrel.gov/news/program/2022/nrel-releases-comprehensive-databases-of-local-ordinances-for-siting-wind-solar-energy-projects.html"
+                                                },
+                                                {
+                                                    "name": "Exclusion area: An exclusion...",
+                                                    "children": [
+                                                        {
+                                                            "name": "Low emissions zone: A...",
+                                                            "children": [],
+                                                            "original_name": "Low emissions zone: A low emissions zone is an exclusion area where vehicles with higher emissions cannot enter, or have to pay a higher fee (Own addition, see EU urban access regulations: https://urbanaccessregulations.eu/low-emission-zones-main)"
+                                                        }
+                                                    ],
+                                                    "original_name": "Exclusion area: An exclusion area is a zoning and spatial planning regulation that excludes a certain area from being eligible for objects to be built or entered. An example include include an exclusion zone for wind energy due to legal, environmental or safety concerns,\n\n(own addition and definition & adapted from Bucha and Ramirez Camargo, \u201cDeliverable D2.10 Data on Regulatory and Socio-Economic Conditions and Impacts (b).\u201d Dec. 2024.)"
+                                                },
+                                                {
+                                                    "name": "Priority area: A priority...",
+                                                    "children": [],
+                                                    "original_name": "Priority area: A priority area is a zoning and spatial planning regulation that prioritizes \na certain area to be built or entered. An example includes a priority zone for wind energy due to the high wind potential or less conflict with neighborhoods.\n\n(OWN ADDITION and adapted from Bucha and Ramirez Camargo, \u201cDeliverable D2.10 Data on Regulatory and Socio-Economic Conditions and Impacts (b).\u201d Dec. 2024.)"
+                                                },
+                                                {
+                                                    "name": "Other installation limitation: An...",
+                                                    "children": [],
+                                                    "original_name": "Other installation limitation: An installation limitation is a zoning and spatial planning regulation that sets limitation of renewable energy or EV charging infrastructure in addition to height, shadow flicker, and rotor limitations, etc. It can be either by location or characteristics, such as area (lot sizes) limitation, installed capacity limitation, or other setup limitations (OWN ADDITION)"
+                                                }
+                                            ],
+                                            "original_name": "Infrastructure location regulation: An infrastructure location regulation is a zoning and spatial planning instrument that determines where infrastructure can be built or used (OWN ADDITION)."
+                                        },
+                                        {
+                                            "name": "Infrastructure characteristic regulation: An...",
+                                            "children": [
+                                                {
+                                                    "name": "Noise limit: A noise...",
+                                                    "children": [],
+                                                    "original_name": "Noise limit: A noise limit is a zoning and spatial planning regulation that sets a noise limit in a specific area. Examples include noise limits for wind turbines in residential areas.\n\n(OWN ADDITION and adapted from Bucha and Ramirez Camargo, \u201cDeliverable D2.10 Data on Regulatory and Socio-Economic Conditions and Impacts (b).\u201d Dec. 2024.)"
+                                                },
+                                                {
+                                                    "name": "Shadow flicker limit: A...",
+                                                    "children": [],
+                                                    "original_name": "Shadow flicker limit: A shadow flicker limit is a zoning and spatial planning regulation that sets a shadow flicker limit (OWN ADDITION)"
+                                                },
+                                                {
+                                                    "name": "Height restriction: A maximum...",
+                                                    "children": [],
+                                                    "original_name": "Height restriction: A maximum height regulation is a zoning and spatial planning instrument that sets a maximum height for an object. An example includes a height limitation of wind turbine (Own addition)"
+                                                },
+                                                {
+                                                    "name": "Rotor size restriction: A...",
+                                                    "children": [],
+                                                    "original_name": "Rotor size restriction: A rotor size restriction is a zoning and spatial planning instrument that sets a rotor restriction for an object. An example includes a rotor size limitation of wind turbine (Own addition)"
+                                                }
+                                            ],
+                                            "original_name": "Infrastructure characteristic regulation: An infrastructure characteristic regulation is a zoning and spatial planning instrument that determines what kinds of objects can be built or used in specific locations (OWN ADDITION)."
+                                        }
+                                    ],
+                                    "original_name": "Zoning and spatial planning regulation: A zoning and spatial planning regulation is a policy instrument that determines where objects can exist in space: either where something can be built/used, or what kinds of things can be built in specific geographic locations (Own definition; exists in CPR but without subcategories)."
+                                },
+                                {
+                                    "name": "Standard: A standard is...",
+                                    "children": [
+                                        {
+                                            "name": "Performance standard: A performance...",
+                                            "children": [
+                                                {
+                                                    "name": "Pollution/emissions cap or standard:...",
+                                                    "children": [
+                                                        {
+                                                            "name": "Sectoral emissions cap: A...",
+                                                            "children": [],
+                                                            "original_name": "Sectoral emissions cap: A sectoral emissions cap is a cap that sets out the maximum amount for how much actors are allowed to emit or pollute (OWN addition. May be a regulatory element of a trading system; see https://climate.ec.europa.eu/eu-action/eu-emissions-trading-system-eu-ets/emissions-cap-and-allowances_en )"
+                                                        },
+                                                        {
+                                                            "name": "Industrial air pollution standard:...",
+                                                            "children": [],
+                                                            "original_name": "Industrial air pollution standard: An industrial air pollution standard is a mandatory standard for the emission of polluting substances by industry actors including but not limited to GHG gases (CPDB, tweaked for OEO)"
+                                                        },
+                                                        {
+                                                            "name": "Vehicle air pollution or...",
+                                                            "children": [],
+                                                            "original_name": "Vehicle air pollution or emissions standard: A vehicle air pollution standard is a performance standard for the maximum emission of substances such as greenhouse gas emissions, hydrocarbons, oxides of nitrogen and particulate matter for new vehicles (CPDB, tweaked for OEO) --> NOTE: changed scope, included GHG emissions"
+                                                        },
+                                                        {
+                                                            "name": "Fuel air pollution or...",
+                                                            "children": [],
+                                                            "original_name": "Fuel air pollution or emissions standard: a fuel standard is a performance standard that sets out emissions and pollution requirements for fuel (own addition, see https://climate.ec.europa.eu/eu-action/transport/fuel-quality_en). NOTE: some policy instruments called \"fuel standard\" are a combination of a performance standard and an emissions trading system (like Canada's LCFS - see https://www.sciencedirect.com/science/article/pii/S0301421523005049)."
+                                                        },
+                                                        {
+                                                            "name": "Building emissions standard: standards...",
+                                                            "children": [],
+                                                            "original_name": "Building emissions standard: standards that regulate the allowable levels of pollution or CO2 emissions associated with the building (such as heating systems)."
+                                                        },
+                                                        {
+                                                            "name": "Product emissions standard: A...",
+                                                            "children": [],
+                                                            "original_name": "Product emissions standard:  A product efficiency standard is an efficiency standard for specific products to limit their energy intensity (CPDB - \"product standard\" refers only to appliances; split into 2, this one and \"appliance efficiency standard\")"
+                                                        }
+                                                    ],
+                                                    "original_name": "Pollution/emissions cap or standard: a performance standards that sets a cap on emissions or pollution, either total per actor/sector, or per unit of output (see https://www.sciencedirect.com/science/article/pii/S0095069612000046?via%3Dihub)"
+                                                },
+                                                {
+                                                    "name": "Energy use cap or...",
+                                                    "children": [
+                                                        {
+                                                            "name": "Sectoral energy use cap:...",
+                                                            "children": [],
+                                                            "original_name": "Sectoral energy use cap: an energy use cap that sets the maximum amount for how much energy actors are allowed to consume. This can be (but is not always) a regulatory element of effiency-related trading systems (OWN addition, see https://www.sciencedirect.com/science/article/pii/S0360544221022192)"
+                                                        },
+                                                        {
+                                                            "name": "Energy efficiency quota: An...",
+                                                            "children": [],
+                                                            "original_name": "Energy efficiency quota: An efficiency quota is an energy cap that sets out quotas for energy efficiency improvements (based on CPDB \u201cObligation Scheme\u201d but differentiated)"
+                                                        },
+                                                        {
+                                                            "name": "Industrial efficiency standard: An...",
+                                                            "children": [],
+                                                            "original_name": "Industrial efficiency standard: An industrial efficiency standard is a mandatory standard for the energy efficiency of industry actors (CPDB, tweaked for OEO)"
+                                                        },
+                                                        {
+                                                            "name": "Vehicle fuel-economy or efficiency...",
+                                                            "children": [],
+                                                            "original_name": "Vehicle fuel-economy or efficiency standard: A vehicle fuel-economy/efficiency standard is a performance standard for the minimum fuel-efficiency for vehicles (CPDB, tweaked for OEO) --> note: removed emissions, no longer precisely CPDB compatible"
+                                                        },
+                                                        {
+                                                            "name": "Building efficiency standard: a...",
+                                                            "children": [
+                                                                {
+                                                                    "name": "Minimum performance level for...",
+                                                                    "children": [],
+                                                                    "original_name": "Minimum performance level for rented buildings: A minimum performance level is a building efficiency standard that requires certain performance in rental units (own addition, inspired by CPDB 'removal of split incentives'). NOTE - CAN BE TECHNOLOGY OR PERFORMANCE STANDARD"
+                                                                }
+                                                            ],
+                                                            "original_name": "Building efficiency standard: a building efficiency standard is a building standard which requires buildings to comply with requirements for energy demand and the heat that can escape. Example: standards for insulation. (OWN DEFINITION)."
+                                                        },
+                                                        {
+                                                            "name": "Product efficiency standard: A...",
+                                                            "children": [],
+                                                            "original_name": "Product efficiency standard: A product efficiency standard is an efficiency standard for specific products to limit their energy intensity (CPDB - \"product standard\" refers only to appliances; split into 2, this one and \"appliance emissions standard\")"
+                                                        }
+                                                    ],
+                                                    "original_name": "Energy use cap or efficiency standard: a performance standard that sets a cap on energy use, either total per actor/sector, or per unit of output (own addition)"
+                                                }
+                                            ],
+                                            "original_name": "Performance standard: A performance standard is a standard that sets required levels of performance (in terms of emissions, efficiency etc), but actors are free to choose the technologies and methods for how they will do so. (IPCC, tweaked for OEO)"
+                                        },
+                                        {
+                                            "name": "Technology standard: A technology...",
+                                            "children": [
+                                                {
+                                                    "name": "Moratoria or ban: A...",
+                                                    "children": [],
+                                                    "original_name": "Moratoria or ban: A moratoria or ban is a technology standard that forbids an activity, technology or product because of its environmental harms (CPR - NOTE: this is moved to sub-section 'standards', whereas it is stand-alone in CPR)"
+                                                }
+                                            ],
+                                            "original_name": "Technology standard: A technology standard is a standard that requires a specific technology, process or product. They typically take one of four forms: requirements for specific pollution abatement technologies; requirements for specific production methods; requirements for specific goods such as energy efficient appliances; or phase-out mandates (IPCC)"
+                                        },
+                                        {
+                                            "name": "Quota: A quota is...",
+                                            "children": [
+                                                {
+                                                    "name": "Purchasing requirement / quota:...",
+                                                    "children": [],
+                                                    "original_name": "Purchasing requirement / quota: (demand-side quota): A purchasing requirement/quota is a quota which requires an actor to acquire a certain share of a clean good or service. (adapted from European Commission, Bertoldi and Rezessy 2006, https://publications.jrc.ec.europa.eu/repository/bitstream/JRC32865/2865-white_cert_report_final.pdf). Examples: a minimum share of zero-emission vehicles or of renewable electricity [also known as: portfolio standard, purchase obligation]."
+                                                },
+                                                {
+                                                    "name": "Production requirement / quota:...",
+                                                    "children": [],
+                                                    "original_name": "Production requirement / quota: (supply-side quota): A production requirement/quota is a quota which requires an actor to provide a certain share of a clean good or service. (adapted from Purchasing requirement definition, and from https://www.sciencedirect.com/science/article/pii/S030142152300383X?via%3Dihub#abs0010.)"
+                                                }
+                                            ],
+                                            "original_name": "Quota: A quota is a standard wherein a quantified obligation is imposed on some actor to acquire, use, install etc. a certain quota of a clean good or service. (adapted from European Commission, Bertoldi and Rezessy 2006, https://publications.jrc.ec.europa.eu/repository/bitstream/JRC32865/2865-white_cert_report_final.pdf). Examples include a minimum share of zero-emission vehicles or of renewable electricity. These may or may not be tied to trading schemes like green or white certificates schemes"
+                                        },
+                                        {
+                                            "name": "Quota: A quota is...",
+                                            "children": [
+                                                {
+                                                    "name": "Installation requirement / quota:...",
+                                                    "children": [
+                                                        {
+                                                            "name": "Smart meter requirement: A...",
+                                                            "children": [],
+                                                            "original_name": "Smart meter requirement: A smart meter requirement is an installation requirement that mandates the installation of smart meters to improve electricity grid management (Own addition: see https://www.smart-energy.com/regional-news/europe-uk/germany-mandates-smart-metering-from-2025)"
+                                                        },
+                                                        {
+                                                            "name": "PV installation requirement: A...",
+                                                            "children": [],
+                                                            "original_name": "PV installation requirement: A PV installation requirement is an installation requirement that sets requirements for installing solar PV systems. Example: PV panels must be installed on new buildings, renovated roofs, or parking garages (OWN ADDITION)"
+                                                        },
+                                                        {
+                                                            "name": "EV charging installation requirement:...",
+                                                            "children": [],
+                                                            "original_name": "EV charging installation requirement: An EV charging installation requirement is an installation requirement that sets requirements for installing EV charging stations. Example: 1 in 10 parking spaces must include EV charging stations (OWN ADDITION)"
+                                                        },
+                                                        {
+                                                            "name": "Storage requirement: A storage...",
+                                                            "children": [],
+                                                            "original_name": "Storage requirement: A storage requirement is an installation requirement that sets requirements for actors to install energy storage capacities. Example: a person who installs a solar PV system must also install a battery storage unit. (OWN ADDITION)"
+                                                        }
+                                                    ],
+                                                    "original_name": "Installation requirement / quota: An installation requirement is a quota which requires an actor to install a certain share of a clean good or service. Example: parking lot owner must install at least 1 EV charger per 10 parking spaces; 100% of new rented buildings must have solar panels."
+                                                }
+                                            ],
+                                            "original_name": "Quota: A quota is a standard wherein a quantified obligation is imposed on some actor to acquire, use, install etc. a certain quota of a clean good or service. (adapted from European Commission, Bertoldi and Rezessy 2006, https://publications.jrc.ec.europa.eu/repository/bitstream/JRC32865/2865-white_cert_report_final.pdf). Examples include a minimum share of zero-emission vehicles or of renewable electricity."
+                                        },
+                                        {
+                                            "name": "Public procurement standards: a...",
+                                            "children": [],
+                                            "original_name": "Public procurement standards: a standard set by governments for public goods. For example, the government sets a standard that any vehicles purchased by public actors must meet certain emissions threshholds (own addition)."
+                                        },
+                                        {
+                                            "name": "Tendering scheme standards (or...",
+                                            "children": [],
+                                            "original_name": "Tendering scheme standards (or auction standards): A tendering scheme standard is the standards set for bidding competition for potential providers of a required good or service aimed at reducing provision costs, e.g., through auctions. This can be tied to economic policy instruments such as FITs (CPDB, moved from section \"Economic-Fiscal and Financial incentives\", tweaked slightly for OEO)"
+                                        },
+                                        {
+                                            "name": "Offsetting rules: offsetting rules...",
+                                            "children": [],
+                                            "original_name": "Offsetting rules: offsetting rules are standards which establish GHG emission reductions crediting and offsetting regulations (CPDB, split between this definition and market above). Example: rules that prohibit using offsetting as part of emissions calculations."
+                                        },
+                                        {
+                                            "name": "Disclosure standard (or disclosure...",
+                                            "children": [
+                                                {
+                                                    "name": "Comparison label standard: A...",
+                                                    "children": [],
+                                                    "original_name": "Comparison label standard: A comparison label standard is a disclosure standard which requires producers to partipate in consumer-oriented labelling schemes. These schemes provide a rating of a certain good or service against a pre-determined scale, allowing for a comparison across products (CPDB (originally in information and education category), moved into subcategory disclosure obligations and tweaked for OEO)"
+                                                },
+                                                {
+                                                    "name": "Labeling standard for buildings:...",
+                                                    "children": [],
+                                                    "original_name": "Labeling standard for buildings: A labeling standard for buildings is a disclosure standard for landlords and/or sellers to provide information on a property's energy efficiency (extrapolated from 'removal of split incentives', CPDB) [All linked to EU policies like Energy Performance of Buildings Directive; see in Castellazzi et al. 2017]"
+                                                },
+                                                {
+                                                    "name": "Financial disclosure standard: A...",
+                                                    "children": [],
+                                                    "original_name": "Financial disclosure standard: A financial disclosure standard is a disclosure standard which requires companies to disclose how the transition risks from shifting to a low-carbon economy and physical climate change impacts may affect their business or asset values. Example: EU SFDR. (own addition via IPCC 2022 but slightly tweaked)."
+                                                },
+                                                {
+                                                    "name": "Supply chain disclosure standard:...",
+                                                    "children": [],
+                                                    "original_name": "Supply chain disclosure standard: A supply chain disclosure standard is a disclosure standard that requires firms to disclose information on the risks and opportunities arising from environmental issues, and on the impact of their activities the environment. Example: EU CSRD. (own addition via EU)"
+                                                }
+                                            ],
+                                            "original_name": "Disclosure standard (or disclosure obligation): Disclosure standards are standards that require an actor to publicly disclose and substantiate claims on environmental impacts (own definition; exists in CPR, but we have moved it to sub-section \"standards\" whereas it is stand-alone in CPR)"
+                                        },
+                                        {
+                                            "name": "Due diligence obligation: A...",
+                                            "children": [
+                                                {
+                                                    "name": "Supply chain due diligence...",
+                                                    "children": [],
+                                                    "original_name": "Supply chain due diligence obligations: Supply chain due diligence obligations are due diligence obligations for companies to address sustainability risks not only their own operations, but also their subsidiaries and business partners. See for example the EU Corporate sustainability due diligence directive (CSDDD) (Own addition: see example https://www.csr-in-deutschland.de/EN/Business-Human-Rights/Supply-Chain-Act/supply-chain-act.html and https://commission.europa.eu/business-economy-euro/doing-business-eu/sustainability-due-diligence-responsible-business/corporate-sustainability-due-diligence_en)"
+                                                }
+                                            ],
+                                            "original_name": "Due diligence obligation: A due diligence obligation is a standard requiring companies to identify and address potential and actual adverse environmental impacts in the company\u2019s operations (Example: French \"corporate vigilance\" law)"
+                                        }
+                                    ],
+                                    "original_name": "Standard: A standard is a regulatory policy instrument that defines requirements for products, production processes, services or test-methods (EU, on European standards - https://single-market-economy.ec.europa.eu/single-market/european-standards_en )"
+                                },
+                                {
+                                    "name": "Market design regulation: Market...",
+                                    "children": [
+                                        {
+                                            "name": "Grid access and priority...",
+                                            "children": [],
+                                            "original_name": "Grid access and priority for renewables: Grid access and priority for renewables is a market design regulation that gives priority to renewable energy production and guarantees full purchase of their electricity (CPDB, moved from Section \"Barrier removal\")"
+                                        }
+                                    ],
+                                    "original_name": "Market design regulation: Market design regulation is a regulatory policy instrument that sets out the permitted roles and interaction procedures for market actors, including who can participate and how prices are determined [own addition and definition]."
+                                },
+                                {
+                                    "name": "Market design regulation: Market...",
+                                    "children": [
+                                        {
+                                            "name": "Rule on integrating controllable...",
+                                            "children": [],
+                                            "original_name": "Rule on integrating controllable devices: A rule on integrating controllable devices is a market design regulation for the interactions between grid operators and controllable consumer devices. Example: grid operators cannot refuse connection of a heat pump, but they may be allowed to switch off the device if there is an acute threat of overloading their networks. (Own addition  - see https://www.bundesnetzagentur.de/SharedDocs/Pressemitteilungen/EN/2023/20231127_14a.html )"
+                                        },
+                                        {
+                                            "name": "Rules on dynamic pricing:...",
+                                            "children": [],
+                                            "original_name": "Rules on dynamic pricing: Rules on dynamic pricing is a market design regulation which allows for dynamic pricing, setting electricity prices for consumers to reflect the\nprice variation at the spot markets. (Own addition) https://www.ceer.eu/publication/ceer-recommendations-on-dynamic-price-implementation/"
+                                        },
+                                        {
+                                            "name": "Independent power production policy:...",
+                                            "children": [],
+                                            "original_name": "Independent power production policy: an independent power production policy is a market design regulation which allows non-governmental actors to generate electricity. (Own addition)"
+                                        },
+                                        {
+                                            "name": "Self-consumption policy: A self-consumption...",
+                                            "children": [],
+                                            "original_name": "Self-consumption policy: A self-consumption policy is a market design regulation which allows individuals to produce and consume their own power."
+                                        },
+                                        {
+                                            "name": "Power selling regulations (power...",
+                                            "children": [],
+                                            "original_name": "Power selling regulations (power purchase agreement): A power selling regulation is a market design regulation that allows independent power producers to sell electricity to others actors. Example: A company sells electricity directly to a data center, rather than to a utility (own addition; see https://www.clarke-energy.com/applications/independent-power-producers/ )"
+                                        },
+                                        {
+                                            "name": "Net metering / net...",
+                                            "children": [],
+                                            "original_name": "Net metering / net billing policy: A net metering policy is a market design regulation which allows consumers who generate their own electricity to also buy and sell electricity from the grid. See for example: https://www.sciencedirect.com/science/article/pii/S0960148119301004"
+                                        },
+                                        {
+                                            "name": "Citizen financial participation: Citizen...",
+                                            "children": [],
+                                            "original_name": "Citizen financial participation: Citizen financial participation is a market design regulation which allows residents and communes to become partial owners of energy assets (OWN ADDITION). See for example https://www.researchgate.net/publication/371389707_Prufung_einer_Landesregelung_zur_finanziellen_Be-_teiligung_an_Windenergieanlagen_an_Land_fur_den_Freistaat_Sachsen_Executive_Summary"
+                                        }
+                                    ],
+                                    "original_name": "Market design regulation: Market design regulation is a regulatory policy instrument that sets out the permitted roles and interaction procedures for markets, including who can participate and how prices are determined [own addition and definition]."
+                                },
+                                {
+                                    "name": "Institutional creation: Institutional creation...",
+                                    "children": [
+                                        {
+                                            "name": "Auditing institution: An auditing...",
+                                            "children": [],
+                                            "original_name": "Auditing institution: An auditing institution is an institution created to enforce compliances with established governmental rules and standards (CPDB, moved from section \"Regulatory-Codes and standards\" with slight language tweaks)"
+                                        },
+                                        {
+                                            "name": "Monitoring institution: A monitoring...",
+                                            "children": [
+                                                {
+                                                    "name": "MRV of emissions: A...",
+                                                    "children": [],
+                                                    "original_name": "MRV of emissions: A Measurement, Reporting and Verification (MRV) monitoring institution establishes systems for the measurement, reporting, and verification of emissions data to ensure its veracity, consistency and compliance with reporting requirements (suggested by CPR; own definition based on paraphrase of https://unece.org/monitoring-reporting-and-verification-mrv)"
+                                                }
+                                            ],
+                                            "original_name": "Monitoring institution: A monitoring institution is an institution created to continuously and systematically collect of data to supervise specific activities for evaluation and enforcement purposes (CPDB, slightly tweaked)"
+                                        },
+                                        {
+                                            "name": "Coordinating body for climate...",
+                                            "children": [],
+                                            "original_name": "Coordinating body for climate strategy: A coordinating body for climate strategy is an institution created to regulate and monitor climate change responses and strategies (from CPDB, moved from Section \"Climate Strategy\" and slightly changed wording)"
+                                        },
+                                        {
+                                            "name": "Independent advisory body: A...",
+                                            "children": [],
+                                            "original_name": "Independent advisory body: A Independent advisory body is an institution created to provide evidence and analysis from which government actors can build strategies and plans (new addition, via Kate from CPR). Example: UK Climate Change Committee https://www.lse.ac.uk/granthaminstitute/news/why-the-uks-climate-change-committee-is-crucial-to-advancing-evidence-based-climate-policymaking/"
+                                        },
+                                        {
+                                            "name": "Participation scheme: A participation...",
+                                            "children": [],
+                                            "original_name": "Participation scheme: A participation scheme is an institution created to promote the involvement of subnational entities or citizens in sustainability governance (adapted from CPR, own definition). Example: citizen climate assemblies, see https://www.knoca.eu/climate-assemblies"
+                                        },
+                                        {
+                                            "name": "Strategic planning process: A...",
+                                            "children": [],
+                                            "original_name": "Strategic planning process: A strategic planning process is the institutionalization of processes to set strategic direction and roadmaps for specific sectors or for the economy as a whole (CPDB, changed slightly on advice of CPR)."
+                                        }
+                                    ],
+                                    "original_name": "Institutional creation: Institutional creation is a regulatory policy instrument creating institutions. Example: creation of a new government agency or body (CPDB, moved from section \"Policy Support\" and tweaked slightly) / similar to \"Institutional Mandates\" in CPR)"
+                                },
+                                {
+                                    "name": "Institutional creation: Institutional creation...",
+                                    "children": [
+                                        {
+                                            "name": "Climate fund: A climate...",
+                                            "children": [],
+                                            "original_name": "Climate fund: A climate fund is an institution created to provide the establishment of specific funding agencies or mechanisms for climate issues. Example: independent domestic agencies for climate finance  https://www.iea.org/policies/14055-government-investment-in-decarbonising-industry-fund-gidi."
+                                        }
+                                    ],
+                                    "original_name": "Institutional creation: Institutional creation is a regulatory policy instrument creating institutions. Example: creation of a new government agency (CPDB, moved from section \"Policy Support\" and tweaked slightly) / similar to \"Institutional Mandates\" in CPR)"
+                                }
+                            ],
+                            "original_name": "Regulatory: A regulatory instrument is a policy instrument that is a measure taken by governments which mandate recievers to act in accordance with what is ordered in formulated rules and directives (Vedung, but slightly tweaked). Such rules prescribe the abandonment or adoption of desired processes, technologies, products or results. Failure to comply may incur financial penalties and/or legal sanctions (adapted from IPCC)"
+                        },
+                        {
+                            "name": "Voluntary instrument: A policy...",
+                            "children": [
+                                {
+                                    "name": "Public voluntary scheme: A...",
+                                    "children": [],
+                                    "original_name": "Public voluntary scheme: A public voluntary scheme is a voluntary measure where industries and firms can choose whether or not to comply with a program or performance criteria developed by a regulator. Major examples of public voluntary schemes include eco-labels that are granted by governments to firms that comply with certain environmental standards, such as the German Blue Angel, Nordic Swan, or US Energy Star."
+                                },
+                                {
+                                    "name": "Negotiated agreement between the...",
+                                    "children": [],
+                                    "original_name": "Negotiated agreement between the public and private sector: A negotiated agreement between the public and private sector is a voluntary measure where governments and the private sector establish a set of targets for environmental issues (Penasco 2021). The precise terms of the agreement vary in terms of what information must be reported and how this is audited, whether or not the targets are legally binding etc. In most instances, agreements are negotiated to avoid direct regulation or market-based instruments  (Bailey 2008)."
+                                },
+                                {
+                                    "name": "International agreement: A negotiated...",
+                                    "children": [],
+                                    "original_name": "International agreement: A negotiated international agreement is an agreement between international actors which sets targets for environmental issues, to which other actors can choose to commit. This commitment and targets can be binding or not. (Example: the Powering Past Coal Alliance led by the UK and Canada, where joining members commit to accelerating the transition from coal to clean energy https://poweringpastcoal.org/)"
+                                },
+                                {
+                                    "name": "Public-private partnership (PPP): A...",
+                                    "children": [],
+                                    "original_name": "Public-private partnership (PPP): A Public-private partnership is a voluntary collaborative relationship between various parties, both state and non-state, in which all parties work together to achieve a common purpose or specific task and share risks, responsibilities, resources, and benefits (own addition - the definition is from Kolati and Raghutla, 2023, originally cited in Hodge and Greve, 2011"
+                                }
+                            ],
+                            "original_name": "Voluntary instrument: A policy instrument where government acts in a coordinating role, but not as a central designer and implementer of policies; measures may be initiated by governments, but also non-state actors such as firms or NGOs (IPCC 2018, see especially p. 95)."
+                        }
+                    ],
+                    "original_name": "Policy instruments are specific policy tools by which the government aims to achieve its objectives."
+                }
+            ],
+            "original_name": "Public policies"
+        },
+        {
+            "name": "Policy instruments are specific...",
+            "children": [
+                {
+                    "name": "Regulatory: A regulatory instrument...",
+                    "children": [
+                        {
+                            "name": "Standard: A standard is...",
+                            "children": [
+                                {
+                                    "name": "Public sector mandate: A...",
+                                    "children": [],
+                                    "original_name": "Public sector mandate: A public sector mandate is a standard which requires public bodies to consider climate goals and plans in their decision-making. For example, ministry actions must comply with sectoral budget ceilings. https://www.lse.ac.uk/granthaminstitute/publication/impacts-of-climate-framework-laws/"
+                                },
+                                {
+                                    "name": "Disclosure standard (or disclosure...",
+                                    "children": [
+                                        {
+                                            "name": "Green advertisement standards: Green...",
+                                            "children": [],
+                                            "original_name": "Green advertisement standards: Green advertisement standards are disclosure standards on companies that make claims about their environmental impact to adhere to standards which may include disclosing their assessment methodology, verification by an independent third party, and greenhouse gas offsetting (own definition). Example: EU Green Claims Directive  https://environment.ec.europa.eu/topics/circular-economy/green-claims_en"
+                                        }
+                                    ],
+                                    "original_name": "Disclosure standard (or disclosure obligation): Disclosure standards are standards that require an actor to publicly disclose and substantiate claims on environmental impacts (own definition; exists in CPR, but we have moved it to sub-section \"standards\" whereas it is stand-alone in CPR)"
+                                }
+                            ],
+                            "original_name": "Standard: A standard is a regulatory policy instrument that defines requirements for products, production processes, services or test-methods (EU, on European standards - https://single-market-economy.ec.europa.eu/single-market/european-standards_en )"
+                        }
+                    ],
+                    "original_name": "Regulatory: A regulatory instrument is a policy instrument that is a measure taken by governments which mandate recievers to act in accordance with what is ordered in formulated rules and directives (Vedung, but slightly tweaked). Such rules prescribe the abandonment or adoption of desired processes, technologies, products or results. Failure to comply may incur financial penalties and/or legal sanctions (adapted from IPCC)"
+                }
+            ],
+            "original_name": "Policy instruments are specific policy tools by which the government aims to achieve its objectives."
+        }
+    ],
+    "original_name": "Policy"
+}

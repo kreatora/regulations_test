@@ -1,0 +1,183 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-05-06T13:25:06.275528+00:00",
+  "region": "DE2",
+  "tech": "wind",
+  "mode": "strictest",
+  "resolution_m": 250,
+  "turbine_geometry": {
+    "tip_height_m": 150.0,
+    "blade_length_m": 60.0
+  },
+  "georef": {
+    "epsg_image": 3857,
+    "epsg_source": 3035,
+    "bounds_3857": [
+      997724.7325874891,
+      5975845.192900575,
+      1556543.9709458468,
+      6544935.445170216
+    ],
+    "bounds_wgs84": [
+      8.962713766274037,
+      47.206498090823324,
+      13.982672395047464,
+      50.56631494083542
+    ],
+    "width": 1469,
+    "height": 1496,
+    "resolution_m_source": 250
+  },
+  "pixel_stats": {
+    "total_pixels_grid": 2087584,
+    "region_pixels": 1129294,
+    "buildable_pixels": 829907,
+    "wpa_pixels": 0,
+    "excluded_pixels": 299387,
+    "buildable_fraction_of_region": 0.734890117188261,
+    "buildable_km2": 51869.1875,
+    "region_km2": 70580.875,
+    "pixel_area_km2": 0.0625
+  },
+  "applied_rules": [
+    {
+      "variable": "9_distance_others",
+      "layer": "radar",
+      "setback_m": 15000.0,
+      "condition": "Proximity to GERES-Array",
+      "year": 2016,
+      "legally_binding": true,
+      "source_name": "Bayerische Staatsministerium des Innern, für Bau und Verkehr, für Bildung und Kultus, Wissenschaft und Kunst, der Finanzen, für Landesentwicklung und Heimat, für Wirtschaft und Medien, Energie und Technologie, für Umwelt und Verbraucherschutz, für Ernährung, Landwirtschaft und Forsten sowie für Gesundheit und Pflege",
+      "source_link": "https://www.stmwi.bayern.de/fileadmin/user_upload/stmwi/publikationen/pdf/Windenergie-Erlass_2016.pdf",
+      "raw_value": 15000.0,
+      "raw_unit": "m",
+      "multiplier_resolved": false,
+      "feature_count": 0,
+      "applied": false,
+      "reason": "no features in layer"
+    },
+    {
+      "variable": "8_distance_military areas",
+      "layer": "military",
+      "setback_m": 3000.0,
+      "condition": "Low flying helicopter routes",
+      "year": 2016,
+      "legally_binding": true,
+      "source_name": "Bayerische Staatsministerium des Innern, für Bau und Verkehr, für Bildung und Kultus, Wissenschaft und Kunst, der Finanzen, für Landesentwicklung und Heimat, für Wirtschaft und Medien, Energie und Technologie, für Umwelt und Verbraucherschutz, für Ernährung, Landwirtschaft und Forsten sowie für Gesundheit und Pflege",
+      "source_link": "https://www.stmwi.bayern.de/fileadmin/user_upload/stmwi/publikationen/pdf/Windenergie-Erlass_2016.pdf",
+      "raw_value": 3000.0,
+      "raw_unit": "m",
+      "multiplier_resolved": false,
+      "feature_count": 16,
+      "applied": true
+    },
+    {
+      "variable": "1_distance_residential buildings",
+      "layer": "residential",
+      "setback_m": 1500.0,
+      "condition": "in distance to residential areas",
+      "year": 2014,
+      "legally_binding": true,
+      "source_name": "Bayerische Bauordnung",
+      "source_link": "https://www.fachagentur-windenergie.de/veroeffentlichungen/laenderinformationen/laenderinformationen-zur-windenergie/bayern/",
+      "raw_value": 10.0,
+      "raw_unit": "time of height of wind turbine",
+      "multiplier_resolved": true,
+      "feature_count": 2146,
+      "applied": true
+    },
+    {
+      "variable": "9_distance_others",
+      "layer": "natura2000",
+      "setback_m": 1200.0,
+      "condition": "Proximity to Natura 2000 areas, especially those to protect birds",
+      "year": 2016,
+      "legally_binding": false,
+      "source_name": "yrisches Staatsministerien des Innern, für Bau und Verkehr, Bayri-\nsches Staatsministerien für Bildung und Kultus, Wissenschaft und Kunst, der Finanzen, für Landesentwicklung und Hei-\nmat, Bayrisches Staatsministerien für Wirtschaft und Medien, Energie und Technologie, Bayrisches Staatsministerien für\nUmwelt und Verbraucherschutz, für Ernährung, Landwirtschaft und Forsten sowie Bayrisches Staatsministerien für Ge-\nsundheit und Pflege) (2016)",
+      "source_link": "https://www.fachagentur-windenergie.de/veroeffentlichungen/laenderinformationen/laenderinformationen-zur-windenergie/bayern/",
+      "raw_value": 1200.0,
+      "raw_unit": "m",
+      "multiplier_resolved": false,
+      "feature_count": 0,
+      "applied": false,
+      "reason": "no features in layer"
+    },
+    {
+      "variable": "5_distance_airports",
+      "layer": "airport",
+      "setback_m": 1000.0,
+      "condition": "established flight procedures",
+      "year": 2016,
+      "legally_binding": true,
+      "source_name": "§§ 12 - 18 Luftverkehrsgesetz (LuftVG)",
+      "source_link": "https://www.gesetze-im-internet.de/luftvg/",
+      "raw_value": 1000.0,
+      "raw_unit": "m",
+      "multiplier_resolved": false,
+      "feature_count": 0,
+      "applied": false,
+      "reason": "no features in layer"
+    },
+    {
+      "variable": "9_distance_others",
+      "layer": "protected_areas",
+      "setback_m": 1000.0,
+      "condition": "nature reserves",
+      "year": 2016,
+      "legally_binding": true,
+      "source_name": "Bayerischen Staatsministerien\ndes Innern, für Bau und Verkehr,\nfür Bildung und Kultus, Wissenschaft und Kunst,\nder Finanzen, für Landesentwicklung und Heimat,\nfür Wirtschaft und Medien, Energie und Technologie,\nfür Umwelt und Verbraucherschutz,\nfür Ernährung, Landwirtschaft und Forsten sowie\nfür Gesundheit und Pflege",
+      "source_link": "https://www.fachagentur-windenergie.de/veroeffentlichungen/laenderinformationen/laenderinformationen-zur-windenergie/bayern/",
+      "raw_value": 1000.0,
+      "raw_unit": "m",
+      "multiplier_resolved": false,
+      "feature_count": 0,
+      "applied": false,
+      "reason": "no features in layer"
+    },
+    {
+      "variable": "2_distance_motorway",
+      "layer": "motorway",
+      "setback_m": 40.0,
+      "condition": "autobahn",
+      "year": 2007,
+      "legally_binding": true,
+      "source_name": "Bundesfernstraßengesetz",
+      "source_link": "https://www.gesetze-im-internet.de/fstrg/BJNR009030953.html",
+      "raw_value": 40.0,
+      "raw_unit": "m",
+      "multiplier_resolved": false,
+      "feature_count": 30029,
+      "applied": true
+    },
+    {
+      "variable": "15_exclusion area",
+      "layer": "natura2000",
+      "setback_m": 0.0,
+      "condition": "Natura 2000 areas",
+      "year": 2013,
+      "legally_binding": false,
+      "source_name": "Gesetz über Naturschutz und Landschaftspflege (Bundesnaturschuzgesetz BNatschG)",
+      "source_link": "https://dejure.org/gesetze/BNatSchG/31.html\nhttps://dejure.org/gesetze/BNatSchG/45b.html",
+      "raw_value": null,
+      "raw_unit": null,
+      "multiplier_resolved": false,
+      "feature_count": 0,
+      "applied": false,
+      "reason": "no features in layer"
+    }
+  ],
+  "schema_notes": {
+    "values_png_legend": {
+      "0": "outside region (bounding-box padding)",
+      "64": "inside region & excluded by setbacks/exclusion areas",
+      "128": "inside region & WPA additive override (encouraged build)",
+      "255": "inside region & buildable"
+    },
+    "styled_png_legend": {
+      "transparent": "buildable OR outside region",
+      "brick_red rgba(155,60,50,190)": "excluded (regulations forbid)",
+      "site_green rgba(141,192,133,140)": "WPA additive (encouraged)"
+    },
+    "styled_png": "RGBA overlay tuned to the Climate Policy Atlas forest-green theme; the red regions read as 'no-build'."
+  }
+}
