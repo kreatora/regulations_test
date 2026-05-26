@@ -1994,9 +1994,12 @@ Promise.all([
 			);
 		
 		// Determine if we have any data to show based on mode
+        const isPoliciesMode = currentMapType === 'policies';
         const hasAnyData = isEvModeEarly 
-            ? (hasTargetsDataEarly || hasEvTimeSeriesDataEarly) // EV mode: targets OR EV time series
-            : (hasTimeSeriesEarly || hasTargetsDataEarly || hasClimateTargetsData); // RE mode
+            ? (hasTargetsDataEarly || hasEvTimeSeriesDataEarly)
+            : isPoliciesMode
+                ? hasTimeSeriesEarly
+                : (hasTimeSeriesEarly || hasTargetsDataEarly || hasClimateTargetsData);
         
         // Prepare modal content container for flex layout to avoid scrolling
         modalContent.style.display = 'flex';
@@ -2106,15 +2109,13 @@ Promise.all([
                     tsContainerForLayout.style.display = 'none';
                 }
             } else {
-                // Policies mode: show both side by side
+                // Policies mode: hide targets chart, show only policy timeline
                 if (leftContainer) {
-                    leftContainer.style.display = 'flex';
-                    leftContainer.style.flexDirection = 'column';
-                    leftContainer.style.flex = '1';
+                    leftContainer.style.display = 'none';
                 }
                 if (tsContainerForLayout) {
                     tsContainerForLayout.style.display = '';
-                    tsContainerForLayout.style.flex = '1';
+                    tsContainerForLayout.style.flex = '1 1 100%';
                 }
             }
             
