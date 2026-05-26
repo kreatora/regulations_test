@@ -10,11 +10,80 @@
     <link rel="stylesheet" href="src/shared.css?v=20260116">
     <style>
         /* Page-specific styles for World Map */
+        #world-map-container {
+            position: relative;
+            width: 100%;
+            min-height: 80vh;
+        }
+        #world-map-container .map-surface {
+            width: 100%;
+            height: 80vh;
+            min-height: 520px;
+        }
         #world-map {
             width: 100%;
             height: 80vh;
+            min-height: 520px;
             background-color: white;
+            display: block;
         }
+        .regulations-submenu {
+            width: min(420px, 92vw);
+        }
+
+        .regulations-filters {
+            padding: 8px 12px 12px;
+            border-top: 1px solid rgba(203, 213, 225, 0.6);
+        }
+        .regulations-filter-group {
+            margin-bottom: 10px;
+        }
+        .regulations-filter-group:last-child {
+            margin-bottom: 0;
+        }
+        .regulations-filter-label {
+            display: block;
+            font-size: 11px;
+            font-weight: 700;
+            color: rgb(30, 41, 59);
+            margin-bottom: 6px;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+        }
+        .regulations-filter-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .regulations-filter-option {
+            padding: 6px 10px;
+            background: rgba(255, 255, 255, 0.7);
+            border: 1.5px solid rgba(100, 116, 139, 0.45);
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 600;
+            color: rgb(30, 41, 59);
+            cursor: pointer;
+            transition: all 0.18s ease;
+        }
+        .regulations-filter-option:hover {
+            background: rgba(241, 245, 249, 0.95);
+        }
+        .regulations-filter-option.active {
+            background: linear-gradient(135deg, rgb(30, 41, 59) 0%, rgb(51, 65, 85) 100%);
+            color: #fff;
+            border-color: transparent;
+        }
+
+        .regulations-aux {
+            display: none;
+            text-align: left;
+            margin-top: 12px;
+        }
+        .regulations-aux.visible {
+            display: block;
+        }
+
         .country {
             stroke: #fff;
             stroke-width: 0.5px;
@@ -240,6 +309,7 @@
         
         /* Targets Submenu Styles */
         .targets-submenu,
+        .climate-targets-submenu,
         .regulations-submenu {
             position: absolute;
             top: 60px;
@@ -260,12 +330,14 @@
         }
         
         .targets-submenu.visible,
+        .climate-targets-submenu.visible,
         .regulations-submenu.visible {
             opacity: 0.80;
             visibility: visible;
             transform: translateY(0) scale(1);
         }
         .targets-submenu.visible:hover,
+        .climate-targets-submenu.visible:hover,
         .regulations-submenu.visible:hover {
             opacity: 0.98;
             background: linear-gradient(135deg, rgba(255, 255, 255, 0.97) 0%, rgba(241, 245, 249, 0.97) 100%);
@@ -608,18 +680,6 @@
         #loading-message.visible {
             display: block;
         }
-
-        .regulations-content {
-            display: none;
-            min-height: 620px;
-            text-align: left;
-        }
-        .regulations-content.visible {
-            display: block;
-        }
-        #world-map.regulations-hidden {
-            display: none;
-        }
     </style>
 </head>
 <body class="bg-stone-800 text-neutral-700">
@@ -754,22 +814,20 @@
                                     <span style="font-size: 0.75em; opacity: 0.8; font-weight: normal;">OSM-based buildable land from regulation rules</span>
                                 </button>
                             </div>
+                            <div class="regulations-filters" id="regulationsFilters"></div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Surface wrapper: holds either the world-map SVG or the regulations panel. -->
-                <div id="world-map-container" class="relative">
-                    <svg id="world-map"></svg>
-                    <div id="regulations-content" class="regulations-content">
-                        <div id="build-codes-view" class="bg-custom p-2 md:p-4 rounded-lg text-left relative" style="min-height: 560px;">
-                            <!-- mounted by src/build-codes.ts -->
-                        </div>
+                <!-- Fixed map surface — regulations render on the same SVG as policy modes. -->
+                <div id="world-map-container" class="relative map-surface">
+                    <svg id="world-map" class="map-surface"></svg>
+                </div>
 
-                        <div id="buildable-land-view" class="hidden bg-custom p-2 md:p-4 rounded-lg text-left relative" style="min-height: 560px;">
-                            <!-- mounted by src/buildable-land.ts -->
-                        </div>
-                    </div>
+                <!-- Stats, country detail, and citations below the map (no second map bar). -->
+                <div id="regulations-aux" class="regulations-aux">
+                    <div id="build-codes-view"></div>
+                    <div id="buildable-land-view" class="hidden"></div>
                 </div>
             </div>
 

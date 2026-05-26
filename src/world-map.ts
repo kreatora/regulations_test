@@ -3,7 +3,16 @@ import * as XLSX_ from 'xlsx';
 const XLSX = (XLSX_ as any).default || XLSX_;
 import { geoMercator, geoPath } from 'd3-geo';
 import polylabel from 'polylabel';
-import { registerGraphDownloadMenu } from './graph-export';
+import { registerGraphDownloadMenu, downloadBlob } from './graph-export';
+import { registerMapHost, getMapHost } from './map-host';
+import { renderBuildCodesOnMap, type BuildCodesFilters } from './build-codes';
+import {
+    renderBuildableLandOnMap,
+    applyBuildableLandFilters,
+    clearBuildableLandSelection,
+    isBuildableLandCountryDetailActive,
+    type BuildableLandFilters,
+} from './buildable-land';
 
 // Helper: Add Climate Policy Atlas logo watermark to an SVG chart (top-right, reduced opacity)
 function addLogoWatermark(svg: d3.Selection<SVGSVGElement, unknown, HTMLElement, any>, svgWidth: number) {
@@ -377,6 +386,7 @@ const svg = d3.select("#world-map")
     .attr("preserveAspectRatio", "xMidYMid meet");
 
 const g = svg.append("g");
+let regulationsG: d3.Selection<SVGGElement, unknown, any, any>;
 
 const projection = geoMercator()
     .scale(150)
@@ -424,6 +434,9 @@ type MapType = 'policies' | 'ev' | 'targets' | 'climateTargets' | 'regulations';
 let currentMapType: MapType = 'policies';
  let currentTargetType: RenewableTargetType = 'Electricity'; // Default target type
 let currentRegulationsSection: 'buildCodes' | 'buildableLand' = 'buildCodes';
+let bcTechFilter = 'all';
+let bcBindFilter = 'all';
+let blFilters: BuildableLandFilters = { tech: 'wind', mode: 'strictest', overlay: 'availability' };
  // Year-group filter for targets view (default to 'latest')
  let currentTargetYearGroup: '2020' | '2030' | '2050' | 'latest' = 'latest';
  // Filter mode: always use year-group filtering (no UI toggle)
@@ -705,12 +718,153 @@ function showRegulationsSubmenu() {
     if (submenu) {
         submenu.classList.add('visible');
     }
+    if (currentMapType === 'regulations') {
+        renderRegulationsFilters();
+    }
 }
 
 function hideRegulationsSubmenu() {
     const submenu = document.getElementById('regulationsSubmenu');
     if (submenu) {
         submenu.classList.remove('visible');
+    }
+}
+
+function renderRegulationsFilters() {
+    const filtersEl = document.getElementById('regulationsFilters');
+    if (!filtersEl) return;
+
+    if (currentRegulationsSection === 'buildCodes') {
+        filtersEl.innerHTML = `
+            <div class="regulations-filter-group">
+                <span class="regulations-filter-label">Technology</span>
+                <div class="regulations-filter-options">
+                    ${['all', 'wind', 'solar', 'ev'].map((tech) => `
+                        <button type="button" class="regulations-filter-option${bcTechFilter === tech ? ' active' : ''}" data-bc-tech="${tech}">
+                            ${tech === 'all' ? 'All' : tech.charAt(0).toUpperCase() + tech.slice(1)}
+                        </button>
+                    `).join('')}
+                </div>
+            </div>
+            <div class="regulations-filter-group">
+                <span class="regulations-filter-label">Show</span>
+                <div class="regulations-filter-options">
+                    ${[
+                        { id: 'all', label: 'All rules' },
+                        { id: 'binding', label: 'Binding only' },
+                    ].map((opt) => `
+                        <button type="button" class="regulations-filter-option${bcBindFilter === opt.id ? ' active' : ''}" data-bc-bind="${opt.id}">
+                            ${opt.label}
+                        </button>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+
+        filtersEl.querySelectorAll<HTMLButtonElement>('[data-bc-tech]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                bcTechFilter = btn.dataset.bcTech || 'all';
+                renderRegulationsFilters();
+                void refreshRegulationsMap(true);
+            });
+        });
+        filtersEl.querySelectorAll<HTMLButtonElement>('[data-bc-bind]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                bcBindFilter = btn.dataset.bcBind || 'all';
+                renderRegulationsFilters();
+                void refreshRegulationsMap(true);
+            });
+        });
+        return;
+    }
+
+    filtersEl.innerHTML = `
+        <div class="regulations-filter-group">
+            <span class="regulations-filter-label">Technology</span>
+            <div class="regulations-filter-options">
+                ${(['wind', 'solar', 'ev'] as const).map((tech) => `
+                    <button type="button" class="regulations-filter-option${blFilters.tech === tech ? ' active' : ''}" data-bl-tech="${tech}">
+                        ${tech.charAt(0).toUpperCase() + tech.slice(1)}
+                    </button>
+                `).join('')}
+            </div>
+        </div>
+        <div class="regulations-filter-group">
+            <span class="regulations-filter-label">Rule mode</span>
+            <div class="regulations-filter-options">
+                ${([
+                    { id: 'strictest', label: 'Strictest' },
+                    { id: 'latest', label: 'Latest' },
+                    { id: 'binding', label: 'Binding' },
+                ] as const).map((opt) => `
+                    <button type="button" class="regulations-filter-option${blFilters.mode === opt.id ? ' active' : ''}" data-bl-mode="${opt.id}">
+                        ${opt.label}
+                    </button>
+                `).join('')}
+            </div>
+        </div>
+        <div class="regulations-filter-group">
+            <span class="regulations-filter-label">Map view</span>
+            <div class="regulations-filter-options">
+                ${([
+                    { id: 'availability', label: 'Land availability' },
+                    { id: 'exclusions', label: 'Exclusion zones' },
+                ] as const).map((opt) => `
+                    <button type="button" class="regulations-filter-option${blFilters.overlay === opt.id ? ' active' : ''}" data-bl-overlay="${opt.id}">
+                        ${opt.label}
+                    </button>
+                `).join('')}
+            </div>
+        </div>
+    `;
+
+    filtersEl.querySelectorAll<HTMLButtonElement>('[data-bl-tech]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            blFilters = { ...blFilters, tech: (btn.dataset.blTech as BuildableLandFilters['tech']) || 'wind' };
+            renderRegulationsFilters();
+            void refreshRegulationsMap(true);
+        });
+    });
+    filtersEl.querySelectorAll<HTMLButtonElement>('[data-bl-mode]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            blFilters = { ...blFilters, mode: (btn.dataset.blMode as BuildableLandFilters['mode']) || 'strictest' };
+            renderRegulationsFilters();
+            void refreshRegulationsMap(true);
+        });
+    });
+    filtersEl.querySelectorAll<HTMLButtonElement>('[data-bl-overlay]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            blFilters = { ...blFilters, overlay: (btn.dataset.blOverlay as BuildableLandFilters['overlay']) || 'availability' };
+            renderRegulationsFilters();
+            void refreshRegulationsMap(true);
+        });
+    });
+}
+
+async function refreshRegulationsMap(skipZoom = false): Promise<void> {
+    const host = getMapHost();
+    if (!host || currentMapType !== 'regulations') return;
+
+    try {
+        if (currentRegulationsSection === 'buildCodes') {
+            clearBuildableLandSelection();
+            await renderBuildCodesOnMap(host, { tech: bcTechFilter, bind: bcBindFilter });
+        } else {
+            await renderBuildableLandOnMap(host, blFilters);
+            if (isBuildableLandCountryDetailActive()) {
+                await applyBuildableLandFilters(blFilters);
+            }
+        }
+    } catch (err) {
+        console.error('[world-map] Failed to render regulations layer', err);
+    }
+
+    if (!skipZoom) {
+        if (currentRegulationsSection === 'buildCodes') {
+            host.applyEuropeZoom();
+        } else if (!isBuildableLandCountryDetailActive()) {
+            host.applyEuropeZoom();
+        }
     }
 }
 
@@ -730,30 +884,40 @@ function setRegulationsSection(section: 'buildCodes' | 'buildableLand') {
     buildCodesHelp?.classList.toggle('hidden', section !== 'buildCodes');
     buildableHelp?.classList.toggle('hidden', section !== 'buildableLand');
 
+    renderRegulationsFilters();
+
     if (section === 'buildCodes') {
+        clearBuildableLandSelection();
         document.dispatchEvent(new CustomEvent('build-codes:show'));
     } else {
         document.dispatchEvent(new CustomEvent('buildable-land:show'));
     }
+
+    void refreshRegulationsMap();
 }
 
 function setRegulationsVisible(visible: boolean) {
-    const mapSvg = document.getElementById('world-map');
-    const regulationsContent = document.getElementById('regulations-content');
+    const regulationsAux = document.getElementById('regulations-aux');
     const worldHelp = document.getElementById('bc-worldmap-help');
     const buildCodesHelp = document.getElementById('bc-buildcodes-help');
     const buildableHelp = document.getElementById('bc-buildable-help');
+    const host = getMapHost();
 
-    mapSvg?.classList.toggle('regulations-hidden', visible);
-    regulationsContent?.classList.toggle('visible', visible);
+    regulationsAux?.classList.toggle('visible', visible);
     worldHelp?.classList.toggle('hidden', visible);
 
     if (visible) {
         setRegulationsSection(currentRegulationsSection);
-    } else {
-        buildCodesHelp?.classList.add('hidden');
-        buildableHelp?.classList.add('hidden');
+        return;
     }
+
+    buildCodesHelp?.classList.add('hidden');
+    buildableHelp?.classList.add('hidden');
+    clearBuildableLandSelection();
+    host?.clearRegulationsLayer();
+    host?.restorePolicyBasemap();
+    host?.showDefaultLegend();
+    regulationsG?.style('display', 'none');
 }
 
 // Loading indicator functions
@@ -1749,7 +1913,7 @@ Promise.all([
             return;
         }
 
-        g.selectAll("path")
+        g.selectAll(".country")
             .transition()
             .duration(500)
             .attr("fill", (d: any) => getCountryColor(d.id));
@@ -3385,7 +3549,9 @@ Promise.all([
                     getExportCaption: () => getDashboardExportCaption(countryName),
                     countryDataLabel: `Data for ${countryName}`,
                     onDownloadCountryData: () => downloadCountryData(countryCode3, countryName),
+                    onDownloadCountryDataCsv: () => downloadCountryDataCsv(countryCode3, countryName),
                     onDownloadDataset: downloadFullDataset,
+                    onDownloadDatasetCsv: downloadFullDatasetCsv,
                 });
             }
         });
@@ -3625,6 +3791,7 @@ Promise.all([
         .attr("fill", (d: any) => getCountryColor(d.id))
         .attr("class", "country")
         .on("mouseover", function (event, d: any) {
+            if (currentMapType === 'regulations') return;
             d3.select(this).style("stroke", "black").style("stroke-width", 1.5);
             const countryCode = d.id;
             const countryName = d.properties.name;
@@ -3633,14 +3800,17 @@ Promise.all([
                    .html(getTooltipContent(countryCode, countryName));
         })
         .on("mousemove", function (event) {
+            if (currentMapType === 'regulations') return;
             tooltip.style("top", (event.pageY - 10) + "px")
                    .style("left", (event.pageX + 10) + "px");
         })
         .on("mouseout", function () {
+            if (currentMapType === 'regulations') return;
             d3.select(this).style("stroke", null).style("stroke-width", null);
             tooltip.style("visibility", "hidden");
         })
         .on("click", function (event, d: any) {
+            if (currentMapType === 'regulations') return;
             const countryCode3 = d.id;
             const countryName = d.properties.name;
             createCountryDashboardModal(countryCode3, countryName);
@@ -3693,6 +3863,8 @@ Promise.all([
         .style("pointer-events", "none")
         .text((d: any) => countryCodeMapping[d.id] || "");
 
+    regulationsG = g.append("g").attr("class", "regulations-layer").style("display", "none");
+
     // Add a legend
     const legendWidth = 300;
     const legendHeight = 20;
@@ -3740,8 +3912,61 @@ Promise.all([
     svg.call(zoom.transform as any, d3.zoomIdentity
         .translate(width / 2 - initialTranslate[0] * initialScale, height / 2 - initialTranslate[1] * initialScale)
         .scale(initialScale));
+
+    registerMapHost({
+        width,
+        height,
+        svg: svg as any,
+        mapG: g as any,
+        regulationsG: regulationsG as any,
+        projection,
+        path,
+        zoom: zoom as any,
+        geoData,
+        countryCode3to2: countryCodeMapping,
+        showRegulationBasemap: () => {
+            g.selectAll('.country')
+                .style('display', null)
+                .style('pointer-events', 'none')
+                .attr('fill', '#b0b0b0')
+                .attr('stroke', '#ffffff')
+                .attr('stroke-width', 0.5);
+            g.selectAll('.country-label').style('display', 'none');
+        },
+        restorePolicyBasemap: () => {
+            g.selectAll('.country')
+                .style('display', null)
+                .style('pointer-events', null)
+                .attr('fill', (d: any) => getCountryColor(d.id))
+                .attr('stroke', '#fff')
+                .attr('stroke-width', 0.5);
+            g.selectAll('.country-label').style('display', null);
+        },
+        hideDefaultLegend: () => {
+            svg.select('.legend').style('display', 'none');
+        },
+        showDefaultLegend: () => {
+            svg.select('.legend').style('display', null);
+        },
+        clearRegulationsLayer: () => {
+            regulationsG.selectAll('*').remove();
+            regulationsG.style('display', 'none');
+        },
+        applyWorldZoom: () => updateMapZoom('targets'),
+        applyEuropeZoom: () => updateMapZoom('policies'),
+    });
         
     document.getElementById('world-map-container')?.classList.add('loaded');
+
+    if (currentMapType === 'regulations') {
+        void refreshRegulationsMap();
+    }
+
+    document.addEventListener('buildable-land:refresh', () => {
+        if (currentMapType === 'regulations' && currentRegulationsSection === 'buildableLand') {
+            void refreshRegulationsMap(true);
+        }
+    });
 
     // Add event listeners for map type switching
     document.querySelectorAll('input[name="mapType"]').forEach(radio => {
@@ -3986,110 +4211,177 @@ Promise.all([
     }
 
     function getMapExportSvgs(): SVGSVGElement[] | null {
-        if (currentMapType === 'regulations') {
-            if (currentRegulationsSection === 'buildableLand') {
-                const countrySvg = document.querySelector('#buildable-land-view .bl-country-svg') as SVGSVGElement | null;
-                if (countrySvg) return [countrySvg];
-                const worldSvg = document.querySelector('#buildable-land-view svg.bl-world') as SVGSVGElement | null;
-                return worldSvg ? [worldSvg] : null;
-            }
-            const buildCodesSvg = document.querySelector('#build-codes-view svg') as SVGSVGElement | null;
-            return buildCodesSvg ? [buildCodesSvg] : null;
-        }
-
         const worldMap = document.getElementById('world-map') as SVGSVGElement | null;
+        if (currentMapType === 'regulations' && currentRegulationsSection === 'buildableLand' && isBuildableLandCountryDetailActive()) {
+            const countrySvg = document.querySelector('#buildable-land-view .bl-country-svg') as SVGSVGElement | null;
+            if (countrySvg) return [countrySvg];
+        }
         return worldMap ? [worldMap] : null;
     }
 
-    async function downloadCountryData(countryCode3: string, countryName: string): Promise<void> {
-        const wb = XLSX.utils.book_new();
+    type DatasetSheet = { name: string; rows: any[]; headers: string[] };
 
+    function resolveSheetHeaders(rows: any[], columns?: string[]): string[] {
+        if (columns && columns.length > 0) return columns;
+        return Array.from(new Set(rows.flatMap((row: any) => Object.keys(row))));
+    }
+
+    function rowsToCsv(rows: any[], headers: string[]): string {
+        const ws = XLSX.utils.json_to_sheet(rows, { header: headers });
+        return XLSX.utils.sheet_to_csv(ws);
+    }
+
+    async function loadInfoSheetRows(): Promise<{ name: string; rows: any[]; headers: string[] } | null> {
         try {
             const infoDataUrl = `${baseUrl}data/info_data.xlsx`;
             const infoBuffer = await fetch(infoDataUrl).then(r => r.arrayBuffer());
             const infoWb = XLSX.read(infoBuffer);
-            if (infoWb.SheetNames.length > 0) {
-                XLSX.utils.book_append_sheet(wb, infoWb.Sheets[infoWb.SheetNames[0]], infoWb.SheetNames[0]);
-            }
+            if (infoWb.SheetNames.length === 0) return null;
+            const sheetName = infoWb.SheetNames[0];
+            const rows = XLSX.utils.sheet_to_json(infoWb.Sheets[sheetName]);
+            const headers = resolveSheetHeaders(rows);
+            return { name: sheetName, rows, headers };
         } catch (e) {
             console.error('Failed to load info sheet', e);
+            return null;
         }
+    }
 
+    function buildCountrySheets(countryCode3: string): DatasetSheet[] {
         const rowsPolicies = policyCsv.filter((row: any) => {
             const cName = normalizePolicyCountryName(row[countryColumnName]);
             if (!cName) return false;
             const code3 = countryNameMap[cName] || null;
             return code3 === countryCode3;
         });
-        const headersPolicies = (policyCsv.columns && policyCsv.columns.length > 0)
-            ? policyCsv.columns
-            : Array.from(new Set(rowsPolicies.flatMap((r: any) => Object.keys(r))));
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rowsPolicies, { header: headersPolicies }), 'Policies');
-
         const rowsTargets = targetsCsv.filter((row: any) => {
             const code = row[tCountryCodeCol] || row[Object.keys(row)[0]];
             return code === countryCode3;
         });
-        const headersTargets = (targetsCsv.columns && targetsCsv.columns.length > 0)
-            ? targetsCsv.columns
-            : Array.from(new Set(rowsTargets.flatMap((r: any) => Object.keys(r))));
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rowsTargets, { header: headersTargets }), 'Targets');
-
         const rowsClimate = climateTargetsCsv.filter((row: any) => {
             const code = row[ctCountryCodeCol] || row[Object.keys(row)[0]];
             return code === countryCode3;
         });
-        const headersClimate = (climateTargetsCsv.columns && climateTargetsCsv.columns.length > 0)
-            ? climateTargetsCsv.columns
-            : Array.from(new Set(rowsClimate.flatMap((r: any) => Object.keys(r))));
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rowsClimate, { header: headersClimate }), 'ClimateTargets');
-
         const rowsEv = evCsv.filter((row: any) => {
             const code = String(row[evCountryCodeCol] || '').trim().toUpperCase();
             return code === countryCode3;
         });
-        const headersEv = (evCsv.columns && evCsv.columns.length > 0)
-            ? evCsv.columns
-            : Array.from(new Set(rowsEv.flatMap((r: any) => Object.keys(r))));
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rowsEv, { header: headersEv }), 'EV_Support');
 
-        const safeName = countryName.replace(/[^\w\-]+/g, '_');
-        XLSX.writeFile(wb, `${safeName}_data.xlsx`, { compression: true });
+        return [
+            {
+                name: 'Policies',
+                rows: rowsPolicies,
+                headers: resolveSheetHeaders(rowsPolicies, policyCsv.columns),
+            },
+            {
+                name: 'Targets',
+                rows: rowsTargets,
+                headers: resolveSheetHeaders(rowsTargets, targetsCsv.columns),
+            },
+            {
+                name: 'ClimateTargets',
+                rows: rowsClimate,
+                headers: resolveSheetHeaders(rowsClimate, climateTargetsCsv.columns),
+            },
+            {
+                name: 'EV_Support',
+                rows: rowsEv,
+                headers: resolveSheetHeaders(rowsEv, evCsv.columns),
+            },
+        ];
     }
 
-    async function downloadFullDataset(): Promise<void> {
+    function buildFullDatasetSheets(): DatasetSheet[] {
         const sources = allData?.rawSources;
         if (!sources) {
             throw new Error('Dataset is not loaded yet.');
         }
 
-        const wb = XLSX.utils.book_new();
+        return [
+            {
+                name: 'Policies',
+                rows: sources.policyCsv as any[],
+                headers: resolveSheetHeaders(sources.policyCsv as any[], (sources.policyCsv as any).columns),
+            },
+            {
+                name: 'Targets',
+                rows: sources.targetsCsv as any[],
+                headers: resolveSheetHeaders(sources.targetsCsv as any[], (sources.targetsCsv as any).columns),
+            },
+            {
+                name: 'ClimateTargets',
+                rows: sources.climateTargetsCsv as any[],
+                headers: resolveSheetHeaders(sources.climateTargetsCsv as any[], (sources.climateTargetsCsv as any).columns),
+            },
+            {
+                name: 'EV_Support',
+                rows: sources.evCsv as any[],
+                headers: resolveSheetHeaders(sources.evCsv as any[], (sources.evCsv as any).columns),
+            },
+        ];
+    }
 
-        try {
-            const infoDataUrl = `${baseUrl}data/info_data.xlsx`;
-            const infoBuffer = await fetch(infoDataUrl).then(r => r.arrayBuffer());
-            const infoWb = XLSX.read(infoBuffer);
-            if (infoWb.SheetNames.length > 0) {
-                XLSX.utils.book_append_sheet(wb, infoWb.Sheets[infoWb.SheetNames[0]], infoWb.SheetNames[0]);
-            }
-        } catch (e) {
-            console.error('Failed to load info sheet', e);
+    function appendSheetsToWorkbook(wb: XLSX_.WorkBook, sheets: DatasetSheet[]): void {
+        sheets.forEach(({ name, rows, headers }) => {
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows, { header: headers }), name);
+        });
+    }
+
+    async function downloadSheetsAsCsvZip(filename: string, sheets: DatasetSheet[]): Promise<void> {
+        const { zipSync } = await import('fflate');
+        const zipEntries: Record<string, Uint8Array> = {};
+        const encoder = new TextEncoder();
+
+        const infoSheet = await loadInfoSheetRows();
+        if (infoSheet) {
+            zipEntries[`${infoSheet.name}.csv`] = encoder.encode(rowsToCsv(infoSheet.rows, infoSheet.headers));
         }
 
-        const addSheet = (name: string, rows: any[]) => {
-            const headers = (rows && (rows as any).columns && (rows as any).columns.length > 0)
-                ? (rows as any).columns
-                : Array.from(new Set(rows.flatMap((r: any) => Object.keys(r))));
-            const ws = XLSX.utils.json_to_sheet(rows, { header: headers });
-            XLSX.utils.book_append_sheet(wb, ws, name);
-        };
+        sheets.forEach(({ name, rows, headers }) => {
+            zipEntries[`${name}.csv`] = encoder.encode(rowsToCsv(rows, headers));
+        });
 
-        addSheet('Policies', sources.policyCsv as any);
-        addSheet('Targets', sources.targetsCsv as any);
-        addSheet('ClimateTargets', sources.climateTargetsCsv as any);
-        addSheet('EV_Support', sources.evCsv as any);
+        const zipped = zipSync(zipEntries);
+        downloadBlob(new Blob([zipped], { type: 'application/zip' }), filename);
+    }
 
+    async function downloadCountryData(countryCode3: string, countryName: string): Promise<void> {
+        const wb = XLSX.utils.book_new();
+        const infoSheet = await loadInfoSheetRows();
+        if (infoSheet) {
+            XLSX.utils.book_append_sheet(
+                wb,
+                XLSX.utils.json_to_sheet(infoSheet.rows, { header: infoSheet.headers }),
+                infoSheet.name
+            );
+        }
+        appendSheetsToWorkbook(wb, buildCountrySheets(countryCode3));
+
+        const safeName = countryName.replace(/[^\w\-]+/g, '_');
+        XLSX.writeFile(wb, `${safeName}_data.xlsx`, { compression: true });
+    }
+
+    async function downloadCountryDataCsv(countryCode3: string, countryName: string): Promise<void> {
+        const safeName = countryName.replace(/[^\w\-]+/g, '_');
+        await downloadSheetsAsCsvZip(`${safeName}_data.zip`, buildCountrySheets(countryCode3));
+    }
+
+    async function downloadFullDataset(): Promise<void> {
+        const wb = XLSX.utils.book_new();
+        const infoSheet = await loadInfoSheetRows();
+        if (infoSheet) {
+            XLSX.utils.book_append_sheet(
+                wb,
+                XLSX.utils.json_to_sheet(infoSheet.rows, { header: infoSheet.headers }),
+                infoSheet.name
+            );
+        }
+        appendSheetsToWorkbook(wb, buildFullDatasetSheets());
         XLSX.writeFile(wb, 'Climate_Policy_Atlas_1.0.xlsx', { compression: true });
+    }
+
+    async function downloadFullDatasetCsv(): Promise<void> {
+        await downloadSheetsAsCsvZip('Climate_Policy_Atlas_1.0_csv.zip', buildFullDatasetSheets());
     }
 
     const mapContainer = document.getElementById('world-map-container');
@@ -4101,6 +4393,7 @@ Promise.all([
             getFilenameSlug: getMapExportFilenameSlug,
             getExportCaption: getMapExportCaption,
             onDownloadDataset: downloadFullDataset,
+            onDownloadDatasetCsv: downloadFullDatasetCsv,
         });
     }
     

@@ -72,8 +72,12 @@ export interface GraphDownloadMenuOptions {
     showDatasetOption?: boolean;
     /** Optional handler for country-scoped data export (dashboard). */
     onDownloadCountryData?: () => void | Promise<void>;
+    /** Optional handler for country-scoped CSV export (dashboard). */
+    onDownloadCountryDataCsv?: () => void | Promise<void>;
     /** Label for the country data menu item. */
     countryDataLabel?: string;
+    /** Optional handler for full-dataset CSV export. */
+    onDownloadDatasetCsv?: () => void | Promise<void>;
     /** How to arrange multiple SVGs in one export (default vertical). */
     exportLayout?: 'horizontal' | 'vertical';
     /** Resolve layout at export time (overrides exportLayout when set). */
@@ -310,6 +314,18 @@ const DATASET_ICON_SVG = `
     </svg>
 `;
 
+const CSV_ICON_SVG = `
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <path d="M14 2v6h6"/>
+        <path d="M8 13h1"/>
+        <path d="M8 17h1"/>
+        <path d="M12 13h4"/>
+        <path d="M12 17h4"/>
+    </svg>
+`;
+
 const COUNTRY_DATA_ICON_SVG = `
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -418,10 +434,26 @@ export function registerGraphDownloadMenu(options: GraphDownloadMenuOptions): vo
         ));
     }
 
+    if (options.onDownloadCountryDataCsv) {
+        panel.appendChild(makeItem(
+            CSV_ICON_SVG,
+            options.countryDataLabel ? `${options.countryDataLabel} (CSV)` : 'Country data (CSV)',
+            'Filtered .csv (zip)',
+            async () => { await options.onDownloadCountryDataCsv!(); }
+        ));
+    }
+
     const showDataset = options.showDatasetOption !== false && !!options.onDownloadDataset;
     if (showDataset && options.onDownloadDataset) {
         panel.appendChild(makeItem(DATASET_ICON_SVG, 'Full dataset', 'All countries (.xlsx)', async () => {
             await options.onDownloadDataset!();
+        }));
+    }
+
+    const showDatasetCsv = options.showDatasetOption !== false && !!options.onDownloadDatasetCsv;
+    if (showDatasetCsv && options.onDownloadDatasetCsv) {
+        panel.appendChild(makeItem(CSV_ICON_SVG, 'Full dataset (CSV)', 'All countries (.csv zip)', async () => {
+            await options.onDownloadDatasetCsv!();
         }));
     }
 
@@ -819,6 +851,11 @@ async function blobToDataUrl(blob: Blob): Promise<string> {
 
 async function svgToPngBlob(svg: SVGSVGElement, sourceLine: string): Promise<Blob> {
     return svgsToPngBlob([svg], sourceLine, false);
+}
+
+/** Trigger a browser download for an in-memory blob. */
+export function downloadBlob(blob: Blob, filename: string): void {
+    triggerDownload(blob, filename);
 }
 
 function triggerDownload(blob: Blob, filename: string): void {

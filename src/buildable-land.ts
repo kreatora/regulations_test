@@ -22,6 +22,9 @@
  */
 import * as d3 from 'd3';
 import { geoMercator, geoPath } from 'd3-geo';
+import polylabel from 'polylabel';
+import type { MapHost } from './map-host';
+import { getMapHost } from './map-host';
 // ---------------------------------------------------------------------------
 // Types — must mirror what scripts/build_buildable_rasters.py writes.
 // ---------------------------------------------------------------------------
@@ -137,54 +140,74 @@ const CITATION =
 // ---------------------------------------------------------------------------
 
 let manifest: Manifest | null = null;
-let world: any = null;                      // GeoJSON FeatureCollection
-let nuts0: any = null;                      // Higher-fidelity country boundaries (GISCO NUTS-0)
+let nuts0: any = null;
 let activeTech: Tech = 'wind';
 let activeMode: Mode = 'strictest';
 let activeOverlayView: OverlayView = 'availability';
-let selectedCountry: string | null = null;  // GeoJSON `name` (e.g. 'Germany')
+let selectedCountry: string | null = null;
 let initialised = false;
+let dataLoadPromise: Promise<void> | null = null;
 let root: HTMLElement | null = null;
+
+export interface BuildableLandFilters {
+    tech: Tech;
+    mode: Mode;
+    overlay: OverlayView;
+}
+
+export function getBuildableLandFilters(): BuildableLandFilters {
+    return { tech: activeTech, mode: activeMode, overlay: activeOverlayView };
+}
+
+export function isBuildableLandCountryDetailActive(): boolean {
+    return selectedCountry !== null;
+}
+
+export function clearBuildableLandSelection(): void {
+    selectedCountry = null;
+    const stage = document.getElementById('bl-stage');
+    if (stage) stage.innerHTML = '';
+    renderBuildableLandLegend();
+}
 
 // ---------------------------------------------------------------------------
 // Boot — wait for build-codes.ts to dispatch the show event.
 // ---------------------------------------------------------------------------
 
 document.addEventListener('buildable-land:show', () => {
-    const host = document.getElementById('buildable-land-view');
-    if (!host) return;
-    if (initialised) return;
-    initialised = true;
-    void init(host);
+    void ensureBuildableLandDataLoaded();
 });
 
-// ---------------------------------------------------------------------------
-// Init
-// ---------------------------------------------------------------------------
+export async function ensureBuildableLandDataLoaded(): Promise<void> {
+    if (initialised) return;
+    if (dataLoadPromise) return dataLoadPromise;
 
-async function init(host: HTMLElement) {
-    root = host;
-    renderShell(host);
+    dataLoadPromise = (async () => {
+        const hostEl = document.getElementById('buildable-land-view');
+        if (hostEl) {
+            root = hostEl;
+            renderShell(hostEl);
+        }
 
-    const baseUrl = (import.meta as any).env.BASE_URL || '/';
-    try {
-        const [manifestResp, worldResp, nuts0Resp] = await Promise.all([
+        const baseUrl = (import.meta as any).env.BASE_URL || '/';
+        const [manifestResp, nuts0Resp] = await Promise.all([
             fetch(`${baseUrl}data/buildable/manifest.json`).then(r => r.ok ? r.json() : null),
-            fetch(`${baseUrl}world.geojson`).then(r => r.json()),
-            // Higher-fidelity country outlines to avoid simplified world-geojson borders.
             fetch('https://gisco-services.ec.europa.eu/distribution/v2/nuts/geojson/NUTS_RG_01M_2021_4326_LEVL_0.geojson')
                 .then(r => r.ok ? r.json() : null)
                 .catch(() => null),
         ]);
         manifest = manifestResp;
-        world = worldResp;
         nuts0 = nuts0Resp;
-    } catch (err) {
+        initialised = true;
+        renderStats();
+        renderBuildableLandLegend();
+    })().catch((err) => {
+        dataLoadPromise = null;
         console.error('Failed to load buildable-land assets', err);
-    }
+        throw err;
+    });
 
-    renderStats();
-    renderWorld();
+    return dataLoadPromise;
 }
 
 // ---------------------------------------------------------------------------
@@ -260,62 +283,37 @@ function renderShell(host: HTMLElement) {
         </style>
 
         <div class="bl-shell">
-            <div class="bl-controls">
-                <div class="bl-group">
-                    <label>Technology</label>
-                    ${TECHS.map(t => `<button class="bl-pill ${t === activeTech ? 'is-active' : ''}" data-tech="${t}">${TECH_LABEL[t]}</button>`).join('')}
-                </div>
-                <div class="bl-group">
-                    <label>Rule mode</label>
-                    ${MODES.map(m => `<button class="bl-pill ${m === activeMode ? 'is-active' : ''}" data-mode="${m}">${MODE_LABEL[m]}</button>`).join('')}
-                </div>
-                <div class="bl-group">
-                    <label>Map view</label>
-                    <button class="bl-pill ${activeOverlayView === 'availability' ? 'is-active' : ''}" data-overlay="availability">Land availability</button>
-                    <button class="bl-pill ${activeOverlayView === 'exclusions' ? 'is-active' : ''}" data-overlay="exclusions">Exclusion zones</button>
-                </div>
-            </div>
             <div class="bl-stat-grid" id="bl-stats"></div>
+            <div id="bl-legend-wrap"></div>
             <div class="bl-stage" id="bl-stage"></div>
             <div class="bl-citation"><strong>Sources:</strong> ${CITATION}</div>
         </div>
     `;
+}
 
-    host.querySelectorAll<HTMLButtonElement>('[data-tech]').forEach(btn => {
-        btn.addEventListener('click', () => {
-            activeTech = btn.dataset.tech as Tech;
-            host.querySelectorAll('[data-tech]').forEach(b => b.classList.toggle('is-active', (b as HTMLElement).dataset.tech === activeTech));
-            rerender();
-        });
-    });
-    host.querySelectorAll<HTMLButtonElement>('[data-mode]').forEach(btn => {
-        btn.addEventListener('click', () => {
-            activeMode = btn.dataset.mode as Mode;
-            host.querySelectorAll('[data-mode]').forEach(b => b.classList.toggle('is-active', (b as HTMLElement).dataset.mode === activeMode));
-            rerender();
-        });
-    });
-    host.querySelectorAll<HTMLButtonElement>('[data-overlay]').forEach(btn => {
-        btn.addEventListener('click', () => {
-            activeOverlayView = btn.dataset.overlay as OverlayView;
-            host.querySelectorAll('[data-overlay]').forEach(b =>
-                b.classList.toggle('is-active', (b as HTMLElement).dataset.overlay === activeOverlayView));
-            rerender();
-        });
-    });
+function renderBuildableLandLegend() {
+    const el = document.getElementById('bl-legend-wrap');
+    if (!el || selectedCountry) {
+        el?.replaceChildren();
+        return;
+    }
+    el.innerHTML = `<div class="bl-legend">${buildLegendHTML()}</div>`;
 }
 
 function rerender() {
-    void rerenderAsync();
+    document.dispatchEvent(new CustomEvent('buildable-land:refresh'));
 }
 
-async function rerenderAsync() {
+export async function applyBuildableLandFilters(filters: BuildableLandFilters): Promise<void> {
+    activeTech = filters.tech;
+    activeMode = filters.mode;
+    activeOverlayView = filters.overlay;
     await refreshManifest();
     renderStats();
     if (selectedCountry) {
         await renderCountryDetail(selectedCountry);
     } else {
-        renderWorld();
+        renderBuildableLandLegend();
     }
 }
 
@@ -361,96 +359,220 @@ function renderStats() {
 }
 
 // ---------------------------------------------------------------------------
-// World view
+// World view — shared #world-map SVG (choropleth of eligible share)
 // ---------------------------------------------------------------------------
 
-function renderWorld() {
-    const stage = document.getElementById('bl-stage');
-    if (!stage) return;
-    stage.innerHTML = '';
+interface CountryAggregation {
+    eligibleShare: number;
+    buildableKm2: number;
+    regionKm2: number;
+    bakeCount: number;
+}
 
-    if (!world) {
-        stage.innerHTML = `<div class="bl-empty">Loading world basemap…</div>`;
-        return;
+function aggregateCountryData(): Map<string, CountryAggregation> {
+    const result = new Map<string, CountryAggregation>();
+    if (!manifest) return result;
+
+    for (const meta of Object.values(DATA_COUNTRIES)) {
+        const bakes = Object.values(manifest.bakes).filter(b =>
+            b.tech === activeTech && b.mode === activeMode && b.region.startsWith(meta.iso2)
+        );
+        if (bakes.length === 0) {
+            result.set(meta.geojsonName, { eligibleShare: -1, buildableKm2: 0, regionKm2: 0, bakeCount: 0 });
+            continue;
+        }
+        const totalBuildable = bakes.reduce((s, b) => s + b.buildable_km2, 0);
+        const totalRegion = bakes.reduce((s, b) => s + b.region_km2, 0);
+        result.set(meta.geojsonName, {
+            eligibleShare: totalRegion > 0 ? totalBuildable / totalRegion : 0,
+            buildableKm2: totalBuildable,
+            regionKm2: totalRegion,
+            bakeCount: bakes.length,
+        });
     }
+    return result;
+}
 
-    const wrap = document.createElement('div');
-    stage.appendChild(wrap);
+function choroplethCountryFill(
+    name: string | undefined,
+    countryData: Map<string, CountryAggregation>,
+    colorScale: (t: number) => string,
+): string {
+    if (!name) return 'rgba(0,0,0,0)';
+    if (name === selectedCountry) return C_FOREST;
+    const agg = countryData.get(name);
+    if (!agg) return 'rgba(0,0,0,0)';
+    if (agg.eligibleShare < 0) return C_NO_DATA;
+    return colorScale(agg.eligibleShare);
+}
 
-    const w = wrap.clientWidth || stage.clientWidth || 960;
-    const h = Math.max(460, Math.min(640, Math.round(w * 0.55)));
-
-    const svg = d3.select(wrap).append('svg')
-        .attr('class', 'bl-world')
-        .attr('viewBox', `0 0 ${w} ${h}`)
-        .attr('width', '100%')
-        .attr('height', h);
-
-    // Same projection style as world-map.ts (Mercator), focused mid-Europe.
-    const projection = geoMercator()
-        .scale(Math.max(140, w * 0.16))
-        .translate([w / 2, h / 1.55]);
-    const path = geoPath().projection(projection as any);
-
+function wireBuildableLandCountryLayer(
+    layer: d3.Selection<SVGGElement, unknown, null, undefined>,
+    host: MapHost,
+): void {
+    const path = host.path;
     const dataNames = new Set(Object.values(DATA_COUNTRIES).map(c => c.geojsonName));
+    const dataFeatures = host.geoData.features.filter((f: any) => dataNames.has(f.properties?.name));
+    const countryData = aggregateCountryData();
+    const colorScale = d3.scaleSequential(d3.interpolateGreens).domain([0, 1]);
 
-    const mapLayer = svg.append('g').attr('class', 'bl-world-layer');
-    const countries = mapLayer.selectAll('path')
-        .data(world.features)
-        .enter().append('path')
+    layer.selectAll('.bl-country').data(dataFeatures, (f: any) => f.properties?.name)
+        .join('path')
+        .attr('class', (f: any) => {
+            const name = f.properties?.name;
+            return `bl-country has-data${name === selectedCountry ? ' is-selected' : ''}`;
+        })
         .attr('d', path as any)
-        .attr('class', (f: any) => dataNames.has(f.properties?.name) ? 'country has-data' : 'country no-data')
+        .attr('fill', (f: any) => choroplethCountryFill(f.properties?.name, countryData, colorScale))
+        .attr('fill-opacity', (f: any) => (f.properties?.name === selectedCountry ? 0.92 : 0.85))
+        .attr('stroke', (f: any) => (f.properties?.name === selectedCountry ? C_FOREST : '#ffffff'))
+        .attr('stroke-width', (f: any) => (f.properties?.name === selectedCountry ? 1.5 : 0.7))
+        .style('pointer-events', 'all')
+        .style('cursor', 'pointer')
         .on('mouseover', function (event, f: any) {
             tooltipShow(buildCountryTooltip(f.properties?.name), event);
+            if (f.properties?.name !== selectedCountry) {
+                d3.select(this).attr('fill-opacity', 0.95);
+            }
         })
         .on('mousemove', function (event) { tooltipMove(event); })
-        .on('mouseout',  function () { tooltipHide(); })
-        .on('click', function (_event, f: any) {
+        .on('mouseout', function (_event, f: any) {
+            tooltipHide();
+            d3.select(this).attr('fill-opacity', f.properties?.name === selectedCountry ? 0.92 : 0.85);
+        })
+        .on('click', function (event, f: any) {
+            event.preventDefault();
+            event.stopPropagation();
             const name = f.properties?.name;
             if (!dataNames.has(name)) return;
             selectedCountry = name;
             tooltipHide();
+            updateBuildableLandMapSelection(host);
+            renderBuildableLandLegend();
             void renderCountryDetail(name);
         });
-    void overlayWorldRasters(mapLayer as any, projection as any);
+}
 
-    // Pan + zoom on the world map, with initial focus on Europe.
-    const zoom = d3.zoom<SVGSVGElement, unknown>()
-        .scaleExtent([1, 8])
-        .translateExtent([[0, 0], [w, h]])
-        .on('zoom', (event) => {
-            mapLayer.attr('transform', event.transform);
-            countries.attr('stroke-width', `${Math.max(0.35, 0.9 / event.transform.k)}`);
-        });
-    svg.call(zoom as any);
+export function updateBuildableLandMapSelection(host: MapHost): void {
+    const dataNames = new Set(Object.values(DATA_COUNTRIES).map(c => c.geojsonName));
+    const countryData = aggregateCountryData();
+    const colorScale = d3.scaleSequential(d3.interpolateGreens).domain([0, 1]);
 
-    // Start tightly focused on Europe, centered on Germany.
-    const europeCenter = projection([10.5, 51.1]);
-    if (europeCenter) {
-        const k = 3.35;
-        const tx = w / 2 - k * europeCenter[0];
-        const ty = h / 2 - k * europeCenter[1];
-        const t0 = d3.zoomIdentity.translate(tx, ty).scale(k);
-        svg.call((zoom as any).transform, t0);
+    host.regulationsG.selectAll<SVGPathElement, any>('.bl-country')
+        .attr('class', (f: any) => {
+            const name = f.properties?.name;
+            return `bl-country has-data${name === selectedCountry ? ' is-selected' : ''}`;
+        })
+        .attr('fill', (f: any) => choroplethCountryFill(f.properties?.name, countryData, colorScale))
+        .attr('fill-opacity', (f: any) => (f.properties?.name === selectedCountry ? 0.92 : 0.85))
+        .attr('stroke', (f: any) => (f.properties?.name === selectedCountry ? C_FOREST : '#ffffff'))
+        .attr('stroke-width', (f: any) => (f.properties?.name === selectedCountry ? 1.5 : 0.7));
+}
+
+function renderEligibleShareLegend(
+    layer: d3.Selection<SVGGElement, unknown, any, any>,
+    host: MapHost,
+): void {
+    const colorScale = d3.scaleSequential(d3.interpolateGreens).domain([0, 1]);
+
+    const legend = layer.append('g')
+        .attr('class', 'bl-choropleth-legend')
+        .attr('transform', `translate(${host.width - 290}, ${host.height - 55})`);
+
+    const gradId = 'bl-eligible-grad';
+    const grad = legend.append('defs').append('linearGradient').attr('id', gradId);
+    grad.append('stop').attr('offset', '0%').attr('stop-color', colorScale(0));
+    grad.append('stop').attr('offset', '50%').attr('stop-color', colorScale(0.5));
+    grad.append('stop').attr('offset', '100%').attr('stop-color', colorScale(1));
+
+    legend.append('rect')
+        .attr('width', 250).attr('height', 12).attr('rx', 6)
+        .attr('fill', `url(#${gradId})`).attr('stroke', '#cbd5e1');
+
+    legend.append('text').attr('x', 0).attr('y', 28)
+        .style('font-size', '10px').style('fill', '#64748b').text('0% eligible');
+    legend.append('text').attr('x', 250).attr('y', 28)
+        .attr('text-anchor', 'end')
+        .style('font-size', '10px').style('fill', '#64748b').text('100% eligible');
+    legend.append('text').attr('x', 125).attr('y', -6)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '10px').style('fill', '#475569').style('font-weight', '600')
+        .text(`${TECH_LABEL[activeTech]} — Eligible land share`);
+}
+
+function polylabelCentroid(d: any, projection: d3.GeoProjection): [number, number] | null {
+    let coords: number[][][];
+    if (d.geometry.type === 'Polygon') {
+        coords = d.geometry.coordinates;
+    } else if (d.geometry.type === 'MultiPolygon') {
+        let best = d.geometry.coordinates[0];
+        let maxArea = 0;
+        for (const poly of d.geometry.coordinates) {
+            const a = d3.geoArea({ type: 'Polygon', coordinates: poly });
+            if (a > maxArea) { maxArea = a; best = poly; }
+        }
+        coords = best;
+    } else {
+        return null;
     }
+    const result = polylabel(coords);
+    const pt = projection([result[0], result[1]]);
+    return pt ? [pt[0], pt[1]] : null;
+}
 
-    const legend = document.createElement('div');
-    legend.className = 'bl-legend';
-    legend.innerHTML = buildLegendHTML();
-    stage.appendChild(legend);
+function renderNonDataCountryLabels(
+    layer: d3.Selection<SVGGElement, unknown, any, any>,
+    host: MapHost,
+): void {
+    const dataNames = new Set(Object.values(DATA_COUNTRIES).map(c => c.geojsonName));
+    const nonDataFeatures = host.geoData.features.filter(
+        (f: any) => !dataNames.has(f.properties?.name) && f.properties?.name,
+    );
+    const code3to2 = host.countryCode3to2;
+
+    const labelsG = layer.append('g').attr('class', 'bl-nodata-labels');
+    labelsG.selectAll('text').data(nonDataFeatures).enter().append('text')
+        .attr('transform', (d: any) => {
+            const c = polylabelCentroid(d, host.projection);
+            if (!c || isNaN(c[0]) || isNaN(c[1])) return 'translate(-9999,-9999)';
+            return `translate(${c[0]},${c[1]})`;
+        })
+        .attr('text-anchor', 'middle')
+        .attr('font-size', '2px')
+        .attr('fill', 'black')
+        .style('pointer-events', 'none')
+        .text((d: any) => code3to2[d.id] || '');
+}
+
+export async function renderBuildableLandOnMap(host: MapHost, filters: BuildableLandFilters): Promise<void> {
+    await ensureBuildableLandDataLoaded();
+    activeTech = filters.tech;
+    activeMode = filters.mode;
+    activeOverlayView = filters.overlay;
+
+    host.clearRegulationsLayer();
+    host.showRegulationBasemap();
+    host.hideDefaultLegend();
+
+    const layer = host.regulationsG;
+    layer.style('display', null);
+
+    renderNonDataCountryLabels(layer as any, host);
+
+    const countriesG = layer.append('g').attr('class', 'bl-countries');
+    wireBuildableLandCountryLayer(countriesG as any, host);
+
+    renderEligibleShareLegend(layer as any, host);
+
+    renderStats();
+    renderBuildableLandLegend();
 }
 
 function buildLegendHTML(): string {
-    const base = `
-        <span><span class="bl-legend-swatch" style="background: ${C_SURFACE};"></span>Country with rule data (clickable)</span>
-        <span><span class="bl-legend-swatch" style="background: ${C_NO_DATA};"></span>No data yet</span>`;
-    if (activeOverlayView === 'availability') {
-        return base + `
-        <span><span class="bl-legend-swatch" style="background: ${C_AVAIL_GREEN};"></span>Eligible land (atlite-style)</span>
-        <span><span class="bl-legend-swatch" style="background: ${C_AVAIL_GREY};"></span>Excluded by setbacks</span>`;
-    }
-    return base + `
-        <span><span class="bl-legend-swatch" style="background: ${C_BRICK};"></span>No-build zones (setback exclusions)</span>`;
+    return `
+        <span><span class="bl-legend-swatch" style="background: ${C_AVAIL_GREEN};"></span>High eligible share</span>
+        <span><span class="bl-legend-swatch" style="background: ${C_NO_DATA};"></span>No data / no raster baked</span>
+        <span style="font-style:italic;opacity:0.8;">Click a country for raster detail + applied rules</span>`;
 }
 
 function rasterPngPath(sidecarJsonPath: string, view: OverlayView = activeOverlayView): string {
@@ -464,18 +586,14 @@ function buildCountryTooltip(name: string | undefined): string {
     const meta = Object.values(DATA_COUNTRIES).find(c => c.geojsonName === name);
     if (!meta) return `<strong>${escapeHtml(name)}</strong><br><span style="opacity:0.8;">No build-codes data yet</span>`;
 
-    const bakes = manifest?.bakes ?? {};
-    const techBakes = Object.values(bakes).filter(b =>
-        b.tech === activeTech && b.mode === activeMode && b.region.startsWith(meta.iso2)
-    );
-    if (techBakes.length === 0) {
-        return `<strong>${escapeHtml(name)}</strong><br>Rule data available; <em>${TECH_LABEL[activeTech]}</em> raster not yet baked. Click to see the rule list.`;
+    const agg = aggregateCountryData().get(meta.geojsonName);
+    if (!agg || agg.bakeCount === 0) {
+        return `<strong>${escapeHtml(name)}</strong><br>Rule data available; <em>${TECH_LABEL[activeTech]}</em> raster not yet baked.<br><em style="opacity:0.85;">Click for rule list</em>`;
     }
-    const best = techBakes.reduce((a, b) => (a.region_km2 > b.region_km2 ? a : b));
     return `<strong>${escapeHtml(name)}</strong><br>
-            ${TECH_LABEL[activeTech]} eligible share: <strong>${(best.buildable_fraction_of_region * 100).toFixed(1)}%</strong>
-            (${Math.round(best.buildable_km2).toLocaleString()} km² of ${Math.round(best.region_km2).toLocaleString()} km²)<br>
-            <em style="opacity:0.85;">Click for rules + raster overlay</em>`;
+            ${TECH_LABEL[activeTech]} eligible share: <strong>${(agg.eligibleShare * 100).toFixed(1)}%</strong><br>
+            ${Math.round(agg.buildableKm2).toLocaleString()} km² of ${Math.round(agg.regionKm2).toLocaleString()} km² (${agg.bakeCount} region${agg.bakeCount > 1 ? 's' : ''})<br>
+            <em style="opacity:0.85;">Click for rules + raster detail</em>`;
 }
 
 // ---------------------------------------------------------------------------
@@ -486,12 +604,16 @@ async function renderCountryDetail(name: string) {
     const stage = document.getElementById('bl-stage');
     if (!stage) return;
     const meta = Object.values(DATA_COUNTRIES).find(c => c.geojsonName === name);
-    if (!meta || !world) {
+    if (!meta) {
         stage.innerHTML = `<div class="bl-empty">No data for ${escapeHtml(name)}.</div>`;
         return;
     }
 
     const feature = findCountryBoundaryFeature(meta);
+    if (!feature) {
+        stage.innerHTML = `<div class="bl-empty">No boundary geometry for ${escapeHtml(name)}.</div>`;
+        return;
+    }
 
     stage.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
@@ -513,11 +635,35 @@ async function renderCountryDetail(name: string) {
 
     document.getElementById('bl-back-btn')?.addEventListener('click', () => {
         selectedCountry = null;
-        renderWorld();
+        renderBuildableLandLegend();
+        document.dispatchEvent(new CustomEvent('buildable-land:refresh'));
     });
 
     drawCountryMap(feature, meta);
     void loadAndRenderRules(meta);
+
+    requestAnimationFrame(() => {
+        smoothScrollTo(stage, 1200);
+    });
+}
+
+function smoothScrollTo(target: HTMLElement, durationMs: number): void {
+    const start = window.scrollY;
+    const rect = target.getBoundingClientRect();
+    const end = start + rect.top - 20;
+    const distance = end - start;
+    if (Math.abs(distance) < 2) return;
+
+    let startTime: number | null = null;
+    function step(timestamp: number) {
+        if (!startTime) startTime = timestamp;
+        const elapsed = timestamp - startTime;
+        const t = Math.min(elapsed / durationMs, 1);
+        const ease = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+        window.scrollTo(0, start + distance * ease);
+        if (t < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
 }
 
 function findCountryBoundaryFeature(meta: { iso2: string; geojsonName: string }) {
@@ -529,8 +675,9 @@ function findCountryBoundaryFeature(meta: { iso2: string; geojsonName: string })
         });
         if (fromNuts) return fromNuts;
     }
-    // Fallback to bundled world geojson.
-    return (world?.features as any[]).find(f => f.properties?.name === meta.geojsonName);
+    // Fallback to the shared world-map GeoJSON.
+    const world = getMapHost()?.geoData;
+    return (world?.features as any[] | undefined)?.find(f => f.properties?.name === meta.geojsonName) ?? null;
 }
 
 async function overlayWorldRasters(
@@ -539,7 +686,9 @@ async function overlayWorldRasters(
 ) {
     if (!manifest) return;
     const baseUrl = (import.meta as any).env.BASE_URL || '/';
-    const overlayLayer = mapLayer.append('g').attr('class', 'bl-world-overlay-layer');
+    const overlayLayer = mapLayer.append('g')
+        .attr('class', 'bl-world-overlay-layer')
+        .style('pointer-events', 'none');
 
     for (const meta of Object.values(DATA_COUNTRIES)) {
         const bakes = findCountryBakes(meta);
@@ -563,6 +712,7 @@ async function overlayWorldRasters(
             const pngHref = `${baseUrl}data/${rasterPngPath(bake.sidecar)}`;
             overlayLayer.append('image')
                 .attr('class', 'bl-world-raster')
+                .style('pointer-events', 'none')
                 .attr('x', tl[0]).attr('y', tl[1])
                 .attr('width', br[0] - tl[0])
                 .attr('height', br[1] - tl[1])

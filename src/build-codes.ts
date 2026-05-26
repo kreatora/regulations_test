@@ -7,6 +7,8 @@
  */
 import * as d3 from 'd3';
 import { geoMercator, geoPath } from 'd3-geo';
+import polylabel from 'polylabel';
+import type { MapHost } from './map-host';
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -138,68 +140,51 @@ const CITATION_BUILD =
 
 let data: BuildData | null = null;
 let nutsCache = new Map<number, any>();
-let stage: HTMLElement | null = null;
 let initialised = false;
+let dataLoadPromise: Promise<void> | null = null;
+
+export interface BuildCodesFilters {
+    tech: string;
+    bind: string;
+}
 
 // ---------------------------------------------------------------------------
 // Boot — initialise when the Regulations submenu requests Build Codes
 // ---------------------------------------------------------------------------
 
 document.addEventListener('DOMContentLoaded', () => {
-    const buildView = document.getElementById('build-codes-view');
-
-    const showBuildCodes = async () => {
-        if (!buildView) return;
-        if (!initialised) {
-            initialised = true;
-            await initBuildCodes(buildView);
-        }
-    };
-
     document.addEventListener('build-codes:show', () => {
-        void showBuildCodes();
+        void ensureBuildCodesDataLoaded();
     });
 });
 
-// ---------------------------------------------------------------------------
-// Init
-// ---------------------------------------------------------------------------
+export async function ensureBuildCodesDataLoaded(): Promise<void> {
+    if (data) return;
+    if (dataLoadPromise) return dataLoadPromise;
 
-async function initBuildCodes(root: HTMLElement) {
+    dataLoadPromise = (async () => {
+        const baseUrl = (import.meta as any).env.BASE_URL || '/';
+        const resp = await fetch(`${baseUrl}data/build_regulations.json`);
+        data = await resp.json();
+        initialised = true;
+        renderBuildCodesAux();
+    })().catch((err) => {
+        dataLoadPromise = null;
+        console.error('Failed to load build_regulations.json', err);
+        throw err;
+    });
+
+    return dataLoadPromise;
+}
+
+function renderBuildCodesAux() {
+    const root = document.getElementById('build-codes-view');
+    if (!root) return;
     root.innerHTML = `
         <style>
-            .bc-shell { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; color: #1e293b; padding: 12px 8px; }
-            .bc-stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin: 12px 0 16px; }
-            .bc-stat { background: #ffffff; border: 1px solid rgba(148, 163, 184, 0.35); border-radius: 12px; padding: 10px 14px; }
-            .bc-stat-value { font-size: 24px; font-weight: 700; color: rgb(15, 23, 42); line-height: 1.1; }
-            .bc-stat-label { font-size: 11px; font-weight: 500; color: rgb(100, 116, 139); margin-top: 4px; letter-spacing: 0.3px; text-transform: uppercase; }
-            .bc-lens-menu { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px; background: #f8fafc; border-radius: 12px; border: 1px solid rgba(148, 163, 184, 0.3); margin-bottom: 14px; }
-            .bc-lens-chip { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; background: #ffffff; border: 1.5px solid rgba(148, 163, 184, 0.55); border-radius: 999px; font-size: 12.5px; font-weight: 600; color: rgb(30, 41, 59); cursor: pointer; transition: all 0.18s ease; }
-            .bc-lens-chip:hover { background: #f1f5f9; border-color: rgba(100, 116, 139, 0.75); }
-            .bc-lens-chip-active, .bc-lens-chip-active:hover { background: rgb(30, 41, 59); border-color: rgb(30, 41, 59); color: #fff; box-shadow: 0 3px 10px rgba(30, 41, 59, 0.3); }
-            .bc-lens-num { font-weight: 800; opacity: 0.6; font-size: 11px; }
-            .bc-lens-chip-active .bc-lens-num { opacity: 0.7; }
-            .bc-lens-chip-active .bc-tier { color: rgba(255,255,255,0.7); }
-            .bc-tier { font-size: 9px; padding: 1px 6px; border-radius: 999px; background: rgba(148, 163, 184, 0.2); color: rgb(100, 116, 139); font-weight: 600; letter-spacing: 0.5px; }
-            .bc-blurb { font-size: 12.5px; color: rgb(71, 85, 105); padding: 0 4px 12px 4px; line-height: 1.5; font-style: italic; }
-            .bc-stage { background: #ffffff; border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 14px; padding: 18px; min-height: 560px; box-shadow: 0 2px 10px rgba(0,0,0,0.04); position: relative; }
-            .bc-h2 { font-size: 18px; font-weight: 700; color: rgb(15, 23, 42); margin: 0 0 4px 0; }
-            .bc-sub { font-size: 12px; color: rgb(100, 116, 139); margin: 0 0 14px 0; }
-            .bc-citation { font-size: 9.5px; color: #64748b; margin-top: 16px; padding: 10px 14px; background: #f8fafc; border-radius: 10px; line-height: 1.5; border: 1px solid rgba(148, 163, 184, 0.25); }
-
-            .bc-card { background: #f8fafc; border-radius: 12px; padding: 14px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04); border: 1px solid rgba(148, 163, 184, 0.25); }
-            .bc-card-h { font-size: 13px; font-weight: 700; color: rgb(15, 23, 42); margin: 0 0 8px 0; }
-
-            .bc-controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; padding: 10px 12px; background: #f8fafc; border-radius: 10px; border: 1px solid rgba(148, 163, 184, 0.25); }
-            .bc-controls label { font-size: 11px; font-weight: 600; color: rgb(71, 85, 105); margin-right: 4px; letter-spacing: 0.3px; text-transform: uppercase; }
-            .bc-pill { display: inline-flex; align-items: center; gap: 4px; padding: 5px 11px; background: #ffffff; border: 1.5px solid rgba(148, 163, 184, 0.5); border-radius: 999px; font-size: 12px; font-weight: 600; color: rgb(30, 41, 59); cursor: pointer; transition: all 0.18s ease; user-select: none; }
-            .bc-pill:hover { background: #f1f5f9; }
-            .bc-pill-active, .bc-pill-active:hover { background: rgb(30, 41, 59); border-color: rgb(30, 41, 59); color: #fff; }
-            .bc-select { padding: 5px 10px; background: #ffffff; border: 1.5px solid rgba(148, 163, 184, 0.5); border-radius: 8px; font-size: 12px; font-weight: 500; color: rgb(30, 41, 59); cursor: pointer; }
-            .bc-select:focus { outline: 2px solid #93c5fd; outline-offset: 1px; }
-
-            .bc-no-data { display: flex; align-items: center; justify-content: center; min-height: 280px; color: rgb(100, 116, 139); font-size: 13px; font-style: italic; text-align: center; }
-
+            .bc-shell { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; color: #1e293b; padding: 4px 2px 0; }
+            .bc-citation { font-size: 9.5px; color: #64748b; margin-top: 8px; padding: 10px 14px; background: #f8fafc; border-radius: 10px; line-height: 1.5; border: 1px solid rgba(148, 163, 184, 0.25); }
+            .bc-no-data { display: flex; align-items: center; justify-content: center; min-height: 80px; color: rgb(100, 116, 139); font-size: 13px; font-style: italic; text-align: center; }
             .bc-rule-card { padding: 12px 14px; border-left: 3px solid #cbd5e1; border-radius: 8px; background: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.04); margin-bottom: 8px; cursor: pointer; transition: all 0.15s ease; }
             .bc-rule-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); transform: translateX(2px); }
             .bc-rule-card.wind   { border-left-color: ${TECH_COLORS.wind}; }
@@ -212,7 +197,6 @@ async function initBuildCodes(root: HTMLElement) {
             .bc-rule-value { font-size: 14px; font-weight: 700; color: rgb(15, 23, 42); }
             .bc-rule-cond { font-size: 11.5px; color: rgb(71, 85, 105); margin-top: 2px; line-height: 1.4; }
             .bc-rule-source { font-size: 10.5px; color: rgb(100, 116, 139); margin-top: 4px; font-style: italic; }
-
             .bc-modal-bd { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.65); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 24px; }
             .bc-modal { background: #ffffff; border-radius: 14px; max-width: 1100px; width: 100%; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column; }
             .bc-modal-h { padding: 16px 22px; background: rgb(30, 41, 59); color: #ffffff; display: flex; justify-content: space-between; align-items: center; }
@@ -223,68 +207,12 @@ async function initBuildCodes(root: HTMLElement) {
             .bc-bilingual-col h4 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; color: rgb(100, 116, 139); margin: 0 0 8px 0; font-weight: 700; }
             .bc-bilingual-col pre { white-space: pre-wrap; font-family: 'Inter', sans-serif; font-size: 13px; line-height: 1.55; color: rgb(30, 41, 59); margin: 0; padding: 14px; background: #f8fafc; border-radius: 10px; border: 1px solid rgba(148, 163, 184, 0.3); max-height: 400px; overflow-y: auto; }
             @media (max-width: 768px) { .bc-bilingual { grid-template-columns: 1fr; } }
-
             .bc-tooltip { position: fixed; background: rgba(15, 23, 42, 0.95); color: #fff; padding: 8px 12px; border-radius: 6px; font-size: 12px; pointer-events: none; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.2); max-width: 280px; line-height: 1.5; }
             .bc-tooltip strong { color: #93c5fd; }
-
-            .bc-legend { display: flex; align-items: center; gap: 10px; font-size: 11px; color: rgb(71, 85, 105); margin-top: 8px; }
-            .bc-legend-bar { width: 240px; height: 10px; border-radius: 999px; border: 1px solid rgba(148, 163, 184, 0.4); }
-            .bc-legend-swatch { width: 14px; height: 14px; border-radius: 3px; border: 1px solid rgba(148, 163, 184, 0.4); }
         </style>
-
         <div class="bc-shell">
-            <div class="bc-stage" id="bc-stage"></div>
             <div class="bc-citation"><strong>Source:</strong> ${CITATION_BUILD}</div>
         </div>
-    `;
-
-    showLoading(root);
-    try {
-        const baseUrl = (import.meta as any).env.BASE_URL || '/';
-        const resp = await fetch(`${baseUrl}data/build_regulations.json`);
-        data = await resp.json();
-    } catch (err) {
-        console.error('Failed to load build_regulations.json', err);
-        const stageEl = document.getElementById('bc-stage');
-        if (stageEl) stageEl.innerHTML = `<div class="bc-no-data">Could not load build_regulations.json. Run <code>python3 scripts/extract_build_regulations.py</code>.</div>`;
-        return;
-    }
-
-    stage = document.getElementById('bc-stage');
-    if (stage) {
-        renderPressureMap(stage);
-    }
-}
-
-function showLoading(root: HTMLElement) {
-    const stageEl = root.querySelector('#bc-stage') as HTMLElement | null;
-    if (stageEl) {
-        stageEl.innerHTML = `<div class="bc-no-data">Loading dataset…</div>`;
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Top stats + lens menu
-// ---------------------------------------------------------------------------
-
-function renderStats() {
-    if (!data) return;
-    const wrap = document.getElementById('bc-stats');
-    if (!wrap) return;
-    const total = data.rules.length;
-    const wind = data.rules.filter(r => r.kind === 'wind').length;
-    const solar = data.rules.filter(r => r.kind === 'solar').length;
-    const ev = data.rules.filter(r => r.kind === 'ev').length;
-    const binding = data.rules.filter(r => (r.legally_binding || '').toLowerCase().startsWith('y')).length;
-    const regions = new Set(data.rules.map(r => r.nuts)).size;
-
-    wrap.innerHTML = `
-        <div class="bc-stat"><div class="bc-stat-value">${total}</div><div class="bc-stat-label">Rules</div></div>
-        <div class="bc-stat"><div class="bc-stat-value" style="color:${TECH_COLORS.wind}">${wind}</div><div class="bc-stat-label">Wind</div></div>
-        <div class="bc-stat"><div class="bc-stat-value" style="color:${TECH_COLORS.solar}">${solar}</div><div class="bc-stat-label">Solar</div></div>
-        <div class="bc-stat"><div class="bc-stat-value" style="color:${TECH_COLORS.ev}">${ev}</div><div class="bc-stat-label">EV charging</div></div>
-        <div class="bc-stat"><div class="bc-stat-value">${regions}</div><div class="bc-stat-label">NUTS regions</div></div>
-        <div class="bc-stat"><div class="bc-stat-value">${Math.round(100 * binding / total)}%</div><div class="bc-stat-label">Legally binding</div></div>
     `;
 }
 
@@ -319,6 +247,14 @@ async function loadNuts(level: number): Promise<any> {
     const json = await resp.json();
     nutsCache.set(level, json);
     return json;
+}
+
+/** Prefer GISCO Latin names (NAME_LATN) over local-script NUTS_NAME for map labels. */
+function nutsDisplayName(props: { NAME_LATN?: string; NUTS_NAME?: string; NUTS_ID?: string }): string {
+    const latin = String(props.NAME_LATN || '').trim();
+    const local = String(props.NUTS_NAME || '').trim();
+    if (latin) return latin;
+    return local || String(props.NUTS_ID || '').trim();
 }
 
 function svgWatermark(svg: d3.Selection<SVGSVGElement, unknown, HTMLElement, any>, w: number) {
@@ -450,132 +386,122 @@ function showSourceModal(r: Rule) {
 // LENS 1 — Constraint pressure choropleth (NUTS-1 for DE, NUTS-3 for EL/IE)
 // ---------------------------------------------------------------------------
 
-async function renderPressureMap(host: HTMLElement) {
-    host.innerHTML = `
-        <div class="bc-controls" id="bc-pressure-ctl">
-            <label>Tech</label>
-            <button class="bc-pill bc-pill-active" data-tech="all">All</button>
-            <button class="bc-pill" data-tech="wind">Wind</button>
-            <button class="bc-pill" data-tech="solar">Solar</button>
-            <button class="bc-pill" data-tech="ev">EV</button>
-            <span style="flex:1"></span>
-            <label>Show</label>
-            <button class="bc-pill bc-pill-active" data-bind="all">All</button>
-            <button class="bc-pill" data-bind="binding">Binding only</button>
-        </div>
-        <div id="bc-pressure-map"></div>
-    `;
+// ---------------------------------------------------------------------------
+// Map overlay — NUTS choropleth on the shared world-map SVG
+// ---------------------------------------------------------------------------
 
-    let techFilter: string = 'all';
-    let bindFilter: string = 'all';
-
-    const draw = async () => {
-        const mapHost = document.getElementById('bc-pressure-map')!;
-        mapHost.innerHTML = `<div class="bc-no-data">Loading NUTS geometry…</div>`;
-        const lvl1 = await loadNuts(1);
-        const lvl3 = await loadNuts(3);
-        const lvl0 = await loadNuts(0);
-
-        const features: any[] = [];
-        for (const f of lvl1.features) {
-            if ((f.properties.CNTR_CODE || '').toUpperCase() === 'DE') features.push(f);
+function polylabelCentroid(d: any, projection: d3.GeoProjection): [number, number] | null {
+    let coords: number[][][];
+    if (d.geometry.type === 'Polygon') {
+        coords = d.geometry.coordinates;
+    } else if (d.geometry.type === 'MultiPolygon') {
+        let best = d.geometry.coordinates[0];
+        let maxArea = 0;
+        for (const poly of d.geometry.coordinates) {
+            const a = d3.geoArea({ type: 'Polygon', coordinates: poly });
+            if (a > maxArea) { maxArea = a; best = poly; }
         }
-        for (const f of lvl3.features) {
-            const cc = (f.properties.CNTR_CODE || '').toUpperCase();
-            if (cc === 'EL' || cc === 'IE') features.push(f);
-        }
+        coords = best;
+    } else {
+        return null;
+    }
+    const result = polylabel(coords);
+    const pt = projection([result[0], result[1]]);
+    return pt ? [pt[0], pt[1]] : null;
+}
 
-        const metricsByCode = new Map<string, { regulationCount: number; policyCount: number; bindingCount: number; rules: Rule[] }>();
-        for (const f of features) {
-            const code = f.properties.NUTS_ID;
-            let rs = rulesForRegion(code);
-            if (techFilter !== 'all') rs = rs.filter(r => r.kind === techFilter);
-            if (bindFilter === 'binding') rs = rs.filter(r => (r.legally_binding || '').toLowerCase().startsWith('y'));
-            metricsByCode.set(code, { ...regulationMetrics(rs), rules: rs });
-        }
-        const allCounts = Array.from(metricsByCode.values()).map(s => s.regulationCount);
-        const max = Math.max(1, d3.max(allCounts) || 1);
-        const colorScale = d3.scaleSequential(d3.interpolateGreens).domain([0, max]);
+export async function renderBuildCodesOnMap(host: MapHost, filters: BuildCodesFilters): Promise<void> {
+    await ensureBuildCodesDataLoaded();
+    if (!data) {
+        throw new Error('Build codes dataset is not loaded.');
+    }
 
-        const w = mapHost.clientWidth || 1100;
-        const h = 540;
-        mapHost.innerHTML = '';
-        const svg = d3.select(mapHost).append('svg')
-            .attr('viewBox', `0 0 ${w} ${h}`).attr('width', '100%').attr('height', h);
+    host.clearRegulationsLayer();
+    host.showRegulationBasemap();
+    host.hideDefaultLegend();
 
-        const projection = geoMercator();
-        {
-            // Fit to surveyed regions (DE NUTS-1 + EL/IE NUTS-3) and push
-            // the start view downward so Greece is clearly in-frame.
-            const fcStart: any = { type: 'FeatureCollection', features };
-            projection.fitExtent([[54, 34], [w - 54, h - 18]], fcStart as any);
-            const [tx, ty] = projection.translate();
-            projection.translate([tx, ty + 56]);
-        }
-        const path = geoPath().projection(projection);
+    const layer = host.regulationsG;
+    layer.style('display', null);
 
-        const mapLayer = svg.append('g').attr('class', 'bc-pressure-layer');
+    const lvl1 = await loadNuts(1);
+    const lvl3 = await loadNuts(3);
 
-        // Faded EU base
-        mapLayer.selectAll('.bc-base').data(lvl0.features.filter((f: any) => f.properties.CNTR_CODE !== 'TR'))
-            .enter().append('path').attr('class', 'bc-base')
-            .attr('d', path as any)
-            .attr('fill', '#eef2f7').attr('stroke', '#d4dae3').attr('stroke-width', 0.5);
+    const features: any[] = [];
+    for (const f of lvl1.features) {
+        if ((f.properties.CNTR_CODE || '').toUpperCase() === 'DE') features.push(f);
+    }
+    for (const f of lvl3.features) {
+        const cc = (f.properties.CNTR_CODE || '').toUpperCase();
+        if (cc === 'EL' || cc === 'IE') features.push(f);
+    }
 
-        const g = mapLayer.append('g');
-        g.selectAll('.bc-region').data(features).enter().append('path')
-            .attr('class', 'bc-region')
-            .attr('d', path as any)
-            .attr('fill', (d: any) => {
-                const count = metricsByCode.get(d.properties.NUTS_ID)?.regulationCount ?? 0;
-                return count > 0 ? colorScale(count) : '#e2e8f0';
-            })
-            .attr('stroke', '#fff').attr('stroke-width', 0.6)
-            .style('cursor', 'pointer')
-            .on('mousemove', (e: any, d: any) => {
-                const code = d.properties.NUTS_ID;
-                const info = metricsByCode.get(code);
-                tooltipShow(`<strong>${d.properties.NUTS_NAME}</strong> (${code})<br/>Regulation count: <strong>${info?.regulationCount ?? 0}</strong><br/>Policy count: <strong>${info?.policyCount ?? 0}</strong><br/>Binding regulations: <strong>${info?.bindingCount ?? 0}</strong>`, e);
-            })
-            .on('mouseleave', tooltipHide)
-            .on('click', (_e: any, d: any) => {
-                const code = d.properties.NUTS_ID;
-                const info = metricsByCode.get(code);
-                if (info && info.rules.length > 0) showRegionDetail(d.properties.NUTS_NAME, code, info.rules);
-            });
+    const metricsByCode = new Map<string, { regulationCount: number; policyCount: number; bindingCount: number; rules: Rule[] }>();
+    for (const f of features) {
+        const code = f.properties.NUTS_ID;
+        let rs = rulesForRegion(code);
+        if (filters.tech !== 'all') rs = rs.filter(r => r.kind === filters.tech);
+        if (filters.bind === 'binding') rs = rs.filter(r => (r.legally_binding || '').toLowerCase().startsWith('y'));
+        metricsByCode.set(code, { ...regulationMetrics(rs), rules: rs });
+    }
 
-        // Scroll/pinch zoom + drag pan so southern regions (e.g. Greece) are reachable.
-        const zoom = d3.zoom<SVGSVGElement, unknown>()
-            .scaleExtent([1, 7])
-            .translateExtent([[-w * 1.5, -h * 1.5], [w * 2.5, h * 2.5]])
-            .on('zoom', (event) => {
-                mapLayer.attr('transform', event.transform);
-                g.selectAll('.bc-region')
-                    .attr('stroke-width', `${Math.max(0.25, 0.7 / event.transform.k)}`);
-            });
-        svg.call(zoom as any);
+    const allCounts = Array.from(metricsByCode.values()).map(s => s.regulationCount);
+    const max = Math.max(1, d3.max(allCounts) || 1);
+    const colorScale = d3.scaleSequential(d3.interpolateGreens).domain([0, max]);
+    const path = host.path;
 
-        // Legend
-        const legend = svg.append('g').attr('transform', `translate(${w - 280}, ${h - 50})`);
-        const grad = legend.append('defs').append('linearGradient').attr('id', 'bc-press-grad');
-        grad.append('stop').attr('offset', '0%').attr('stop-color', colorScale(0));
-        grad.append('stop').attr('offset', '100%').attr('stop-color', colorScale(max));
-        legend.append('rect').attr('width', 240).attr('height', 12).attr('rx', 6).attr('fill', 'url(#bc-press-grad)').attr('stroke', '#cbd5e1');
-        legend.append('text').attr('x', 0).attr('y', 30).style('font-size', '10px').style('fill', '#64748b').text('0 regulations');
-        legend.append('text').attr('x', 240).attr('y', 30).attr('text-anchor', 'end').style('font-size', '10px').style('fill', '#64748b').text(`${max} regulations`);
+    const regions = layer.append('g').attr('class', 'bc-regions');
+    regions.selectAll('.bc-region').data(features).enter().append('path')
+        .attr('class', 'bc-region')
+        .attr('d', path as any)
+        .attr('fill', (d: any) => {
+            const count = metricsByCode.get(d.properties.NUTS_ID)?.regulationCount ?? 0;
+            return count > 0 ? colorScale(count) : '#e2e8f0';
+        })
+        .attr('stroke', '#fff').attr('stroke-width', 0.6)
+        .style('cursor', 'pointer')
+        .on('mousemove', (e: any, d: any) => {
+            const code = d.properties.NUTS_ID;
+            const info = metricsByCode.get(code);
+            const label = nutsDisplayName(d.properties);
+            tooltipShow(`<strong>${label}</strong> (${code})<br/>Regulation count: <strong>${info?.regulationCount ?? 0}</strong><br/>Policy count: <strong>${info?.policyCount ?? 0}</strong><br/>Binding regulations: <strong>${info?.bindingCount ?? 0}</strong>`, e);
+        })
+        .on('mouseleave', tooltipHide)
+        .on('click', (_e: any, d: any) => {
+            const code = d.properties.NUTS_ID;
+            const info = metricsByCode.get(code);
+            if (info && info.rules.length > 0) showRegionDetail(nutsDisplayName(d.properties), code, info.rules);
+        });
 
-        svgWatermark(svg as any, w);
-    };
+    const code3to2 = host.countryCode3to2;
+    const dataCountry2 = new Set(['DE', 'GR', 'IE']);
+    const labelFeatures = host.geoData.features.filter((f: any) => {
+        const c2 = code3to2[f.id];
+        return c2 && !dataCountry2.has(c2);
+    });
+    const labelsG = layer.append('g').attr('class', 'bc-country-labels');
+    labelsG.selectAll('text').data(labelFeatures).enter().append('text')
+        .attr('transform', (d: any) => {
+            const c = polylabelCentroid(d, host.projection);
+            if (!c || isNaN(c[0]) || isNaN(c[1])) return 'translate(-9999,-9999)';
+            return `translate(${c[0]},${c[1]})`;
+        })
+        .attr('text-anchor', 'middle')
+        .attr('font-size', '2px')
+        .attr('fill', 'black')
+        .style('pointer-events', 'none')
+        .text((d: any) => code3to2[d.id] || '');
 
-    host.querySelectorAll<HTMLButtonElement>('[data-tech]').forEach(b => b.addEventListener('click', () => {
-        host.querySelectorAll('[data-tech]').forEach(x => x.classList.remove('bc-pill-active'));
-        b.classList.add('bc-pill-active'); techFilter = b.dataset.tech!; draw();
-    }));
-    host.querySelectorAll<HTMLButtonElement>('[data-bind]').forEach(b => b.addEventListener('click', () => {
-        host.querySelectorAll('[data-bind]').forEach(x => x.classList.remove('bc-pill-active'));
-        b.classList.add('bc-pill-active'); bindFilter = b.dataset.bind!; draw();
-    }));
-    draw();
+    const legend = layer.append('g')
+        .attr('class', 'bc-legend')
+        .attr('transform', `translate(${host.width - 280}, ${host.height - 50})`);
+    const grad = legend.append('defs').append('linearGradient').attr('id', 'bc-press-grad');
+    grad.append('stop').attr('offset', '0%').attr('stop-color', colorScale(0));
+    grad.append('stop').attr('offset', '100%').attr('stop-color', colorScale(max));
+    legend.append('rect').attr('width', 240).attr('height', 12).attr('rx', 6).attr('fill', 'url(#bc-press-grad)').attr('stroke', '#cbd5e1');
+    legend.append('text').attr('x', 0).attr('y', 30).style('font-size', '10px').style('fill', '#64748b').text('0 regulations');
+    legend.append('text').attr('x', 240).attr('y', 30).attr('text-anchor', 'end').style('font-size', '10px').style('fill', '#64748b').text(`${max} regulations`);
+
+    svgWatermark(layer as any, host.width);
 }
 
 function showRegionDetail(name: string, code: string, rules: Rule[]) {
