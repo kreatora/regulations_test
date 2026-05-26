@@ -48,21 +48,22 @@
                header row above the map / regulations surface. */
             width: clamp(360px, 86vw, 760px);
             height: 52px;
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(241, 245, 249, 0.98) 100%);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.85) 0%, rgba(241, 245, 249, 0.85) 100%);
             border-radius: 24px;
-            border: 2px solid rgba(148, 163, 184, 0.95);
+            border: 2px solid rgba(148, 163, 184, 0.75);
             cursor: pointer;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 4px 20px rgba(0,0,0,0.18), inset 0 2px 6px rgba(0,0,0,0.08);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15), inset 0 2px 6px rgba(0,0,0,0.065);
             backdrop-filter: blur(10px);
-            opacity: 0.88; /* slightly transparent when not hovered */
+            opacity: 0.75;
         }
         
         .toggle-switch:hover {
-            /* Remove hover ring/overlay; keep subtle elevation and full opacity */
-            box-shadow: 0 6px 25px rgba(0,0,0,0.12), inset 0 2px 4px rgba(0,0,0,0.1);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.97) 0%, rgba(241, 245, 249, 0.97) 100%);
+            border-color: rgba(148, 163, 184, 0.88);
+            box-shadow: 0 6px 25px rgba(0,0,0,0.11), inset 0 2px 4px rgba(0,0,0,0.08);
             transform: translateY(-1px);
-            opacity: 1;
+            opacity: 0.98;
         }
         
         /* Toggle Switch Slider */
@@ -244,10 +245,10 @@
             top: 60px;
             left: 0;
             width: 380px;
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.99) 0%, rgba(241, 245, 249, 0.99) 100%);
-            border: 2px solid rgba(148, 163, 184, 0.95);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.85) 0%, rgba(241, 245, 249, 0.85) 100%);
+            border: 2px solid rgba(148, 163, 184, 0.75);
             border-radius: 16px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2), 0 6px 20px rgba(0,0,0,0.15);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.16), 0 6px 20px rgba(0,0,0,0.115);
             backdrop-filter: blur(14px);
             opacity: 0;
             visibility: hidden;
@@ -260,12 +261,15 @@
         
         .targets-submenu.visible,
         .regulations-submenu.visible {
-            opacity: 0.92; /* slightly transparent when not hovered */
+            opacity: 0.80;
             visibility: visible;
             transform: translateY(0) scale(1);
         }
         .targets-submenu.visible:hover,
-        .regulations-submenu.visible:hover { opacity: 1; }
+        .regulations-submenu.visible:hover {
+            opacity: 0.98;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.97) 0%, rgba(241, 245, 249, 0.97) 100%);
+        }
         
         .submenu-header {
             display: flex;
@@ -393,10 +397,10 @@
             top: 60px;
             left: 0;
             width: 380px;
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.99) 0%, rgba(241, 245, 249, 0.99) 100%);
-            border: 2px solid rgba(148, 163, 184, 0.95);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.85) 0%, rgba(241, 245, 249, 0.85) 100%);
+            border: 2px solid rgba(148, 163, 184, 0.75);
             border-radius: 16px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2), 0 6px 20px rgba(0,0,0,0.15);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.16), 0 6px 20px rgba(0,0,0,0.115);
             backdrop-filter: blur(14px);
             opacity: 0;
             visibility: hidden;
@@ -408,11 +412,14 @@
         }
         
         .climate-targets-submenu.visible {
-            opacity: 0.92; /* slightly transparent when not hovered */
+            opacity: 0.80;
             visibility: visible;
             transform: translateY(0) scale(1);
         }
-        .climate-targets-submenu.visible:hover { opacity: 1; }
+        .climate-targets-submenu.visible:hover {
+            opacity: 0.98;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.97) 0%, rgba(241, 245, 249, 0.97) 100%);
+        }
         
         .submenu-option {
             display: block;
@@ -657,10 +664,11 @@
             </div>
             <div class="mx-auto max-w-5xl mb-4 hidden" id="bc-buildable-help">
                 <p class="text-left italic" style="font-size: 0.85rem; color: #334155;">
-                    Buildable land per technology, computed from real OpenStreetMap features and the dataset's
-                    setback rules. <strong style="color: rgb(155, 60, 50);">Brick red</strong> = no-build zones the
-                    rules forbid; transparent / cream = where the rules permit construction. Click a highlighted
-                    country to inspect its rule set and see the raster overlay.
+                    Land availability from coded setback rules and OpenStreetMap features (EPSG:3035 raster,
+                    similar to <a href="https://atlite.readthedocs.io/en/master/examples/landuse-availability.html" target="_blank" rel="noopener noreferrer">atlite's ExclusionContainer</a>).
+                    <strong style="color: rgb(35, 139, 69);">Green</strong> = eligible land;
+                    <strong style="color: rgb(155, 60, 50);">brick red</strong> (exclusion view) = no-build zones.
+                    Toggle map view and click a highlighted country for rules and regional eligible share.
                 </p>
             </div>
             

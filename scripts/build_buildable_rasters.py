@@ -31,8 +31,10 @@ Pipeline stages (each is idempotent / cached):
     9. Output:
          - a "values" PNG (uint8: 0=excluded, 128=in-WPA, 255=buildable)
            for analytical use,
-         - a "styled" PNG (RGBA: NREL-orange where buildable, alpha 0
-           elsewhere) for direct overlay on D3 SVG,
+         - a "styled" PNG (RGBA: brick-red exclusions, transparent buildable)
+           for direct overlay on D3 SVG,
+         - an "availability" PNG (RGBA: atlite-style green eligible land)
+           for land-availability view,
          - a sidecar JSON with WGS84/Mercator bounding boxes, rule
            provenance, and metadata,
          - update of public/data/buildable/manifest.json.
@@ -179,6 +181,10 @@ CONDITION_KEYWORDS_15: dict[str, str] = {
 # viewer reads "the red blobs are where regulations forbid construction".
 EXCLUDED_RED_RGBA = (155, 60, 50, 190)        # muted brick red, ~75% alpha
 WPA_GREEN_RGBA   = (141, 192, 133, 140)       # site --color-primary-lighter
+# Atlite landuse-availability example uses matplotlib "Greens"; these match.
+AVAIL_EXCLUDED_RGBA = (229, 229, 224, 210)    # ineligible (excluded setbacks)
+AVAIL_WPA_RGBA      = (116, 196, 118, 220)    # wind priority areas
+AVAIL_BUILDABLE_RGBA = (35, 139, 69, 235)     # eligible land (#238b45)
 BUILDABLE_RGBA   = (0, 0, 0, 0)               # transparent (rules permit)
 
 
@@ -938,6 +944,20 @@ def load_wind_priority_areas(rules_payload: dict[str, Any], region: str):
 # Output (PNG + sidecar)
 # =========================================================================
 
+def write_png_availability(values: np.ndarray, target: Path) -> None:
+    """RGBA PNG in the style of atlite's landuse-availability example.
+
+    Green intensity marks eligible (buildable) land; grey marks excluded
+    setbacks inside the region. Outside the region stays transparent.
+    See https://atlite.readthedocs.io/en/master/examples/landuse-availability.html
+    """
+    rgba = np.zeros((*values.shape, 4), dtype="uint8")
+    rgba[values == 64]  = AVAIL_EXCLUDED_RGBA
+    rgba[values == 128] = AVAIL_WPA_RGBA
+    rgba[values == 255] = AVAIL_BUILDABLE_RGBA
+    Image.fromarray(rgba, "RGBA").save(target, optimize=True)
+
+
 def write_png_styled(values: np.ndarray, target: Path) -> None:
     """RGBA PNG for direct overlay onto the Climate Policy Atlas world map.
 
@@ -1038,10 +1058,11 @@ def main(argv: list[str] | None = None) -> int:
           f"blade={cfg.turbine.blade_length_m}m)")
 
     out_styled = OUTPUT_DIR / f"{key}_styled.png"
+    out_avail  = OUTPUT_DIR / f"{key}_availability.png"
     out_values = OUTPUT_DIR / f"{key}_values.png"
     out_json   = OUTPUT_DIR / f"{key}.json"
-    if (out_styled.exists() and out_values.exists() and out_json.exists()
-            and not cfg.overwrite):
+    if (out_styled.exists() and out_avail.exists() and out_values.exists()
+            and out_json.exists() and not cfg.overwrite):
         print(f"[bake] outputs already exist, use --overwrite to re-bake.")
         return 0
 
@@ -1093,12 +1114,14 @@ def main(argv: list[str] | None = None) -> int:
 
     # ------ Stage 9: outputs ------
     write_png_styled(values_3857, out_styled)
+    write_png_availability(values_3857, out_avail)
     write_png_values(values_3857, out_values)
     write_sidecar(out_json, cfg, georef_3857, contributing, pixel_stats)
     rel = str(out_json.relative_to(PUBLIC_DATA_DIR)).replace(os.sep, "/")
     update_manifest(OUTPUT_DIR, key, rel, cfg, pixel_stats)
 
-    print(f"\n[ok] wrote {out_styled.name}, {out_values.name}, {out_json.name}")
+    print(f"\n[ok] wrote {out_styled.name}, {out_avail.name}, "
+          f"{out_values.name}, {out_json.name}")
     print(f"[ok] manifest updated -> {OUTPUT_DIR / 'manifest.json'}")
     return 0
 
@@ -1124,6 +1147,9 @@ def _compute_pixel_stats(values: np.ndarray, resolution_m: int) -> dict[str, Any
         "wpa_pixels": wpa_px,
         "excluded_pixels": excluded_px,
         "buildable_fraction_of_region": (buildable_px + wpa_px) / region_px if region_px else 0,
+        # Atlite terminology: eligible_share within the region geometry
+        # (cf. excluder.compute_shape_availability).
+        "eligible_share": (buildable_px + wpa_px) / region_px if region_px else 0,
         "buildable_km2": (buildable_px + wpa_px) * px_area_km2,
         "region_km2": region_px * px_area_km2,
         "pixel_area_km2": px_area_km2,

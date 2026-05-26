@@ -1,18 +1,27 @@
 # Buildable-Land Raster Pipeline
 
-NREL-style buildable-land rasters for the Climate Policy Atlas. Inspired by
-Lopes et al. 2023 (NREL, "Structure Setback" CONUS rasters); ours runs at 250 m
-on European NUTS regions, driven by the actual setback rules in
-`public/data/build_regulations.json`.
+Buildable-land / land-availability rasters for the Climate Policy Atlas. The
+spatial methodology parallels [atlite's landuse-availability
+workflow](https://atlite.readthedocs.io/en/master/examples/landuse-availability.html):
+an exclusion container at fine metric resolution (EPSG:3035), a binary
+eligibility mask inside each region, and an **eligible share** statistic
+(equivalent to `compute_shape_availability`). We differ in the exclusion
+sources: coded build regulations + OSM geometry rather than CORINE land-cover
+codes, and we rasterise at 250 m rather than atlite's typical 100 m.
+
+Also inspired by Lopes et al. 2023 (NREL structure-setback CONUS rasters).
 
 The pipeline produces, per region × tech × rule-mode:
 
-* `public/data/buildable/<KEY>_styled.png` — RGBA overlay (NREL-orange where
-  buildable, transparent elsewhere), to drop directly into the front-end SVG.
+* `public/data/buildable/<KEY>_availability.png` — atlite-style green eligible
+  land (default map overlay in the front-end).
+* `public/data/buildable/<KEY>_styled.png` — brick-red exclusion overlay for
+  the alternate "Exclusion zones" view.
 * `public/data/buildable/<KEY>_values.png` — single-channel raster
-  (0 = excluded, 128 = additive Wind Priority Area, 255 = buildable).
+  (0 = outside, 64 = excluded, 128 = wind priority area, 255 = buildable).
 * `public/data/buildable/<KEY>.json` — sidecar with WGS84 / Web-Mercator
-  bounding boxes, applied rules, turbine geometry, pixel statistics.
+  bounding boxes, applied rules, turbine geometry, pixel statistics
+  (`buildable_fraction_of_region` / `eligible_share`).
 * `public/data/buildable/manifest.json` — top-level manifest of all bakes.
 
 `<KEY>` looks like `DE2_wind_strictest_250m`.
@@ -152,7 +161,29 @@ Everything in `scripts/_cache/` is in `.gitignore`; only outputs in
 * **Empty raster for Ireland solar / EV**: expected — those rules are
   cm-scale roof-internal or between-charger constraints, not spatial setbacks.
 
-## 9. What this pipeline does *not* do (yet)
+## 9. Comparison with atlite
+
+| Concept | Atlite | This pipeline |
+|---|---|---|
+| Exclusion source | CORINE / custom land-cover rasters | OSM layers + regulation setbacks |
+| CRS / resolution | EPSG:3035 @ 100 m (default) | EPSG:3035 @ 250 m |
+| Region eligible share | `compute_shape_availability` | `pixel_stats.eligible_share` |
+| Grid-cell availability | `cutout.availabilitymatrix` (0–1 per weather cell) | Not implemented (policy atlas is region-level) |
+| Map colours | matplotlib `Greens` | `_availability.png` (green) or `_styled.png` (red exclusions) |
+
+To regenerate availability PNGs for existing bakes without a full re-run, use:
+
+```powershell
+python scripts/generate_availability_pngs.py
+```
+
+Or re-bake everything (slow — re-downloads OSM):
+
+```powershell
+python scripts/build_buildable_rasters.py --region DE2 --tech wind --mode strictest --overwrite
+```
+
+## 10. What this pipeline does *not* do (yet)
 
 * Per-building OSM footprints (uses the coarser `landuse=residential`).
 * National-only protected-area layers (e.g. Bavarian LfU NSG WFS) — currently

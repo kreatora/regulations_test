@@ -1,10 +1,15 @@
 /**
  * Buildable Land — Regulations subsection of the Climate Policy Atlas.
  *
- * Renders an NREL-style world map of where build-codes regulations
- * forbid construction (brick-red overlay) versus permit it (transparent),
- * driven by per-country rasters baked offline by
- *   scripts/build_buildable_rasters.py.
+ * Renders buildable-land maps showing where build-code setbacks forbid
+ * construction versus permit it, driven by per-country rasters baked offline
+ * by scripts/build_buildable_rasters.py.
+ *
+ * Methodology parallels atlite's ExclusionContainer + shape availability
+ * (https://atlite.readthedocs.io/en/master/examples/landuse-availability.html):
+ * fine-grained exclusions in EPSG:3035, eligible share per region, optional
+ * green "availability" overlay. We use OSM + coded regulations rather than
+ * CORINE land-cover rasters.
  *
  * Self-contained: clicking a data country opens a split panel
  * (left = zoomed country with raster overlay, right = applied rules
@@ -17,8 +22,6 @@
  */
 import * as d3 from 'd3';
 import { geoMercator, geoPath } from 'd3-geo';
-import { registerDownloadableGraph } from './graph-export';
-
 // ---------------------------------------------------------------------------
 // Types — must mirror what scripts/build_buildable_rasters.py writes.
 // ---------------------------------------------------------------------------
@@ -80,6 +83,7 @@ interface Sidecar {
         buildable_fraction_of_region: number;
         buildable_km2: number;
         region_km2: number;
+        eligible_share?: number;
     };
     applied_rules: AppliedRule[];
 }
@@ -117,10 +121,16 @@ const C_BORDER       = 'rgb(176, 192, 176)';
 const C_NO_DATA      = 'rgb(225, 225, 220)';
 const C_NO_DATA_BORDER= 'rgb(190, 195, 185)';
 const C_BRICK        = 'rgb(155, 60, 50)';
+const C_AVAIL_GREEN  = 'rgb(35, 139, 69)';
+const C_AVAIL_GREY   = 'rgb(229, 229, 224)';
+
+type OverlayView = 'availability' | 'exclusions';
 
 const CITATION =
     'Setback rules: D2.2.1.1_Data collection_regulations for energy infrastructure (Feb 2025). ' +
-    'OSM features: © OpenStreetMap contributors (ODbL). NUTS boundaries: © EuroGeographics for the administrative boundaries (GISCO).';
+    'OSM features: © OpenStreetMap contributors (ODbL). NUTS boundaries: © EuroGeographics for the administrative boundaries (GISCO). ' +
+    'Land-availability methodology inspired by atlite ExclusionContainer / shape availability ' +
+    '(https://atlite.readthedocs.io/en/master/examples/landuse-availability.html).';
 
 // ---------------------------------------------------------------------------
 // State
@@ -131,6 +141,7 @@ let world: any = null;                      // GeoJSON FeatureCollection
 let nuts0: any = null;                      // Higher-fidelity country boundaries (GISCO NUTS-0)
 let activeTech: Tech = 'wind';
 let activeMode: Mode = 'strictest';
+let activeOverlayView: OverlayView = 'availability';
 let selectedCountry: string | null = null;  // GeoJSON `name` (e.g. 'Germany')
 let initialised = false;
 let root: HTMLElement | null = null;
@@ -258,6 +269,11 @@ function renderShell(host: HTMLElement) {
                     <label>Rule mode</label>
                     ${MODES.map(m => `<button class="bl-pill ${m === activeMode ? 'is-active' : ''}" data-mode="${m}">${MODE_LABEL[m]}</button>`).join('')}
                 </div>
+                <div class="bl-group">
+                    <label>Map view</label>
+                    <button class="bl-pill ${activeOverlayView === 'availability' ? 'is-active' : ''}" data-overlay="availability">Land availability</button>
+                    <button class="bl-pill ${activeOverlayView === 'exclusions' ? 'is-active' : ''}" data-overlay="exclusions">Exclusion zones</button>
+                </div>
             </div>
             <div class="bl-stat-grid" id="bl-stats"></div>
             <div class="bl-stage" id="bl-stage"></div>
@@ -276,6 +292,14 @@ function renderShell(host: HTMLElement) {
         btn.addEventListener('click', () => {
             activeMode = btn.dataset.mode as Mode;
             host.querySelectorAll('[data-mode]').forEach(b => b.classList.toggle('is-active', (b as HTMLElement).dataset.mode === activeMode));
+            rerender();
+        });
+    });
+    host.querySelectorAll<HTMLButtonElement>('[data-overlay]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            activeOverlayView = btn.dataset.overlay as OverlayView;
+            host.querySelectorAll('[data-overlay]').forEach(b =>
+                b.classList.toggle('is-active', (b as HTMLElement).dataset.overlay === activeOverlayView));
             rerender();
         });
     });
@@ -323,9 +347,9 @@ function renderStats() {
         { value: String(matching.length),
           label: `${TECH_LABEL[activeTech]} bakes (${MODE_LABEL[activeMode].toLowerCase()})` },
         { value: matching.length > 0 ? `${(fraction * 100).toFixed(1)}%` : '—',
-          label: 'Buildable (data countries, weighted)' },
+          label: 'Eligible share (data countries, weighted)' },
         { value: matching.length > 0 ? `${Math.round(totalBuildableKm2).toLocaleString()} km²` : '—',
-          label: 'Total buildable area' },
+          label: 'Eligible land area' },
     ];
 
     el.innerHTML = items.map(i => `
@@ -361,11 +385,6 @@ function renderWorld() {
         .attr('viewBox', `0 0 ${w} ${h}`)
         .attr('width', '100%')
         .attr('height', h);
-    registerDownloadableGraph(svg.node() as SVGSVGElement, {
-        filename: () => `buildable-land-world-${activeTech}-${activeMode}`,
-        title: 'Download buildable land world map as PNG',
-        container: wrap,
-    });
 
     // Same projection style as world-map.ts (Mercator), focused mid-Europe.
     const projection = geoMercator()
@@ -417,12 +436,27 @@ function renderWorld() {
 
     const legend = document.createElement('div');
     legend.className = 'bl-legend';
-    legend.innerHTML = `
-        <span><span class="bl-legend-swatch" style="background: ${C_SURFACE};"></span>Country with rule data (clickable)</span>
-        <span><span class="bl-legend-swatch" style="background: ${C_NO_DATA};"></span>No data yet</span>
-        <span><span class="bl-legend-swatch" style="background: ${C_BRICK};"></span>No-build (in country detail)</span>
-    `;
+    legend.innerHTML = buildLegendHTML();
     stage.appendChild(legend);
+}
+
+function buildLegendHTML(): string {
+    const base = `
+        <span><span class="bl-legend-swatch" style="background: ${C_SURFACE};"></span>Country with rule data (clickable)</span>
+        <span><span class="bl-legend-swatch" style="background: ${C_NO_DATA};"></span>No data yet</span>`;
+    if (activeOverlayView === 'availability') {
+        return base + `
+        <span><span class="bl-legend-swatch" style="background: ${C_AVAIL_GREEN};"></span>Eligible land (atlite-style)</span>
+        <span><span class="bl-legend-swatch" style="background: ${C_AVAIL_GREY};"></span>Excluded by setbacks</span>`;
+    }
+    return base + `
+        <span><span class="bl-legend-swatch" style="background: ${C_BRICK};"></span>No-build zones (setback exclusions)</span>`;
+}
+
+function rasterPngPath(sidecarJsonPath: string, view: OverlayView = activeOverlayView): string {
+    const base = sidecarJsonPath.replace(/\.json$/, '');
+    if (view === 'availability') return `${base}_availability.png`;
+    return `${base}_styled.png`;
 }
 
 function buildCountryTooltip(name: string | undefined): string {
@@ -439,7 +473,7 @@ function buildCountryTooltip(name: string | undefined): string {
     }
     const best = techBakes.reduce((a, b) => (a.region_km2 > b.region_km2 ? a : b));
     return `<strong>${escapeHtml(name)}</strong><br>
-            ${TECH_LABEL[activeTech]} buildable: <strong>${(best.buildable_fraction_of_region * 100).toFixed(1)}%</strong>
+            ${TECH_LABEL[activeTech]} eligible share: <strong>${(best.buildable_fraction_of_region * 100).toFixed(1)}%</strong>
             (${Math.round(best.buildable_km2).toLocaleString()} km² of ${Math.round(best.region_km2).toLocaleString()} km²)<br>
             <em style="opacity:0.85;">Click for rules + raster overlay</em>`;
 }
@@ -526,7 +560,7 @@ async function overlayWorldRasters(
             const br = projection([maxLng, minLat]);
             if (!tl || !br) continue;
 
-            const pngHref = `${baseUrl}data/${bake.sidecar.replace(/\.json$/, '_styled.png')}`;
+            const pngHref = `${baseUrl}data/${rasterPngPath(bake.sidecar)}`;
             overlayLayer.append('image')
                 .attr('class', 'bl-world-raster')
                 .attr('x', tl[0]).attr('y', tl[1])
@@ -534,7 +568,12 @@ async function overlayWorldRasters(
                 .attr('height', br[1] - tl[1])
                 .attr('preserveAspectRatio', 'none')
                 .attr('href', pngHref)
-                .attr('xlink:href', pngHref);
+                .attr('xlink:href', pngHref)
+                .on('error', function () {
+                    if (activeOverlayView !== 'availability') return;
+                    const fallback = `${baseUrl}data/${rasterPngPath(bake.sidecar, 'exclusions')}`;
+                    d3.select(this).attr('href', fallback).attr('xlink:href', fallback);
+                });
         }
     }
 }
@@ -550,11 +589,6 @@ function drawCountryMap(feature: any, meta: { iso2: string; nutsPrimary: string;
         .attr('class', 'bl-country-svg')
         .attr('viewBox', `0 0 ${w} ${h}`)
         .attr('preserveAspectRatio', 'xMidYMid meet');
-    registerDownloadableGraph(svg.node() as SVGSVGElement, {
-        filename: () => `buildable-land-${meta.iso2.toLowerCase()}-${activeTech}-${activeMode}`,
-        title: `Download buildable land map for ${meta.name}`,
-        container: wrap,
-    });
 
     const projection = geoMercator().fitSize([w - 8, h - 8], feature);
     projection.translate([projection.translate()[0] + 4, projection.translate()[1] + 4]);
@@ -623,14 +657,19 @@ async function overlayRasterIfBaked(
         const br = projection([maxLng, minLat]);
         if (!tl || !br) continue;
 
-        const pngHref = `${baseUrl}data/${bake.sidecar.replace(/\.json$/, '_styled.png')}`;
+        const pngHref = `${baseUrl}data/${rasterPngPath(bake.sidecar)}`;
         overlayLayer.append('image')
             .attr('x', tl[0]).attr('y', tl[1])
             .attr('width',  br[0] - tl[0])
             .attr('height', br[1] - tl[1])
             .attr('preserveAspectRatio', 'none')
             .attr('href', pngHref)
-            .attr('xlink:href', pngHref);
+            .attr('xlink:href', pngHref)
+            .on('error', function () {
+                if (activeOverlayView !== 'availability') return;
+                const fallback = `${baseUrl}data/${rasterPngPath(bake.sidecar, 'exclusions')}`;
+                d3.select(this).attr('href', fallback).attr('xlink:href', fallback);
+            });
 
         totalBuildableKm2 += bake.buildable_km2;
         totalRegionKm2    += bake.region_km2;
@@ -641,13 +680,13 @@ async function overlayRasterIfBaked(
     const regionList = ordered.map(b => b.region).join(', ');
     const badge = mapLayer.append('g').attr('transform', `translate(12, ${mapHeight - 56})`);
     badge.append('rect')
-        .attr('width', 248).attr('height', 44)
+        .attr('width', 268).attr('height', 44)
         .attr('rx', 8)
         .attr('fill', '#ffffff').attr('stroke', C_BORDER);
     badge.append('text')
         .attr('x', 10).attr('y', 18)
         .style('font-size', '12px').style('font-weight', '700').style('fill', C_FOREST)
-        .text(`${(fraction * 100).toFixed(1)}% buildable for ${TECH_LABEL[activeTech].toLowerCase()}`);
+        .text(`${(fraction * 100).toFixed(1)}% eligible for ${TECH_LABEL[activeTech].toLowerCase()}`);
     badge.append('text')
         .attr('x', 10).attr('y', 34)
         .style('font-size', '10.5px').style('fill', C_PRIMARY)
@@ -695,10 +734,15 @@ async function loadAndRenderRules(meta: { iso2: string; nutsPrimary: string; nam
     const applied = sidecar.applied_rules.filter(r => r.applied);
     const skipped = sidecar.applied_rules.filter(r => !r.applied);
 
+    const eligibleShare = sidecar.pixel_stats.eligible_share
+        ?? sidecar.pixel_stats.buildable_fraction_of_region;
+
     panel.innerHTML = `
         <h4>${escapeHtml(meta.name)} — ${TECH_LABEL[activeTech]} rules (${applied.length})</h4>
         <p class="bl-sub">
             ${MODE_LABEL[activeMode]} · primary region <strong>${escapeHtml(sidecar.region)}</strong>
+            · eligible share <strong>${(eligibleShare * 100).toFixed(1)}%</strong>
+            (${Math.round(sidecar.pixel_stats.buildable_km2).toLocaleString()} km²)
             · turbine H=${sidecar.turbine_geometry.tip_height_m}m / blade=${sidecar.turbine_geometry.blade_length_m}m
         </p>
         <div id="bl-applied-list">${applied.map(r => ruleCardHTML(r)).join('') || `<div class="bl-empty" style="min-height:80px;">No applicable spatial setbacks for this tech in this region.</div>`}</div>

@@ -3,7 +3,7 @@ import * as XLSX_ from 'xlsx';
 const XLSX = (XLSX_ as any).default || XLSX_;
 import { geoMercator, geoPath } from 'd3-geo';
 import polylabel from 'polylabel';
-import { registerDownloadableGraph } from './graph-export';
+import { registerGraphDownloadMenu } from './graph-export';
 
 // Helper: Add Climate Policy Atlas logo watermark to an SVG chart (top-right, reduced opacity)
 function addLogoWatermark(svg: d3.Selection<SVGSVGElement, unknown, HTMLElement, any>, svgWidth: number) {
@@ -187,11 +187,6 @@ function createFullScreenTimeSeriesChart(timeSeriesChartData: any[], countryName
             .attr('width', containerRect.width)
             .attr('height', containerRect.height - svgHeightOffset);
         addLogoWatermark(svg as any, containerRect.width);
-        registerDownloadableGraph(svg.node() as SVGSVGElement, {
-            filename: `policy-timeline-${countryName.toLowerCase().replace(/\s+/g, '-')}`,
-            title: `Download policy timeline for ${countryName}`,
-            container: container as HTMLElement,
-        });
 
         const g = svg.append('g')
             .attr('transform', `translate(${margin.left}, ${margin.top})`);
@@ -459,12 +454,10 @@ let updateMapFunction: (() => void) | null = null;
 // ---- Renewable targets: explicitly supported types (UI + processing) ----
 // We intentionally restrict the "Renewable targets" map to supported percent-based types.
 // If the sheet includes additional target types like Primary energy, they are ignored.
-type RenewableTargetType = 'Electricity' | 'Final energy' | 'Heating and cooling' | 'Transportation';
+type RenewableTargetType = 'Electricity' | 'Final energy';
 const ENABLED_RENEWABLE_TARGET_TYPES = new Set<RenewableTargetType>([
     'Electricity',
     'Final energy',
-    'Heating and cooling',
-    'Transportation'
 ]);
 const RENEWABLE_TARGET_COLOR_MAX = 100;
 
@@ -474,8 +467,6 @@ function canonicalRenewableTargetType(raw: any): RenewableTargetType | null {
     const lower = t.toLowerCase();
     if (lower === 'electricity') return 'Electricity';
     if (lower === 'final energy') return 'Final energy';
-    if (lower === 'heating and cooling' || lower === 'heating' || lower === 'heat') return 'Heating and cooling';
-    if (lower === 'transportation' || lower === 'transport' || lower === 'mobility') return 'Transportation';
     return null;
 }
 
@@ -497,10 +488,6 @@ function getTargetTypeDisplayName(targetType: string): string {
         'electricity': 'Renewable Electricity Target',
         'Final energy': 'Renewable Final Energy Target',
         'final energy': 'Renewable Final Energy Target',
-        'Heating and cooling': 'Renewable Heating and Cooling Target',
-        'heating and cooling': 'Renewable Heating and Cooling Target',
-        'Transportation': 'Renewable Transportation Target',
-        'transportation': 'Renewable Transportation Target'
     };
     
     return displayNameMap[normalizedType] || targetType;
@@ -565,10 +552,6 @@ function initializeTargetsSubmenu() {
                 explanation = '<br><span style="font-size: 0.75em; opacity: 0.8; font-weight: normal;">% of renewable electricity in a power system generation</span>';
             } else if (normalizedType === 'final energy') {
                 explanation = '<br><span style="font-size: 0.75em; opacity: 0.8; font-weight: normal;">% of renewable energy in final energy consumption</span>';
-            } else if (normalizedType === 'heating and cooling') {
-                explanation = '<br><span style="font-size: 0.75em; opacity: 0.8; font-weight: normal;">% of renewable energy in heating and cooling</span>';
-            } else if (normalizedType === 'transportation') {
-                explanation = '<br><span style="font-size: 0.75em; opacity: 0.8; font-weight: normal;">% of renewable energy in transportation</span>';
             }
 
             option.innerHTML = `${displayName}${explanation}`;
@@ -788,22 +771,7 @@ function hideLoadingIndicator() {
     }
 }
 
-// Register the main world-map SVG as downloadable. Filename reflects the
-// active mode (RE Support / EV Support / RE Targets / Climate / Regulations)
-// so users get meaningful files when they export from different views.
-registerDownloadableGraph(document.getElementById('world-map') as SVGSVGElement | null, {
-    filename: () => {
-        switch (currentMapType) {
-            case 'policies': return 'world-map-re-support';
-            case 'ev': return 'world-map-ev-support';
-            case 'targets': return `world-map-re-targets-${currentTargetType.toLowerCase().replace(/\s+/g, '-')}`;
-            case 'climateTargets': return 'world-map-climate-targets';
-            case 'regulations': return 'world-map-regulations';
-            default: return 'world-map';
-        }
-    },
-    title: 'Download world map as PNG',
-});
+// Register the main world-map download menu after data loads (see below).
 
 showLoadingIndicator();
 
@@ -1453,6 +1421,12 @@ Promise.all([
             globalColorScale: evGlobalColorScale,
             colorScale: null, // Will be set below
             minMax: { min: 0, max: 0 } // Will be set below
+        },
+        rawSources: {
+            policyCsv,
+            targetsCsv,
+            climateTargetsCsv,
+            evCsv,
         }
     };
 
@@ -1801,7 +1775,7 @@ Promise.all([
     // Show dashboard interaction hints only once (first country click)
     let hasShownDashboardHints = false;
 
-    // Render a country dashboard in the modal with pie and time series charts
+    // Render a country dashboard in the modal with targets progression and policy timeline charts
     function createCountryDashboardModal(countryCode3: string, countryName: string) {
         const modalContent = document.getElementById('modal-content');
         const modalTitle = document.getElementById('modal-title');
@@ -1880,179 +1854,14 @@ Promise.all([
 			return;
 		}
 
-        // Toolbar + layout container
+        // Layout container
         modalContent.innerHTML = `
-            <div id="dashboard-toolbar" style="display:flex; justify-content:flex-end; gap:8px; margin-bottom:8px;">
-                <button id="download-country-data" aria-label="Download data" title="Download data for ${countryName}" style="padding:8px 12px; border:1px solid #cbd5e1; border-radius:10px; background:#ffffff; color:#1f2937; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:8px; box-shadow:0 1px 2px rgba(0,0,0,0.06);">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                        <path d="M12 3v10" stroke="#1f2937" stroke-width="2" stroke-linecap="round"/>
-                        <path d="M8 9l4 4 4-4" stroke="#1f2937" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M4 17a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2H4v-2z" stroke="#1f2937" stroke-width="2" fill="none" stroke-linejoin="round"/>
-                    </svg>
-                    <span style="font-size:13px; color:#374151;">Download Data for ${countryName}</span>
-                </button>
-                <button id="download-all-data" aria-label="Download full data" title="Download full dataset (all countries)" style="padding:8px 12px; border:1px solid #cbd5e1; border-radius:10px; background:#ffffff; color:#1f2937; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:8px; box-shadow:0 1px 2px rgba(0,0,0,0.06);">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                        <rect x="3" y="4" width="18" height="14" rx="2" ry="2" stroke="#1f2937" stroke-width="2" fill="none"/>
-                        <path d="M8 8h8" stroke="#1f2937" stroke-width="2" stroke-linecap="round"/>
-                        <path d="M8 12h8" stroke="#1f2937" stroke-width="2" stroke-linecap="round"/>
-                        <path d="M8 16h5" stroke="#1f2937" stroke-width="2" stroke-linecap="round"/>
-                    </svg>
-                    <span style="font-size:13px; color:#374151;">Download Full Dataset (.xlsx)</span>
-                </button>
-            </div>
-            <div id="dashboard-top" style="display:flex; gap:16px; width:100%; flex:1; min-height:0; flex-direction:row;">
+            <div id="dashboard-top" style="display:flex; gap:16px; width:100%; flex:1; min-height:0; flex-direction:row; position:relative;">
                 <div id="dashboard-pie" style="flex:1; min-height:200px; background:#f8fafc; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.06);"></div>
                 <div id="dashboard-timeseries" style="flex:1; min-height:200px; background:#f8fafc; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.06);"></div>
             </div>
         `;
 
-        // Hook data export button (include all columns, filtered by country)
-        const btnExport = document.getElementById('download-country-data');
-        if (btnExport) {
-            (btnExport as HTMLButtonElement).title = `Download data for ${countryName}`;
-            // Subtle hover/focus effects for better affordance
-            btnExport.addEventListener('mouseover', () => {
-                const el = btnExport as HTMLButtonElement;
-                el.style.background = '#f1f5f9';
-                el.style.borderColor = '#94a3b8';
-                el.style.boxShadow = '0 2px 6px rgba(0,0,0,0.08)';
-            });
-            btnExport.addEventListener('mouseout', () => {
-                const el = btnExport as HTMLButtonElement;
-                el.style.background = '#ffffff';
-                el.style.borderColor = '#cbd5e1';
-                el.style.boxShadow = '0 1px 2px rgba(0,0,0,0.06)';
-            });
-            btnExport.addEventListener('focus', () => {
-                const el = btnExport as HTMLButtonElement;
-                el.style.outline = '2px solid #93c5fd';
-                el.style.outlineOffset = '2px';
-            });
-            btnExport.addEventListener('blur', () => {
-                const el = btnExport as HTMLButtonElement;
-                el.style.outline = 'none';
-            });
-            btnExport.addEventListener('click', async () => {
-                const wb = XLSX.utils.book_new();
-
-                // Add Info sheet first
-                try {
-                    const infoDataUrl = `${baseUrl}data/info_data.xlsx`;
-                    const infoBuffer = await fetch(infoDataUrl).then(r => r.arrayBuffer());
-                    const infoWb = XLSX.read(infoBuffer);
-                    if (infoWb.SheetNames.length > 0) {
-                        XLSX.utils.book_append_sheet(wb, infoWb.Sheets[infoWb.SheetNames[0]], infoWb.SheetNames[0]);
-                    }
-                } catch (e) {
-                    console.error("Failed to load info sheet", e);
-                }
-
-                // Policies (filtered by selected country using name -> ISO3 map)
-                const rowsPolicies = policyCsv.filter((row: any) => {
-                    const cName = normalizePolicyCountryName(row[countryColumnName]);
-                    if (!cName) return false;
-                    const code3 = countryNameMap[cName] || null;
-                    return code3 === countryCode3;
-                });
-                const headersPolicies = (policyCsv.columns && policyCsv.columns.length > 0)
-                    ? policyCsv.columns
-                    : Array.from(new Set(rowsPolicies.flatMap((r: any) => Object.keys(r))));
-                const wsPolicies = XLSX.utils.json_to_sheet(rowsPolicies, { header: headersPolicies });
-                XLSX.utils.book_append_sheet(wb, wsPolicies, 'Policies');
-
-                // Targets (filtered by ISO3 at first column or explicit Country_code)
-                const rowsTargets = targetsCsv.filter((row: any) => {
-                    const code = row[tCountryCodeCol] || row[Object.keys(row)[0]];
-                    return code === countryCode3;
-                });
-                const headersTargets = (targetsCsv.columns && targetsCsv.columns.length > 0)
-                    ? targetsCsv.columns
-                    : Array.from(new Set(rowsTargets.flatMap((r: any) => Object.keys(r))));
-                const wsTargets = XLSX.utils.json_to_sheet(rowsTargets, { header: headersTargets });
-                XLSX.utils.book_append_sheet(wb, wsTargets, 'Targets');
-
-                // Climate Targets (filtered by ISO3 at first column or explicit Country_code)
-                const rowsClimate = climateTargetsCsv.filter((row: any) => {
-                    const code = row[ctCountryCodeCol] || row[Object.keys(row)[0]];
-                    return code === countryCode3;
-                });
-                const headersClimate = (climateTargetsCsv.columns && climateTargetsCsv.columns.length > 0)
-                    ? climateTargetsCsv.columns
-                    : Array.from(new Set(rowsClimate.flatMap((r: any) => Object.keys(r))));
-                const wsClimate = XLSX.utils.json_to_sheet(rowsClimate, { header: headersClimate });
-                XLSX.utils.book_append_sheet(wb, wsClimate, 'ClimateTargets');
-
-                // EV Support Policies (filtered by ISO3 at first column)
-                const rowsEv = evCsv.filter((row: any) => {
-                    const code = String(row[evCountryCodeCol] || '').trim().toUpperCase();
-                    return code === countryCode3;
-                });
-                const headersEv = (evCsv.columns && evCsv.columns.length > 0)
-                    ? evCsv.columns
-                    : Array.from(new Set(rowsEv.flatMap((r: any) => Object.keys(r))));
-                const wsEv = XLSX.utils.json_to_sheet(rowsEv, { header: headersEv });
-                XLSX.utils.book_append_sheet(wb, wsEv, 'EV_Support');
-
-                const safeName = countryName.replace(/[^\w\-]+/g, '_');
-                XLSX.writeFile(wb, `${safeName}_data.xlsx`, { compression: true });
-            });
-        }
-
-        const btnExportAll = document.getElementById('download-all-data');
-        if (btnExportAll) {
-            (btnExportAll as HTMLButtonElement).addEventListener('mouseover', () => {
-                const el = btnExportAll as HTMLButtonElement;
-                el.style.background = '#f1f5f9';
-                el.style.borderColor = '#94a3b8';
-                el.style.boxShadow = '0 2px 6px rgba(0,0,0,0.08)';
-            });
-            (btnExportAll as HTMLButtonElement).addEventListener('mouseout', () => {
-                const el = btnExportAll as HTMLButtonElement;
-                el.style.background = '#ffffff';
-                el.style.borderColor = '#cbd5e1';
-                el.style.boxShadow = '0 1px 2px rgba(0,0,0,0.06)';
-            });
-            (btnExportAll as HTMLButtonElement).addEventListener('focus', () => {
-                const el = btnExportAll as HTMLButtonElement;
-                el.style.outline = '2px solid #93c5fd';
-                el.style.outlineOffset = '2px';
-            });
-            (btnExportAll as HTMLButtonElement).addEventListener('blur', () => {
-                const el = btnExportAll as HTMLButtonElement;
-                el.style.outline = 'none';
-            });
-            (btnExportAll as HTMLButtonElement).addEventListener('click', async () => {
-                const wb = XLSX.utils.book_new();
-
-                // Add Info sheet first
-                try {
-                    const infoDataUrl = `${baseUrl}data/info_data.xlsx`;
-                    const infoBuffer = await fetch(infoDataUrl).then(r => r.arrayBuffer());
-                    const infoWb = XLSX.read(infoBuffer);
-                    if (infoWb.SheetNames.length > 0) {
-                        XLSX.utils.book_append_sheet(wb, infoWb.Sheets[infoWb.SheetNames[0]], infoWb.SheetNames[0]);
-                    }
-                } catch (e) {
-                    console.error("Failed to load info sheet", e);
-                }
-
-                const addSheet = (name: string, rows: any[]) => {
-                    const headers = (rows && (rows as any).columns && (rows as any).columns.length > 0)
-                        ? (rows as any).columns
-                        : Array.from(new Set(rows.flatMap((r: any) => Object.keys(r))));
-                    const ws = XLSX.utils.json_to_sheet(rows, { header: headers });
-                    XLSX.utils.book_append_sheet(wb, ws, name);
-                };
-
-                addSheet('Policies', policyCsv as any);
-                addSheet('Targets', targetsCsv as any);
-                addSheet('ClimateTargets', climateTargetsCsv as any);
-                addSheet('EV_Support', evCsv as any);
-
-                XLSX.writeFile(wb, `Climate_Policy_Atlas_1.0.xlsx`, { compression: true });
-            });
-        }
         // Open the modal before measuring sizes to ensure containers have dimensions
         openModal();
 
@@ -2177,11 +1986,6 @@ Promise.all([
                         .style('background', '#f8fafc')
                         .style('border-radius', '12px');
                     addLogoWatermark(svg as any, rect.width);
-                    registerDownloadableGraph(svg.node() as SVGSVGElement, {
-                        filename: `climate-targets-${countryName.toLowerCase().replace(/\s+/g, '-')}`,
-                        title: `Download climate targets chart for ${countryName}`,
-                        container: targetsContainer,
-                    });
 
                     const g = svg.append('g')
                         .attr('transform', `translate(${margin.left}, ${margin.top})`);
@@ -2488,11 +2292,6 @@ Promise.all([
                     .style('background', '#f8fafc')
                     .style('border-radius', '12px');
                 addLogoWatermark(svg as any, rect.width);
-                registerDownloadableGraph(svg.node() as SVGSVGElement, {
-                    filename: `renewable-targets-${countryName.toLowerCase().replace(/\s+/g, '-')}`,
-                    title: `Download renewable targets chart for ${countryName}`,
-                    container: targetsContainer,
-                });
 
                 const g = svg.append('g')
                     .attr('transform', `translate(${margin.left}, ${margin.top})`);
@@ -3164,11 +2963,6 @@ Promise.all([
                     .style('border-radius', '12px')
                     .style('filter', 'drop-shadow(0 2px 8px rgba(0,0,0,0.06))');
                 addLogoWatermark(svg as any, rect.width);
-                registerDownloadableGraph(svg.node() as SVGSVGElement, {
-                    filename: `policy-timeline-${countryName.toLowerCase().replace(/\s+/g, '-')}`,
-                    title: `Download policy timeline for ${countryName}`,
-                    container: tsContainer as HTMLElement,
-                });
 
                 const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
                 // Chart title
@@ -3560,6 +3354,39 @@ Promise.all([
                             <div style="font-size:12px;">${noDataSubtitle}</div>
                         </div>
                     </div>`;
+            }
+
+            const dashboardTop = document.getElementById('dashboard-top');
+            if (dashboardTop && dashboardTop.querySelector('svg')) {
+                const getDashboardSvgs = (): SVGSVGElement[] | null => {
+                    const svgs: SVGSVGElement[] = [];
+                    for (const panelId of ['dashboard-pie', 'dashboard-timeseries']) {
+                        const panel = document.getElementById(panelId);
+                        if (!panel || panel.style.display === 'none') continue;
+                        const svg = panel.querySelector('svg');
+                        if (svg && svg.getBoundingClientRect().width > 80) {
+                            svgs.push(svg as SVGSVGElement);
+                        }
+                    }
+                    return svgs.length > 0 ? svgs : null;
+                };
+
+                registerGraphDownloadMenu({
+                    container: dashboardTop,
+                    title: 'Download dashboard',
+                    getExportLayout: () => {
+                        const svgs = getDashboardSvgs();
+                        if (!svgs || svgs.length !== 2) return 'vertical';
+                        const layoutEl = document.getElementById('dashboard-top');
+                        return layoutEl?.style.flexDirection === 'column' ? 'vertical' : 'horizontal';
+                    },
+                    getActiveSvgs: getDashboardSvgs,
+                    getFilenameSlug: () => `${countryName.toLowerCase().replace(/\s+/g, '-')}-dashboard`,
+                    getExportCaption: () => getDashboardExportCaption(countryName),
+                    countryDataLabel: `Data for ${countryName}`,
+                    onDownloadCountryData: () => downloadCountryData(countryCode3, countryName),
+                    onDownloadDataset: downloadFullDataset,
+                });
             }
         });
     }
@@ -4014,6 +3841,268 @@ Promise.all([
 
     // Initial map update to load the correct data based on currentMapType
     updateMap();
+
+    function formatYearGroupLabel(group: '2020' | '2030' | '2050' | 'latest'): string {
+        return group === 'latest' ? 'Latest target year' : `Target year ${group}`;
+    }
+
+    function getMapExportCaption() {
+        const yearLabel = formatYearGroupLabel(currentTargetYearGroup);
+        const climateYearLabel = formatYearGroupLabel(currentClimateTargetYearGroup);
+
+        if (currentMapType === 'regulations') {
+            if (currentRegulationsSection === 'buildableLand') {
+                const isCountry = !!document.querySelector('#buildable-land-view .bl-country-svg');
+                return {
+                    title: isCountry ? 'Buildable Land — Country Map' : 'Buildable Land — World Map',
+                    subtitle: 'Regulations · OSM-based buildable area from regulation rules',
+                    legend: 'Map colors show buildable land availability',
+                };
+            }
+            return {
+                title: 'Build Codes — Constraint Pressure',
+                subtitle: 'Regulations · Surveyed NUTS regions',
+                legend: 'Color scale: regulatory constraint pressure by region',
+            };
+        }
+
+        switch (currentMapType) {
+            case 'policies':
+                return {
+                    title: 'Renewable Energy Support Policies',
+                    subtitle: 'World map by country',
+                    legend: 'Color scale: number of RE support policies per country (darker = more)',
+                };
+            case 'ev':
+                return {
+                    title: 'EV Support Policies',
+                    subtitle: 'World map by country',
+                    legend: 'Color scale: number of EV support policies per country (darker = more)',
+                };
+            case 'targets':
+                return {
+                    title: `Renewable Energy Targets — ${currentTargetType}`,
+                    subtitle: `World map · ${yearLabel}`,
+                    legend: 'Color scale: renewable target (%) by country',
+                };
+            case 'climateTargets':
+                return {
+                    title: 'Climate Emission Targets',
+                    subtitle: `EU countries · ${climateYearLabel}`,
+                    legend: 'Color scale: emission reduction target (% change vs 1990 baseline)',
+                };
+            default:
+                return { title: 'Climate Policy Atlas Map', subtitle: 'World map' };
+        }
+    }
+
+    function getDashboardExportCaption(countryName: string) {
+        const yearLabel = formatYearGroupLabel(currentTargetYearGroup);
+        const climateYearLabel = formatYearGroupLabel(currentClimateTargetYearGroup);
+        const leftPanel = document.getElementById('dashboard-pie');
+        const rightPanel = document.getElementById('dashboard-timeseries');
+        const leftHasChart = !!(
+            leftPanel &&
+            leftPanel.style.display !== 'none' &&
+            leftPanel.querySelector('svg') &&
+            leftPanel.querySelector('svg')!.getBoundingClientRect().width > 80
+        );
+        const rightHasChart = !!(
+            rightPanel &&
+            rightPanel.style.display !== 'none' &&
+            rightPanel.querySelector('svg') &&
+            rightPanel.querySelector('svg')!.getBoundingClientRect().width > 80
+        );
+
+        switch (currentMapType) {
+            case 'ev':
+                return {
+                    title: `${countryName} — EV Support Policy Timeline`,
+                    subtitle: 'Country dashboard',
+                    legend: 'Bars show when each EV support policy type was introduced by year',
+                };
+            case 'targets':
+                return {
+                    title: `${countryName} — Renewable Energy Targets`,
+                    subtitle: `${currentTargetType} · ${yearLabel}`,
+                    legend: 'Lines show target (%) progression by decision year and target year',
+                };
+            case 'climateTargets':
+                return {
+                    title: `${countryName} — Climate Emission Targets`,
+                    subtitle: climateYearLabel,
+                    legend: 'Emission reduction targets (% change compared to 1990 baseline)',
+                };
+            default:
+                if (leftHasChart && rightHasChart) {
+                    return {
+                        title: `${countryName} — Country Dashboard`,
+                        subtitle: 'RE support policies and renewable energy targets',
+                        legend: 'Left: renewable energy targets progression · Right: RE support policy introduction timeline by year',
+                    };
+                }
+                if (rightHasChart) {
+                    return {
+                        title: `${countryName} — RE Support Policy Timeline`,
+                        subtitle: 'Country dashboard',
+                        legend: 'Bars show when each RE support policy type was introduced by year',
+                    };
+                }
+                if (leftHasChart) {
+                    return {
+                        title: `${countryName} — Renewable Energy Targets Progression`,
+                        subtitle: 'Country dashboard',
+                        legend: 'Lines show target (%) progression by decision year and target year',
+                    };
+                }
+                return {
+                    title: `${countryName} — Country Dashboard`,
+                    subtitle: 'Country dashboard · RE support policies',
+                    legend: 'Dashboard charts for the selected country',
+                };
+        }
+    }
+
+    function getMainMapExportSlug(): string {
+        if (currentMapType === 'regulations') {
+            if (currentRegulationsSection === 'buildableLand') {
+                return document.querySelector('#buildable-land-view .bl-country-svg')
+                    ? 'buildable-land-country'
+                    : 'buildable-land-world';
+            }
+            return 'build-codes-regulations';
+        }
+        switch (currentMapType) {
+            case 'policies': return 'world-map-re-support';
+            case 'ev': return 'world-map-ev-support';
+            case 'targets': return `world-map-re-targets-${currentTargetType.toLowerCase().replace(/\s+/g, '-')}`;
+            case 'climateTargets': return 'world-map-climate-targets';
+            default: return 'world-map';
+        }
+    }
+
+    function getMapExportFilenameSlug(): string {
+        return getMainMapExportSlug();
+    }
+
+    function getMapExportSvgs(): SVGSVGElement[] | null {
+        if (currentMapType === 'regulations') {
+            if (currentRegulationsSection === 'buildableLand') {
+                const countrySvg = document.querySelector('#buildable-land-view .bl-country-svg') as SVGSVGElement | null;
+                if (countrySvg) return [countrySvg];
+                const worldSvg = document.querySelector('#buildable-land-view svg.bl-world') as SVGSVGElement | null;
+                return worldSvg ? [worldSvg] : null;
+            }
+            const buildCodesSvg = document.querySelector('#build-codes-view svg') as SVGSVGElement | null;
+            return buildCodesSvg ? [buildCodesSvg] : null;
+        }
+
+        const worldMap = document.getElementById('world-map') as SVGSVGElement | null;
+        return worldMap ? [worldMap] : null;
+    }
+
+    async function downloadCountryData(countryCode3: string, countryName: string): Promise<void> {
+        const wb = XLSX.utils.book_new();
+
+        try {
+            const infoDataUrl = `${baseUrl}data/info_data.xlsx`;
+            const infoBuffer = await fetch(infoDataUrl).then(r => r.arrayBuffer());
+            const infoWb = XLSX.read(infoBuffer);
+            if (infoWb.SheetNames.length > 0) {
+                XLSX.utils.book_append_sheet(wb, infoWb.Sheets[infoWb.SheetNames[0]], infoWb.SheetNames[0]);
+            }
+        } catch (e) {
+            console.error('Failed to load info sheet', e);
+        }
+
+        const rowsPolicies = policyCsv.filter((row: any) => {
+            const cName = normalizePolicyCountryName(row[countryColumnName]);
+            if (!cName) return false;
+            const code3 = countryNameMap[cName] || null;
+            return code3 === countryCode3;
+        });
+        const headersPolicies = (policyCsv.columns && policyCsv.columns.length > 0)
+            ? policyCsv.columns
+            : Array.from(new Set(rowsPolicies.flatMap((r: any) => Object.keys(r))));
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rowsPolicies, { header: headersPolicies }), 'Policies');
+
+        const rowsTargets = targetsCsv.filter((row: any) => {
+            const code = row[tCountryCodeCol] || row[Object.keys(row)[0]];
+            return code === countryCode3;
+        });
+        const headersTargets = (targetsCsv.columns && targetsCsv.columns.length > 0)
+            ? targetsCsv.columns
+            : Array.from(new Set(rowsTargets.flatMap((r: any) => Object.keys(r))));
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rowsTargets, { header: headersTargets }), 'Targets');
+
+        const rowsClimate = climateTargetsCsv.filter((row: any) => {
+            const code = row[ctCountryCodeCol] || row[Object.keys(row)[0]];
+            return code === countryCode3;
+        });
+        const headersClimate = (climateTargetsCsv.columns && climateTargetsCsv.columns.length > 0)
+            ? climateTargetsCsv.columns
+            : Array.from(new Set(rowsClimate.flatMap((r: any) => Object.keys(r))));
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rowsClimate, { header: headersClimate }), 'ClimateTargets');
+
+        const rowsEv = evCsv.filter((row: any) => {
+            const code = String(row[evCountryCodeCol] || '').trim().toUpperCase();
+            return code === countryCode3;
+        });
+        const headersEv = (evCsv.columns && evCsv.columns.length > 0)
+            ? evCsv.columns
+            : Array.from(new Set(rowsEv.flatMap((r: any) => Object.keys(r))));
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rowsEv, { header: headersEv }), 'EV_Support');
+
+        const safeName = countryName.replace(/[^\w\-]+/g, '_');
+        XLSX.writeFile(wb, `${safeName}_data.xlsx`, { compression: true });
+    }
+
+    async function downloadFullDataset(): Promise<void> {
+        const sources = allData?.rawSources;
+        if (!sources) {
+            throw new Error('Dataset is not loaded yet.');
+        }
+
+        const wb = XLSX.utils.book_new();
+
+        try {
+            const infoDataUrl = `${baseUrl}data/info_data.xlsx`;
+            const infoBuffer = await fetch(infoDataUrl).then(r => r.arrayBuffer());
+            const infoWb = XLSX.read(infoBuffer);
+            if (infoWb.SheetNames.length > 0) {
+                XLSX.utils.book_append_sheet(wb, infoWb.Sheets[infoWb.SheetNames[0]], infoWb.SheetNames[0]);
+            }
+        } catch (e) {
+            console.error('Failed to load info sheet', e);
+        }
+
+        const addSheet = (name: string, rows: any[]) => {
+            const headers = (rows && (rows as any).columns && (rows as any).columns.length > 0)
+                ? (rows as any).columns
+                : Array.from(new Set(rows.flatMap((r: any) => Object.keys(r))));
+            const ws = XLSX.utils.json_to_sheet(rows, { header: headers });
+            XLSX.utils.book_append_sheet(wb, ws, name);
+        };
+
+        addSheet('Policies', sources.policyCsv as any);
+        addSheet('Targets', sources.targetsCsv as any);
+        addSheet('ClimateTargets', sources.climateTargetsCsv as any);
+        addSheet('EV_Support', sources.evCsv as any);
+
+        XLSX.writeFile(wb, 'Climate_Policy_Atlas_1.0.xlsx', { compression: true });
+    }
+
+    const mapContainer = document.getElementById('world-map-container');
+    if (mapContainer) {
+        registerGraphDownloadMenu({
+            container: mapContainer,
+            title: 'Download map or data',
+            getActiveSvgs: getMapExportSvgs,
+            getFilenameSlug: getMapExportFilenameSlug,
+            getExportCaption: getMapExportCaption,
+            onDownloadDataset: downloadFullDataset,
+        });
+    }
     
     // Hide loading indicator after initial map is loaded
     hideLoadingIndicator();

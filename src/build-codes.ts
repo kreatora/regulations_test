@@ -7,8 +7,6 @@
  */
 import * as d3 from 'd3';
 import { geoMercator, geoPath } from 'd3-geo';
-import { registerDownloadableGraph } from './graph-export';
-
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -567,11 +565,6 @@ async function renderPressureMap(host: HTMLElement) {
         legend.append('text').attr('x', 240).attr('y', 30).attr('text-anchor', 'end').style('font-size', '10px').style('fill', '#64748b').text(`${max} regulations`);
 
         svgWatermark(svg as any, w);
-        registerDownloadableGraph(svg.node() as SVGSVGElement, {
-            filename: () => `build-codes-pressure-${techFilter}-${bindFilter}`,
-            title: 'Download constraint pressure map as PNG',
-            container: mapHost,
-        });
     };
 
     host.querySelectorAll<HTMLButtonElement>('[data-tech]').forEach(b => b.addEventListener('click', () => {

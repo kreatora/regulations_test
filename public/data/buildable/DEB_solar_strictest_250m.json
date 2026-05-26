@@ -37,7 +37,8 @@
     "buildable_fraction_of_region": 0.9928661377660244,
     "buildable_km2": 19710.875,
     "region_km2": 19852.5,
-    "pixel_area_km2": 0.0625
+    "pixel_area_km2": 0.0625,
+    "eligible_share": 0.9928661377660244
   },
   "applied_rules": [
     {
@@ -47,7 +48,7 @@
       "condition": "Proximity to federal streets and railways",
       "year": null,
       "legally_binding": true,
-      "source_name": "Bundesfernstraßengesett",
+      "source_name": "Bundesfernstra\u00dfengesett",
       "source_link": "https://www.gesetze-im-internet.de/fstrg/BJNR009030953.html",
       "raw_value": 40.0,
       "raw_unit": "m",
@@ -62,7 +63,7 @@
       "condition": "Nature reserves such as Natura 2000 areas",
       "year": 2013,
       "legally_binding": false,
-      "source_name": "Gesetz über Naturschutz und Landschaftspflege (Bundesnaturschuzgesetz BNatschG)",
+      "source_name": "Gesetz \u00fcber Naturschutz und Landschaftspflege (Bundesnaturschuzgesetz BNatschG)",
       "source_link": "https://www.gesetze-im-internet.de/bnatschg_2009/",
       "raw_value": null,
       "raw_unit": null,
