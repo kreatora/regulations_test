@@ -32,32 +32,24 @@ npm run dev
 
 ## Deploy to GitHub Pages
 
-No GitHub Actions. Build locally, commit, push.
+**No GitHub Actions.** See **[DEPLOY.md](./DEPLOY.md)** if Actions keep failing.
 
 ```bash
 npm run build
 ```
 
-Then commit the `docs/` folder and push `main` with GitHub Desktop (or git).
+Commit `docs/`, push `main`.
 
-**One-time Pages setting:** **Settings → Pages → Deploy from a branch → `main` → `/docs`**
+**Settings → Pages → Deploy from a branch → `main` → `/docs`**
 
-Site URL: https://kreatora.github.io/regulations_test/
-
-### Alternative: gh-pages branch
-
-```bash
-npm run deploy
-```
-
-Then set Pages to branch **`gh-pages`**, folder **`/ (root)`**.
+Do **not** set Pages source to “GitHub Actions”.
 
 ## Troubleshooting
 
 **Site looks unstyled:** Delete `node_modules/`, run `npm install && npm run build`, commit `docs/`, push.
 
-**Pushed but site is old:** You forgot `npm run build` before pushing, or Pages source is not `main` / `/docs`.
+**Actions fail with upload-pages-artifact / jekyll:** Wrong deploy mode. Read [DEPLOY.md](./DEPLOY.md) — switch Pages to **Deploy from branch → main → /docs** and stop re-running old workflow jobs.
 
-**Actions fail with 403 / account suspended:** Ignore Actions — this repo does not use them. Fix the GitHub account at https://support.github.com if pushes also fail.
+**Pushed but site is old:** You forgot `npm run build` before pushing, or Pages source is not `main` / `/docs`.
 
 **Build fails on Windows:** Ensure `npm install` completed; scripts use `cross-env`.
