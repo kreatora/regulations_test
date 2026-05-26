@@ -4,9 +4,7 @@ A multi-page website built with Vite, React, TypeScript, and Tailwind CSS.
 
 ## Prerequisites
 
-- **Node.js** (v18 or later) — download from https://nodejs.org/
-
-To check if Node.js is installed, run:
+- **Node.js** (v18 or later) — https://nodejs.org/
 
 ```bash
 node -v
@@ -15,17 +13,9 @@ npm -v
 
 ## Important: FAUbox Sync
 
-The `node_modules/` and `docs/` folders must **NOT** be synced between machines via FAUbox.
-Each person must run `npm install` and `npm run build` locally.
+Do **not** sync `node_modules/` via FAUbox between machines. Run `npm install` locally on each machine.
 
-If FAUbox has already synced these folders to your machine, delete them first:
-
-```powershell
-Remove-Item -Recurse -Force node_modules
-Remove-Item -Recurse -Force docs
-```
-
-Then follow the setup steps below.
+The built `docs/` folder **is** committed to git — that is how GitHub Pages is updated.
 
 ## First-Time Setup
 
@@ -36,69 +26,38 @@ npm run build
 
 ## Development
 
-Start a local dev server with hot reload:
-
 ```bash
 npm run dev
 ```
 
-## Building for Production
-
-Default build (outputs to `docs/`):
-
-```bash
-npm run build
-```
-
-Alternative output folders:
-
-```bash
-npm run build:docs   # outputs to docs/
-npm run build:dist   # outputs to dist/
-```
-
-## Preview a Production Build
-
-```bash
-npm run preview          # preview default build
-npm run preview:docs     # preview docs/ on port 4173
-npm run preview:dist     # preview dist/ on port 4174
-```
-
 ## Deploy to GitHub Pages
 
-On every push to `main`, the **Deploy GitHub Pages** workflow runs `npm run build`
-and pushes the output to the **`gh-pages` branch** (plain git — no Jekyll, no
-GitHub Pages artifact actions).
-
-**One-time GitHub setup:**
-
-1. Open **Settings → Pages**.
-2. **Build and deployment → Source:** choose **Deploy from a branch**.
-3. Branch: **`gh-pages`**, folder: **`/ (root)`**.
-4. Save.
-
-Push to `main` and check the **Actions** tab. When the workflow succeeds, the
-site updates at `https://kreatora.github.io/regulations_test/`.
-
-To deploy manually from your machine instead:
+No GitHub Actions. Build locally, commit, push.
 
 ```bash
 npm run build
+```
+
+Then commit the `docs/` folder and push `main` with GitHub Desktop (or git).
+
+**One-time Pages setting:** **Settings → Pages → Deploy from a branch → `main` → `/docs`**
+
+Site URL: https://kreatora.github.io/regulations_test/
+
+### Alternative: gh-pages branch
+
+```bash
 npm run deploy
 ```
 
-When using the workflow you do **not** need to commit the `docs/` folder to
-`main` — CI builds it for you.
+Then set Pages to branch **`gh-pages`**, folder **`/ (root)`**.
 
 ## Troubleshooting
 
-**The site looks unstyled (no CSS) or only some pages look broken:**
-Delete `node_modules/` and `docs/`, then run `npm install && npm run build` again.
-This is usually caused by FAUbox syncing corrupted files between machines.
+**Site looks unstyled:** Delete `node_modules/`, run `npm install && npm run build`, commit `docs/`, push.
 
-**`npm install` fails:**
-Make sure you have Node.js v18+ installed. Delete `node_modules/` and `package-lock.json`, then run `npm install` again.
+**Pushed but site is old:** You forgot `npm run build` before pushing, or Pages source is not `main` / `/docs`.
 
-**Build scripts fail on Windows:**
-The build scripts use `cross-env` for cross-platform environment variable support. Make sure `npm install` completed successfully.
+**Actions fail with 403 / account suspended:** Ignore Actions — this repo does not use them. Fix the GitHub account at https://support.github.com if pushes also fail.
+
+**Build fails on Windows:** Ensure `npm install` completed; scripts use `cross-env`.
