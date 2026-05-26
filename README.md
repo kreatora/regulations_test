@@ -67,9 +67,19 @@ npm run preview:dist     # preview dist/ on port 4174
 
 ## Deploy to GitHub Pages
 
+The site is deployed automatically by GitHub Actions on every push to `main`.
+
+1. In the repo on GitHub, open **Settings → Pages**.
+2. Under **Build and deployment → Source**, choose **GitHub Actions** (not Jekyll / not “Deploy from branch”).
+3. Push to `main`. The **Deploy GitHub Pages** workflow builds with Vite and publishes the `docs/` output.
+
+To deploy manually from your machine (legacy `gh-pages` branch flow):
+
 ```bash
 npm run deploy
 ```
+
+You do **not** need to commit the `docs/` folder when using the GitHub Actions workflow — CI runs `npm run build` for you. If you deploy from branch instead, run `npm run build` locally first and commit `docs/`.
 
 ## Troubleshooting
 
