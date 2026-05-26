@@ -37,7 +37,8 @@
     "buildable_fraction_of_region": 0.962550722435515,
     "buildable_km2": 614463.625,
     "region_km2": 638370.125,
-    "pixel_area_km2": 0.0625
+    "pixel_area_km2": 0.0625,
+    "eligible_share": 0.962550722435515
   },
   "applied_rules": [
     {
