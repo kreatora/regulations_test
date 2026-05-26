@@ -5,17 +5,16 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Push built docs/ to the gh-pages branch (no GitHub Pages artifact actions).
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
   group: pages
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -33,21 +32,43 @@ jobs:
       - name: Build site
         run: npm run build
 
-      - name: Disable Jekyll processing
-        run: touch docs/.nojekyll
+      - name: Publish to gh-pages branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
 
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: docs
+          touch docs/.nojekyll
+          site_dir="$RUNNER_TEMP/site"
+          rm -rf "$site_dir"
+          cp -R docs "$site_dir"
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          worktree="$RUNNER_TEMP/gh-pages"
+          rm -rf "$worktree"
+          mkdir -p "$worktree"
+
+          repo="https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          if git ls-remote --heads "$repo" gh-pages | grep -q gh-pages; then
+            git clone --depth 1 --branch gh-pages "$repo" "$worktree"
+          else
+            git init "$worktree"
+            cd "$worktree"
+            git checkout -b gh-pages
+            git remote add origin "$repo"
+          fi
+
+          cd "$worktree"
+          find . -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
+          cp -R "$site_dir"/. .
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+
+          if git diff --cached --quiet; then
+            echo "No changes to deploy."
+            exit 0
+          fi
+
+          git commit -m "Deploy ${GITHUB_SHA::7}"
+          git push origin gh-pages

@@ -67,19 +67,29 @@ npm run preview:dist     # preview dist/ on port 4174
 
 ## Deploy to GitHub Pages
 
-The site is deployed automatically by GitHub Actions on every push to `main`.
+On every push to `main`, the **Deploy GitHub Pages** workflow runs `npm run build`
+and pushes the output to the **`gh-pages` branch** (plain git — no Jekyll, no
+GitHub Pages artifact actions).
 
-1. In the repo on GitHub, open **Settings → Pages**.
-2. Under **Build and deployment → Source**, choose **GitHub Actions** (not Jekyll / not “Deploy from branch”).
-3. Push to `main`. The **Deploy GitHub Pages** workflow builds with Vite and publishes the `docs/` output.
+**One-time GitHub setup:**
 
-To deploy manually from your machine (legacy `gh-pages` branch flow):
+1. Open **Settings → Pages**.
+2. **Build and deployment → Source:** choose **Deploy from a branch**.
+3. Branch: **`gh-pages`**, folder: **`/ (root)`**.
+4. Save.
+
+Push to `main` and check the **Actions** tab. When the workflow succeeds, the
+site updates at `https://kreatora.github.io/regulations_test/`.
+
+To deploy manually from your machine instead:
 
 ```bash
+npm run build
 npm run deploy
 ```
 
-You do **not** need to commit the `docs/` folder when using the GitHub Actions workflow — CI runs `npm run build` for you. If you deploy from branch instead, run `npm run build` locally first and commit `docs/`.
+When using the workflow you do **not** need to commit the `docs/` folder to
+`main` — CI builds it for you.
 
 ## Troubleshooting
 
