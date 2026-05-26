@@ -26,39 +26,39 @@
             display: block;
         }
         .regulations-submenu {
-            width: min(420px, 92vw);
+            width: min(720px, 92vw);
         }
 
         .regulations-filters {
-            padding: 8px 12px 12px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding: 8px 12px 10px;
             border-top: 1px solid rgba(203, 213, 225, 0.6);
         }
         .regulations-filter-group {
-            margin-bottom: 10px;
-        }
-        .regulations-filter-group:last-child {
-            margin-bottom: 0;
+            flex: 0 0 auto;
         }
         .regulations-filter-label {
             display: block;
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 700;
             color: rgb(30, 41, 59);
-            margin-bottom: 6px;
+            margin-bottom: 4px;
             letter-spacing: 0.3px;
             text-transform: uppercase;
         }
         .regulations-filter-options {
             display: flex;
             flex-wrap: wrap;
-            gap: 6px;
+            gap: 4px;
         }
         .regulations-filter-option {
-            padding: 6px 10px;
+            padding: 4px 9px;
             background: rgba(255, 255, 255, 0.7);
             border: 1.5px solid rgba(100, 116, 139, 0.45);
             border-radius: 999px;
-            font-size: 11px;
+            font-size: 10.5px;
             font-weight: 600;
             color: rgb(30, 41, 59);
             cursor: pointer;
@@ -808,14 +808,12 @@
                                 <span class="submenu-title">Regulations</span>
                                 <button class="submenu-close" id="regulationsSubmenuClose">&times;</button>
                             </div>
-                            <div class="submenu-options">
-                                <button class="submenu-option active" id="showBuildCodesRegulations" type="button">
-                                    Build Codes<br>
-                                    <span style="font-size: 0.75em; opacity: 0.8; font-weight: normal;">Constraint pressure by surveyed NUTS region using regulation, policy/source, and binding counts</span>
+                            <div class="submenu-options" style="display:flex;gap:6px;padding:8px;">
+                                <button class="submenu-option active" id="showBuildCodesRegulations" type="button" style="flex:1;">
+                                    Build Codes
                                 </button>
-                                <button class="submenu-option" id="showBuildableLandRegulations" type="button">
-                                    Buildable Land<br>
-                                    <span style="font-size: 0.75em; opacity: 0.8; font-weight: normal;">OSM-based buildable land from regulation rules</span>
+                                <button class="submenu-option" id="showBuildableLandRegulations" type="button" style="flex:1;">
+                                    Buildable Land
                                 </button>
                             </div>
                             <div class="regulations-filters" id="regulationsFilters"></div>
