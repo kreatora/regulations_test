@@ -637,6 +637,8 @@ async function renderCountryDetail(name: string) {
         selectedCountry = null;
         renderBuildableLandLegend();
         document.dispatchEvent(new CustomEvent('buildable-land:refresh'));
+        const mapEl = document.getElementById('world-map');
+        if (mapEl) smoothScrollTo(mapEl, 800);
     });
 
     drawCountryMap(feature, meta);
@@ -728,6 +730,26 @@ async function overlayWorldRasters(
     }
 }
 
+function clipFeatureToEurope(feature: any): any {
+    const geom = feature.geometry || feature;
+    if (geom.type !== 'MultiPolygon') return feature;
+    const EU_BBOX = { minLon: -25, maxLon: 45, minLat: 34, maxLat: 72 };
+    const kept = geom.coordinates.filter((poly: number[][][]) => {
+        const ring = poly[0];
+        const lons = ring.map((c: number[]) => c[0]);
+        const lats = ring.map((c: number[]) => c[1]);
+        const cLon = (Math.min(...lons) + Math.max(...lons)) / 2;
+        const cLat = (Math.min(...lats) + Math.max(...lats)) / 2;
+        return cLon >= EU_BBOX.minLon && cLon <= EU_BBOX.maxLon &&
+               cLat >= EU_BBOX.minLat && cLat <= EU_BBOX.maxLat;
+    });
+    if (kept.length === 0 || kept.length === geom.coordinates.length) return feature;
+    return {
+        ...feature,
+        geometry: { type: 'MultiPolygon', coordinates: kept },
+    };
+}
+
 function drawCountryMap(feature: any, meta: { iso2: string; nutsPrimary: string; name: string }) {
     const wrap = document.getElementById('bl-map-wrap');
     if (!wrap || !feature) return;
@@ -740,13 +762,14 @@ function drawCountryMap(feature: any, meta: { iso2: string; nutsPrimary: string;
         .attr('viewBox', `0 0 ${w} ${h}`)
         .attr('preserveAspectRatio', 'xMidYMid meet');
 
-    const projection = geoMercator().fitSize([w - 8, h - 8], feature);
+    const fitFeature = clipFeatureToEurope(feature);
+    const projection = geoMercator().fitSize([w - 8, h - 8], fitFeature);
     projection.translate([projection.translate()[0] + 4, projection.translate()[1] + 4]);
     const path = geoPath().projection(projection as any);
 
     const mapLayer = svg.append('g').attr('class', 'bl-country-layer');
     mapLayer.append('path')
-        .datum(feature)
+        .datum(fitFeature)
         .attr('class', 'country-shape')
         .attr('d', path as any);
 
@@ -801,6 +824,12 @@ async function overlayRasterIfBaked(
             continue;
         }
         if (!sidecar) continue;
+
+        const MAX_RASTER_PX = 200_000_000;
+        if (sidecar.georef.width * sidecar.georef.height > MAX_RASTER_PX) {
+            console.warn(`Raster ${bake.region} too large (${sidecar.georef.width}x${sidecar.georef.height}), skipping overlay`);
+            continue;
+        }
 
         const [minLng, minLat, maxLng, maxLat] = sidecar.georef.bounds_wgs84;
         const tl = projection([minLng, maxLat]);
