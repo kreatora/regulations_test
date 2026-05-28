@@ -20,6 +20,8 @@ interface RuleValue {
 }
 interface Rule {
     kind: 'wind' | 'solar' | 'ev';
+    policy_id?: string | null;
+    policy_effect?: 'constraining' | 'promoting' | string | null;
     nuts: string;
     nuts_name: string | null;
     country: string;
@@ -41,6 +43,7 @@ interface Rule {
     text_original: string | null;
     text_translation: string | null;
     miscellaneous: string | null;
+    status?: string | null;
     active: string | null;
     validated: string | null;
 }
@@ -182,7 +185,7 @@ function renderBuildCodesAux() {
     if (!root) return;
     root.innerHTML = `
         <style>
-            .bc-shell { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; color: #1e293b; padding: 4px 2px 0; }
+            .bc-shell { position: relative; min-height: 96px; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; color: #1e293b; padding: 4px 2px 0 2px; }
             .bc-citation { font-size: 9.5px; color: #64748b; margin-top: 8px; padding: 10px 14px; background: #f8fafc; border-radius: 10px; line-height: 1.5; border: 1px solid rgba(148, 163, 184, 0.25); }
             .bc-no-data { display: flex; align-items: center; justify-content: center; min-height: 80px; color: rgb(100, 116, 139); font-size: 13px; font-style: italic; text-align: center; }
             .bc-rule-card { padding: 12px 14px; border-left: 3px solid #cbd5e1; border-radius: 8px; background: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.04); margin-bottom: 8px; cursor: pointer; transition: all 0.15s ease; }
@@ -216,6 +219,20 @@ function renderBuildCodesAux() {
     `;
 }
 
+function renderPanelPressureLegend(maxAbs: number) {
+    const legend = document.getElementById('regulations-map-panel-legend');
+    if (!legend) return;
+    legend.style.display = 'block';
+    legend.innerHTML = `
+        <div class="regulations-map-panel-legend-title">Net policy pressure</div>
+        <div class="regulations-map-panel-legend-bar"></div>
+        <div class="regulations-map-panel-legend-labels">
+            <span>Promoting</span>
+            <span>Constraining</span>
+        </div>
+    `;
+}
+
 // ---------------------------------------------------------------------------
 // Shared helpers
 // ---------------------------------------------------------------------------
@@ -227,16 +244,25 @@ function renderBuildCodesAux() {
  */
 function rulesForRegion(regionCode: string): Rule[] {
     if (!data) return [];
-    return data.rules.filter(r => regionCode.startsWith(r.nuts) && (r.active ?? '').toLowerCase() !== 'inactive');
+    return data.rules.filter((r) => {
+        if (!regionCode.startsWith(r.nuts)) return false;
+        const status = (r.status ?? r.active ?? '').toLowerCase();
+        return status !== 'inactive' && status !== 'overwritten';
+    });
 }
 
 function regulationMetrics(rules: Rule[]) {
+    const constrainingCount = rules.filter(r => (r.policy_effect || 'constraining').toLowerCase() !== 'promoting').length;
+    const promotingCount = rules.filter(r => (r.policy_effect || '').toLowerCase() === 'promoting').length;
     const bindingCount = rules.filter(r => (r.legally_binding || '').toLowerCase().startsWith('y')).length;
-    const policyCount = new Set(rules.map(r => r.source_id || r.source_name || `${r.country}-${r.year_decision}-${r.variable}`)).size;
+    const policyCount = new Set(rules.map(r => r.policy_id || r.source_id || r.source_name || `${r.country}-${r.year_decision}-${r.variable}`)).size;
     return {
         regulationCount: rules.length,
         policyCount,
         bindingCount,
+        constrainingCount,
+        promotingCount,
+        netScore: constrainingCount - promotingCount,
     };
 }
 
@@ -285,6 +311,7 @@ function tooltipHide() {
 }
 
 function ruleCardHTML(r: Rule): string {
+    const isPromoting = (r.policy_effect || '').toLowerCase() === 'promoting';
     const v = r.values[0];
     const isBind = (r.legally_binding || '').toLowerCase().startsWith('y');
     const valStr = v ? `${r.min_or_max ? r.min_or_max + ' ' : ''}${v.value ?? '—'}${v.unit ? ' ' + v.unit : ''}` : '—';
@@ -294,6 +321,7 @@ function ruleCardHTML(r: Rule): string {
         <div class="bc-rule-card-row1">
             <span class="bc-rule-tag">${VARIABLE_LABELS[r.variable] || r.variable}</span>
             <span class="bc-rule-tag">${r.kind.toUpperCase()}</span>
+            <span class="bc-rule-tag ${isPromoting ? 'guide' : 'bind'}">${isPromoting ? 'promoting' : 'constraining'}</span>
             <span class="bc-rule-tag ${isBind ? 'bind' : 'guide'}">${isBind ? 'binding' : 'guideline'}</span>
             <span class="bc-rule-tag">${r.nuts}</span>
         </div>
@@ -302,7 +330,7 @@ function ruleCardHTML(r: Rule): string {
         ${src}
     </div>`;
 }
-function ruleKey(r: Rule): string { return `${r.kind}|${r.nuts}|${r.variable}|${r.year_decision}|${r.source_id || r.source_name || ''}|${r.values[0]?.value ?? ''}`; }
+function ruleKey(r: Rule): string { return `${r.policy_id || ''}|${r.kind}|${r.nuts}|${r.variable}|${r.year_decision}|${r.source_id || r.source_name || ''}|${r.values[0]?.value ?? ''}`; }
 function escapeHtml(s: string): string { return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!)); }
 
 function attachRuleCardHandlers(container: HTMLElement) {
@@ -331,6 +359,7 @@ function showSourceModal(r: Rule) {
     }).join('');
 
     const isBind = (r.legally_binding || '').toLowerCase().startsWith('y');
+    const isPromoting = (r.policy_effect || '').toLowerCase() === 'promoting';
     const tagBind = isBind
         ? `<span class="bc-rule-tag bind">Legally binding</span>`
         : `<span class="bc-rule-tag guide">Guideline only</span>`;
@@ -346,6 +375,7 @@ function showSourceModal(r: Rule) {
                     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">
                         <span class="bc-rule-tag" style="background:${TECH_COLORS[r.kind]}33;color:${TECH_COLORS[r.kind]};">${r.kind.toUpperCase()}</span>
                         ${tagBind}
+                        <span class="bc-rule-tag ${isPromoting ? 'guide' : 'bind'}">${isPromoting ? 'Promoting policy' : 'Constraining policy'}</span>
                         <span class="bc-rule-tag">NUTS ${r.nuts}</span>
                         <span class="bc-rule-tag">${r.country}</span>
                         ${r.year_decision ? `<span class="bc-rule-tag">${r.year_decision}</span>` : ''}
@@ -435,7 +465,7 @@ export async function renderBuildCodesOnMap(host: MapHost, filters: BuildCodesFi
         if (cc === 'EL' || cc === 'IE') features.push(f);
     }
 
-    const metricsByCode = new Map<string, { regulationCount: number; policyCount: number; bindingCount: number; rules: Rule[] }>();
+    const metricsByCode = new Map<string, { regulationCount: number; policyCount: number; bindingCount: number; constrainingCount: number; promotingCount: number; netScore: number; rules: Rule[] }>();
     for (const f of features) {
         const code = f.properties.NUTS_ID;
         let rs = rulesForRegion(code);
@@ -444,9 +474,9 @@ export async function renderBuildCodesOnMap(host: MapHost, filters: BuildCodesFi
         metricsByCode.set(code, { ...regulationMetrics(rs), rules: rs });
     }
 
-    const allCounts = Array.from(metricsByCode.values()).map(s => s.regulationCount);
-    const max = Math.max(1, d3.max(allCounts) || 1);
-    const colorScale = d3.scaleSequential(d3.interpolateGreens).domain([0, max]);
+    const allScores = Array.from(metricsByCode.values()).map(s => s.netScore);
+    const maxAbs = Math.max(1, d3.max(allScores.map(v => Math.abs(v))) || 1);
+    const colorScale = d3.scaleDiverging(d3.interpolateRdYlGn).domain([maxAbs, 0, -maxAbs]);
     const path = host.path;
 
     const regions = layer.append('g').attr('class', 'bc-regions');
@@ -454,8 +484,8 @@ export async function renderBuildCodesOnMap(host: MapHost, filters: BuildCodesFi
         .attr('class', 'bc-region')
         .attr('d', path as any)
         .attr('fill', (d: any) => {
-            const count = metricsByCode.get(d.properties.NUTS_ID)?.regulationCount ?? 0;
-            return count > 0 ? colorScale(count) : '#e2e8f0';
+            const score = metricsByCode.get(d.properties.NUTS_ID)?.netScore ?? 0;
+            return score !== 0 ? colorScale(score) : '#e2e8f0';
         })
         .attr('stroke', '#fff').attr('stroke-width', 0.6)
         .style('cursor', 'pointer')
@@ -463,7 +493,7 @@ export async function renderBuildCodesOnMap(host: MapHost, filters: BuildCodesFi
             const code = d.properties.NUTS_ID;
             const info = metricsByCode.get(code);
             const label = nutsDisplayName(d.properties);
-            tooltipShow(`<strong>${label}</strong> (${code})<br/>Regulation count: <strong>${info?.regulationCount ?? 0}</strong><br/>Policy count: <strong>${info?.policyCount ?? 0}</strong><br/>Binding regulations: <strong>${info?.bindingCount ?? 0}</strong>`, e);
+            tooltipShow(`<strong>${label}</strong> (${code})<br/>Constraining: <strong>${info?.constrainingCount ?? 0}</strong><br/>Promoting: <strong>${info?.promotingCount ?? 0}</strong><br/>Net pressure: <strong>${info?.netScore ?? 0}</strong><br/>Policy count: <strong>${info?.policyCount ?? 0}</strong><br/>Binding regulations: <strong>${info?.bindingCount ?? 0}</strong>`, e);
         })
         .on('mouseleave', tooltipHide)
         .on('click', (_e: any, d: any) => {
@@ -491,15 +521,7 @@ export async function renderBuildCodesOnMap(host: MapHost, filters: BuildCodesFi
         .style('pointer-events', 'none')
         .text((d: any) => code3to2[d.id] || '');
 
-    const legend = layer.append('g')
-        .attr('class', 'bc-legend')
-        .attr('transform', `translate(${host.width - 280}, ${host.height - 50})`);
-    const grad = legend.append('defs').append('linearGradient').attr('id', 'bc-press-grad');
-    grad.append('stop').attr('offset', '0%').attr('stop-color', colorScale(0));
-    grad.append('stop').attr('offset', '100%').attr('stop-color', colorScale(max));
-    legend.append('rect').attr('width', 240).attr('height', 12).attr('rx', 6).attr('fill', 'url(#bc-press-grad)').attr('stroke', '#cbd5e1');
-    legend.append('text').attr('x', 0).attr('y', 30).style('font-size', '10px').style('fill', '#64748b').text('0 regulations');
-    legend.append('text').attr('x', 240).attr('y', 30).attr('text-anchor', 'end').style('font-size', '10px').style('fill', '#64748b').text(`${max} regulations`);
+    renderPanelPressureLegend(maxAbs);
 
     svgWatermark(layer as any, host.width);
 }
@@ -986,7 +1008,7 @@ function renderBufferOverlay(host: HTMLElement) {
     const draw = () => {
         const stageEl = document.getElementById('bc-buf-stage')!;
         stageEl.innerHTML = '';
-        const rs = rulesForRegion(region);
+        const rs = rulesForRegion(region).filter(r => (r.policy_effect || 'constraining').toLowerCase() !== 'promoting');
         const radii: Record<string, number> = {};
         for (const v of Object.values(featureMap).flat().map(f => f.variable)) {
             const setback = rs.filter(r => r.variable === v && r.values[0]?.value && /m$|metre|meter/i.test(r.values[0]?.unit || '')).map(r => r.values[0]!.value!);
@@ -1147,6 +1169,10 @@ function renderSimulator(host: HTMLElement) {
         const verdicts: { rule: Rule; verdict: 'pass' | 'fail' | 'conditional' | 'info'; reason: string }[] = [];
 
         for (const r of rs) {
+            if ((r.policy_effect || '').toLowerCase() === 'promoting') {
+                verdicts.push({ rule: r, verdict: 'info', reason: 'Promoting policy — does not impose a blocking setback.' });
+                continue;
+            }
             const v = r.values[0];
             const val = v?.value;
             const unit = v?.unit?.toLowerCase() || '';

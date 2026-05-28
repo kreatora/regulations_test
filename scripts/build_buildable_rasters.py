@@ -387,7 +387,11 @@ def select_applicable_rules(
             continue
         if not _rule_applies_to_region(r, cfg.region):
             continue
-        if (r.get("active") or "").lower() == "inactive":
+        status = (r.get("status") or r.get("active") or "").lower()
+        if status in {"inactive", "overwritten"}:
+            continue
+        policy_effect = (r.get("policy_effect") or r.get("policy_type_raw") or "constraining").lower()
+        if "promot" in policy_effect:
             continue
         if cfg.mode == "binding" and (r.get("legally_binding") or "").lower() != "yes":
             continue

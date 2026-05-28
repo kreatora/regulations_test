@@ -732,9 +732,13 @@ function hideRegulationsSubmenu() {
 
 function renderRegulationsFilters() {
     const filtersEl = document.getElementById('regulationsFilters');
+    const panelLegendEl = document.getElementById('regulations-panel-legend');
+    const mapPanelLegendEl = document.getElementById('regulations-map-panel-legend');
     if (!filtersEl) return;
 
     if (currentRegulationsSection === 'buildCodes') {
+        if (panelLegendEl) panelLegendEl.style.display = 'none';
+        if (mapPanelLegendEl) mapPanelLegendEl.style.display = 'block';
         filtersEl.innerHTML = `
             <div class="regulations-filter-group">
                 <span class="regulations-filter-label">Technology</span>
@@ -776,6 +780,15 @@ function renderRegulationsFilters() {
             });
         });
         return;
+    }
+
+    if (panelLegendEl) {
+        panelLegendEl.style.display = 'none';
+        panelLegendEl.innerHTML = '';
+    }
+    if (mapPanelLegendEl) {
+        mapPanelLegendEl.style.display = 'none';
+        mapPanelLegendEl.innerHTML = '';
     }
 
     filtersEl.innerHTML = `
@@ -901,6 +914,7 @@ function setRegulationsVisible(visible: boolean) {
     const worldHelp = document.getElementById('bc-worldmap-help');
     const buildCodesHelp = document.getElementById('bc-buildcodes-help');
     const buildableHelp = document.getElementById('bc-buildable-help');
+    const mapPanelLegendEl = document.getElementById('regulations-map-panel-legend');
     const host = getMapHost();
 
     regulationsAux?.classList.toggle('visible', visible);
@@ -913,6 +927,10 @@ function setRegulationsVisible(visible: boolean) {
 
     buildCodesHelp?.classList.add('hidden');
     buildableHelp?.classList.add('hidden');
+    if (mapPanelLegendEl) {
+        mapPanelLegendEl.style.display = 'none';
+        mapPanelLegendEl.innerHTML = '';
+    }
     clearBuildableLandSelection();
     host?.clearRegulationsLayer();
     host?.restorePolicyBasemap();

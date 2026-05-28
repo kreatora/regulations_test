@@ -11,11 +11,20 @@ import math
 import os
 import re
 import sys
+import hashlib
 from collections import defaultdict
 
 import pandas as pd
 
 EXCEL_PATH_CANDIDATES = [
+    "docs/data/regulations_data.xlsx",
+    "public/data/regulations_data.xlsx",
+    "docs/data/regulations_data.xls",
+    "public/data/regulations_data.xls",
+    "../regulations_data.xlsx",
+    "regulations_data.xlsx",
+    "../regulations_data.xls",
+    "regulations_data.xls",
     "../D2.2.1.1_Data colllection_regulations for energy infrastructure_feb25.xlsx",
     "D2.2.1.1_Data colllection_regulations for energy infrastructure_feb25.xlsx",
     os.path.expanduser(
@@ -79,48 +88,109 @@ def normalize_nuts(n):
 
 
 def parse_sheet(df: pd.DataFrame, kind: str):
+    colmap = {str(c).strip().lower(): c for c in df.columns}
+
+    def col(*names: str):
+        for name in names:
+            key = str(name).strip().lower()
+            if key in colmap:
+                return colmap[key]
+        return None
+
+    def get(row, *names: str):
+        c = col(*names)
+        return row.get(c) if c is not None else None
+
     rules = []
-    for _, row in df.iterrows():
-        country = normalize_country(row.get("Country"))
+    for idx, row in df.iterrows():
+        country = normalize_country(get(row, "Country"))
         if not country:
             continue
-        nuts = normalize_nuts(row.get("NUTS"))
+        nuts = normalize_nuts(get(row, "NUTS"))
         if not nuts:
             continue
+        status_raw = clean_str(get(row, "status", "active_inactive", "Active_inactive"))
+        status = status_raw.lower() if status_raw else None
+        policy_type_raw = clean_str(get(
+            row,
+            "policy_type",
+            "policy type",
+            "type_of_policy",
+            "constraining_promoting",
+            "constraining_promoting ",
+            "constraining/promoting",
+            "type of policy",
+        ))
+        policy_type = (policy_type_raw or "constraining").lower()
+        if "promot" in policy_type:
+            policy_effect = "promoting"
+        else:
+            policy_effect = "constraining"
+
+        source_id = clean_str(get(row, "Source_ID", "source_id"))
+        source_name = clean_str(get(row, "Source_name", "source_name"))
+        variable = clean_str(get(row, "Variable", "variable"))
+        year_decision = int(clean_num(get(row, "Year_decision", "year_decision")) or 0) or None
+        policy_id = source_id
+        if not policy_id:
+            id_payload = "|".join([
+                kind,
+                country or "",
+                nuts or "",
+                variable or "",
+                str(year_decision or ""),
+                source_name or "",
+                clean_str(get(row, "Text_translation", "text_translation")) or "",
+            ])
+            policy_id = f"gen_{hashlib.sha1(id_payload.encode('utf-8')).hexdigest()[:12]}"
+
         rule = {
             "kind": kind,
+            "row_index": int(idx) + 2,  # +2 for spreadsheet row index with header
+            "policy_id": policy_id,
+            "policy_effect": policy_effect,
+            "policy_type_raw": policy_type_raw,
             "nuts": nuts,
-            "nuts_name": clean_str(row.get("NUTS_Name") or row.get("NUTS_NAME")),
+            "nuts_name": clean_str(get(row, "NUTS_Name", "NUTS_NAME", "nuts_name")),
             "country": country,
-            "year_decision": int(clean_num(row.get("Year_decision")) or 0) or None,
-            "location_or_characteristics": clean_str(row.get("Location_or_characteristics")),
-            "variable": clean_str(row.get("Variable")),
-            "installation_type": clean_str(row.get("Installation_type")),
-            "installation_scale": clean_str(row.get("Installation_scale")),
-            "min_or_max": clean_str(row.get("Minimum_or_maximum")),
-            "multiple_conditions": clean_str(row.get("Multiple_conditions_attribute")),
+            "year_decision": year_decision,
+            "location_or_characteristics": clean_str(get(row, "Location_or_characteristics", "location_or_characteristics")),
+            "variable": variable,
+            "installation_type": clean_str(get(row, "Installation_type", "installation_type")),
+            "installation_scale": clean_str(get(row, "Installation_scale", "installation_scale")),
+            "min_or_max": clean_str(get(row, "Minimum_or_maximum", "min_or_max")),
+            "multiple_conditions": clean_str(get(row, "Multiple_conditions_attribute", "multiple_conditions_attribute")),
             "values": [],
-            "legally_binding": clean_str(row.get("Legally_binding")),
+            "legally_binding": clean_str(get(row, "Legally_binding", "legally_binding")),
             "explicitly_mentioned": clean_str(
-                row.get("WT_explicitly_mentioned")
-                or row.get("Solar_explicitly_mentioned")
-                or row.get("EV_explicitly_mentioned")
+                get(row, "WT_explicitly_mentioned")
+                or get(row, "Solar_explicitly_mentioned")
+                or get(row, "EV_explicitly_mentioned")
             ),
-            "source_name": clean_str(row.get("Source_name")),
-            "source_id": clean_str(row.get("Source_ID")),
-            "source_section": clean_str(row.get("Source_section")),
-            "source_link": clean_str(row.get("Source_link")),
-            "source_alternative": clean_str(row.get("Source_alternative")),
-            "text_original": clean_str(row.get("Text_original")),
-            "text_translation": clean_str(row.get("Text_translation")),
-            "miscellaneous": clean_str(row.get("Miscellaneous")),
-            "active": clean_str(row.get("Active_inactive")),
-            "validated": clean_str(row.get("Validated_by_experts")),
+            "source_name": source_name,
+            "source_id": source_id,
+            "source_section": clean_str(get(row, "Source_section", "source_section")),
+            "source_link": clean_str(get(row, "Source_link", "source_link")),
+            "source_alternative": clean_str(get(row, "Source_alternative", "source_alternative")),
+            "text_original": clean_str(get(row, "Text_original", "text_original")),
+            "text_translation": clean_str(get(row, "Text_translation", "text_translation")),
+            "miscellaneous": clean_str(get(row, "Miscellaneous", "miscellaneous")),
+            "status": status_raw,
+            "active": status_raw,  # backward compatibility for existing clients
+            "inactive_detail": clean_str(get(row, "inactive_policy_status", "inactive_detail", "inactive_reason")),
+            "overwritten_by_row": clean_num(get(
+                row,
+                "overwritten_by_row",
+                "overwritten_policy_replacement",
+                "replaced_by_row",
+                "replacing_policy_row",
+            )),
+            "validated": clean_str(get(row, "Validated_by_experts", "validated_by_experts")),
         }
         for i in (1, 2, 3, 4):
-            v = clean_num(row.get(f"Value_{i}"))
-            u = clean_str(row.get(f"Unit_{i}"))
-            c = clean_str(row.get(f"Condition_{i}"))
+            v = clean_num(get(row, f"Value_{i}", f"value_{i}"))
+            u = clean_str(get(row, f"Unit_{i}", f"unit_{i}"))
+            c = clean_str(get(row, f"Condition_{i}", f"condition_{i}"))
             if v is not None or u or c:
                 rule["values"].append({"value": v, "unit": u, "condition": c})
         if not rule["variable"]:
