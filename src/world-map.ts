@@ -4,6 +4,8 @@ const XLSX = (XLSX_ as any).default || XLSX_;
 import { geoMercator, geoPath } from 'd3-geo';
 import polylabel from 'polylabel';
 import { registerGraphDownloadMenu, downloadBlob } from './graph-export';
+import { updateMapDataAttribution, enrichExportCaption } from './data-attribution';
+import { resolveDatasetKey, getDatasetMetadata } from './data-metadata';
 import { registerMapHost, getMapHost } from './map-host';
 import { renderBuildCodesOnMap, type BuildCodesFilters } from './build-codes';
 import {
@@ -14,21 +16,114 @@ import {
     type BuildableLandFilters,
 } from './buildable-land';
 
-// Helper: Add Climate Policy Atlas logo watermark to an SVG chart (top-right, reduced opacity)
-function addLogoWatermark(svg: d3.Selection<SVGSVGElement, unknown, HTMLElement, any>, svgWidth: number) {
-    const logoSize = 70;
-    const padding = 10;
-    // Append logo after a short delay so it renders on top of all chart elements
-    setTimeout(() => {
-        svg.append('image')
-            .attr('href', `${(import.meta as any).env.BASE_URL || '/'}images/CLIMATE POLICY ATLAS LOGO-Photoroom.png`)
-            .attr('x', svgWidth - logoSize - padding)
-            .attr('y', padding)
-            .attr('width', logoSize)
-            .attr('height', logoSize)
-            .style('opacity', 0.25)
-            .style('pointer-events', 'none');
-    }, 50);
+/** Remove legacy in-chart logo watermarks (logo now lives in the modal header bar). */
+function removeSvgLogoWatermarks(root: ParentNode) {
+    root.querySelectorAll('image').forEach((img) => {
+        const href = img.getAttribute('href')
+            || img.getAttributeNS('http://www.w3.org/1999/xlink', 'href')
+            || '';
+        if (/CLIMATE POLICY ATLAS|Photoroom/i.test(href)) {
+            img.remove();
+        }
+    });
+}
+
+type TargetProgressionLabelOptions = {
+    lineY: number;
+    chartHeight: number;
+    chartWidth: number;
+    xStart: number;
+    xEnd: number;
+    placement: 'end' | 'segment';
+    text: string;
+    color: string;
+    className: string;
+    targetType: string;
+    opacity: number;
+    pointerEvents: string;
+};
+
+type TargetProgressionLabelLayout = {
+    x: number;
+    y: number;
+    textAnchor: 'start' | 'middle' | 'end';
+};
+
+/** Place % labels off the horizontal line — above/below and left/right as space allows. */
+function resolveTargetProgressionLabelLayout(opts: {
+    lineY: number;
+    chartHeight: number;
+    chartWidth: number;
+    xStart: number;
+    xEnd: number;
+    placement: 'end' | 'segment';
+}): TargetProgressionLabelLayout {
+    const { lineY, chartHeight, chartWidth, xStart, xEnd, placement } = opts;
+    const lineClearance = 10;
+    const edgePad = 6;
+    const labelPad = 8;
+    const estLabelWidth = 34;
+
+    let y = lineY;
+    if (lineY - lineClearance >= 8) {
+        y = lineY - lineClearance;
+    } else if (lineY + lineClearance <= chartHeight - 4) {
+        y = lineY + lineClearance;
+    } else {
+        y = lineY - lineClearance;
+    }
+
+    const xEndPt = Math.max(xStart, xEnd);
+    const xStartPt = Math.min(xStart, xEnd);
+    const segWidth = xEndPt - xStartPt;
+
+    if (placement === 'end') {
+        let x = xEndPt + labelPad;
+        let textAnchor: 'start' | 'middle' | 'end' = 'start';
+        if (x + estLabelWidth > chartWidth - edgePad) {
+            x = xEndPt - labelPad;
+            textAnchor = 'end';
+        }
+        return { x, y, textAnchor };
+    }
+
+    // Superseded / mid-segment labels: center when there is room, otherwise tuck past the line end.
+    if (segWidth >= estLabelWidth + 16) {
+        return { x: (xStartPt + xEndPt) / 2, y, textAnchor: 'middle' };
+    }
+
+    let x = xEndPt - labelPad;
+    let textAnchor: 'start' | 'middle' | 'end' = 'end';
+    if (x - estLabelWidth < edgePad) {
+        x = xStartPt + labelPad;
+        textAnchor = 'start';
+    }
+    return { x, y, textAnchor };
+}
+
+function appendTargetProgressionLabel(
+    parent: d3.Selection<SVGGElement, unknown, null, undefined>,
+    opts: TargetProgressionLabelOptions
+) {
+    const layout = resolveTargetProgressionLabelLayout(opts);
+    return parent.append('text')
+        .attr('class', opts.className)
+        .attr('data-target-type', opts.targetType)
+        .attr('x', layout.x)
+        .attr('y', layout.y)
+        .attr('text-anchor', layout.textAnchor)
+        .attr('dominant-baseline', 'middle')
+        .style('font-size', '10px')
+        .style('font-weight', '600')
+        .style('font-family', 'Inter, -apple-system, BlinkMacSystemFont, sans-serif')
+        .style('fill', opts.color)
+        .style('opacity', opts.opacity)
+        .style('pointer-events', opts.pointerEvents)
+        .style('paint-order', 'stroke fill')
+        .style('stroke', '#f8fafc')
+        .style('stroke-width', '5px')
+        .style('stroke-linejoin', 'round')
+        .text(opts.text);
 }
 
 // Modal functionality for full-screen charts
@@ -37,6 +132,7 @@ function openModal() {
     if (modal) {
         modal.classList.remove('hidden');
         document.body.style.overflow = 'hidden';
+        removeSvgLogoWatermarks(modal);
         initializeDragFunctionality();
     }
 }
@@ -195,7 +291,8 @@ function createFullScreenTimeSeriesChart(timeSeriesChartData: any[], countryName
             .append('svg')
             .attr('width', containerRect.width)
             .attr('height', containerRect.height - svgHeightOffset);
-        addLogoWatermark(svg as any, containerRect.width);
+        removeSvgLogoWatermarks(container);
+        setTimeout(() => removeSvgLogoWatermarks(container!), 120);
 
         const g = svg.append('g')
             .attr('transform', `translate(${margin.left}, ${margin.top})`);
@@ -218,13 +315,12 @@ function createFullScreenTimeSeriesChart(timeSeriesChartData: any[], countryName
         const xTicksFS = xDomainFS.filter((_, i) => i % stepFS === 0);
         const xAxisFS = g.append('g')
             .attr('transform', `translate(0,${height})`)
-            .call(d3.axisBottom(xScale).tickValues(xTicksFS))
+            .call(d3.axisBottom(xScale).tickValues(xTicksFS).tickSize(4).tickPadding(10))
             .style('font-family', 'Inter, -apple-system, BlinkMacSystemFont, sans-serif');
         xAxisFS.selectAll('text')
             .style('font-size', axisFontSize)
             .style('text-anchor', 'middle')
-            .attr('dx', '0')
-            .attr('dy', '0');
+            .attr('dy', '0.85em');
         const yAxisFS = g.append('g').call(d3.axisLeft(yBand));
         yAxisFS.selectAll('text').style('font-size', axisFontSize);
         xAxisFS.select('.domain').style('stroke', '#e2e8f0').style('stroke-width', 1);
@@ -301,13 +397,15 @@ function createFullScreenTimeSeriesChart(timeSeriesChartData: any[], countryName
 
         // Add axis labels
         const axisLabelFontSize = isSmallScreen ? '12px' : '16px';
-        const axisLabelBottomOffset = isSmallScreen ? 15 : 20;
+        const axisLabelBottomOffset = isSmallScreen ? 34 : 38;
         
         // Removed vertical y-axis label to declutter the chart
 
         g.append('text')
-            .attr('transform', `translate(${width / 2}, ${height + margin.bottom - axisLabelBottomOffset})`)
-            .style('text-anchor', 'middle')
+            .attr('class', 'x-axis-label')
+            .attr('x', width / 2)
+            .attr('y', height + axisLabelBottomOffset)
+            .attr('text-anchor', 'middle')
             .style('font-size', axisLabelFontSize)
             .style('font-weight', 'bold')
             .text('Year');
@@ -424,19 +522,14 @@ const targetsDataUrl = `${baseUrl}data/targets_data.csv`;
 const climateTargetsDataUrl = `${baseUrl}data/climate_targets_data.csv`;
 const evDataUrl = `${baseUrl}data/ev_data.xlsx`;
 
-const CITATION_POLICY = "Weko, S., Bold, F., Chaianong, A., Günkördü, D., Lebedeva, D., Malhotra, P., Milioritsas, I., Weiß, J., and Lilliestam, J. (2026): Data on policy support for renewable electricity (Version 1, January 2026). Friedrich-Alexander-Universität Erlangen-Nürnberg. DOI: 10.5281/zenodo.18327812";
-const CITATION_TARGETS = "Chaianong, A., Malhotra P., Milioritsas, I., Weko, S., and Lilliestam, J. (2025): Data on renewable electricity targets (Version 1, February 2025). Sustainability Transition Policy Group, Friedrich-Alexander-Universität Erlangen-Nürnberg. DOI: 10.5281/zenodo.15476149.";
-const CITATION_CLIMATE = "Chaianong, A., Malhotra P., Milioritsas, I., Weko, S., and Lilliestam, J. (2025): Data on climate targets (Version 1, February 2025). Sustainability Transition Policy Group, Friedrich-Alexander-Universität Erlangen-Nürnberg. DOI: 10.5281/zenodo.15476049.";
-const CITATION_EV = "Weko, S., Bold, F., Chaianong, A., Günkördü, D., Lebedeva, D., Malhotra, P., Milioritsas, I., Weiß, J., and Lilliestam, J. (2026): Data on policy support for electric vehicles (Version 1, January 2026). Friedrich-Alexander-Universität Erlangen-Nürnberg. DOI: 10.5281/zenodo.18328109.";
-
 // Global variables to store all data
 type MapType = 'policies' | 'ev' | 'targets' | 'climateTargets' | 'regulations';
 let currentMapType: MapType = 'policies';
  let currentTargetType: RenewableTargetType = 'Electricity'; // Default target type
 let currentRegulationsSection: 'buildCodes' | 'buildableLand' = 'buildCodes';
-let bcTechFilter = 'all';
+let bcTechFilter: 'wind' | 'solar' | 'ev' = 'wind';
 let bcBindFilter = 'all';
-let blFilters: BuildableLandFilters = { tech: 'wind', mode: 'strictest', overlay: 'availability' };
+let blFilters: BuildableLandFilters = { tech: 'wind', mode: 'strictest', model: 'policy', style: 'availability' };
  // Year-group filter for targets view (default to 'latest')
  let currentTargetYearGroup: '2020' | '2030' | '2050' | 'latest' = 'latest';
  // Filter mode: always use year-group filtering (no UI toggle)
@@ -463,6 +556,9 @@ let submenuInitialized = false;
 
 // Global reference to updateMap function
 let updateMapFunction: (() => void) | null = null;
+
+/** Choropleth fill fade when switching map modes, filters, or target types. */
+const MAP_COLOR_TRANSITION_MS = 750;
 
 // ---- Renewable targets: explicitly supported types (UI + processing) ----
 // We intentionally restrict the "Renewable targets" map to supported percent-based types.
@@ -743,9 +839,9 @@ function renderRegulationsFilters() {
             <div class="regulations-filter-group">
                 <span class="regulations-filter-label">Technology</span>
                 <div class="regulations-filter-options">
-                    ${['all', 'wind', 'solar', 'ev'].map((tech) => `
+                    ${['wind', 'solar', 'ev'].map((tech) => `
                         <button type="button" class="regulations-filter-option${bcTechFilter === tech ? ' active' : ''}" data-bc-tech="${tech}">
-                            ${tech === 'all' ? 'All' : tech.charAt(0).toUpperCase() + tech.slice(1)}
+                            ${tech.charAt(0).toUpperCase() + tech.slice(1)}
                         </button>
                     `).join('')}
                 </div>
@@ -767,7 +863,7 @@ function renderRegulationsFilters() {
 
         filtersEl.querySelectorAll<HTMLButtonElement>('[data-bc-tech]').forEach((btn) => {
             btn.addEventListener('click', () => {
-                bcTechFilter = btn.dataset.bcTech || 'all';
+                bcTechFilter = (btn.dataset.bcTech as 'wind' | 'solar' | 'ev') || 'wind';
                 renderRegulationsFilters();
                 void refreshRegulationsMap(true);
             });
@@ -817,13 +913,26 @@ function renderRegulationsFilters() {
             </div>
         </div>
         <div class="regulations-filter-group">
-            <span class="regulations-filter-label">Map view</span>
+            <span class="regulations-filter-label">Land model</span>
+            <div class="regulations-filter-options">
+                ${([
+                    { id: 'policy', label: 'Policy only' },
+                    { id: 'technical', label: 'Policy + geography' },
+                ] as const).map((opt) => `
+                    <button type="button" class="regulations-filter-option${blFilters.model === opt.id ? ' active' : ''}" data-bl-model="${opt.id}">
+                        ${opt.label}
+                    </button>
+                `).join('')}
+            </div>
+        </div>
+        <div class="regulations-filter-group">
+            <span class="regulations-filter-label">Map style</span>
             <div class="regulations-filter-options">
                 ${([
                     { id: 'availability', label: 'Land availability' },
                     { id: 'exclusions', label: 'Exclusion zones' },
                 ] as const).map((opt) => `
-                    <button type="button" class="regulations-filter-option${blFilters.overlay === opt.id ? ' active' : ''}" data-bl-overlay="${opt.id}">
+                    <button type="button" class="regulations-filter-option${blFilters.style === opt.id ? ' active' : ''}" data-bl-style="${opt.id}">
                         ${opt.label}
                     </button>
                 `).join('')}
@@ -845,9 +954,16 @@ function renderRegulationsFilters() {
             void refreshRegulationsMap(true);
         });
     });
-    filtersEl.querySelectorAll<HTMLButtonElement>('[data-bl-overlay]').forEach((btn) => {
+    filtersEl.querySelectorAll<HTMLButtonElement>('[data-bl-model]').forEach((btn) => {
         btn.addEventListener('click', () => {
-            blFilters = { ...blFilters, overlay: (btn.dataset.blOverlay as BuildableLandFilters['overlay']) || 'availability' };
+            blFilters = { ...blFilters, model: (btn.dataset.blModel as BuildableLandFilters['model']) || 'policy' };
+            renderRegulationsFilters();
+            void refreshRegulationsMap(true);
+        });
+    });
+    filtersEl.querySelectorAll<HTMLButtonElement>('[data-bl-style]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            blFilters = { ...blFilters, style: (btn.dataset.blStyle as BuildableLandFilters['style']) || 'availability' };
             renderRegulationsFilters();
             void refreshRegulationsMap(true);
         });
@@ -881,6 +997,10 @@ async function refreshRegulationsMap(skipZoom = false): Promise<void> {
     }
 }
 
+function syncMapDataAttribution(): void {
+    updateMapDataAttribution(resolveDatasetKey(currentMapType, currentRegulationsSection));
+}
+
 function setRegulationsSection(section: 'buildCodes' | 'buildableLand') {
     currentRegulationsSection = section;
     const buildCodesView = document.getElementById('build-codes-view');
@@ -907,6 +1027,7 @@ function setRegulationsSection(section: 'buildCodes' | 'buildableLand') {
     }
 
     void refreshRegulationsMap();
+    syncMapDataAttribution();
 }
 
 function setRegulationsVisible(visible: boolean) {
@@ -1880,6 +2001,9 @@ Promise.all([
 
         linearGradient.selectAll("stop")
             .data(stops)
+            .transition()
+            .duration(MAP_COLOR_TRANSITION_MS)
+            .ease(d3.easeCubicInOut)
             .attr("stop-color", d => d.color);
 
         // Update legend text
@@ -1928,12 +2052,16 @@ Promise.all([
         const isRegulationsMode = currentMapType === 'regulations';
         setRegulationsVisible(isRegulationsMode);
         if (isRegulationsMode) {
+            syncMapDataAttribution();
             return;
         }
 
+        syncMapDataAttribution();
+
         g.selectAll(".country")
             .transition()
-            .duration(500)
+            .duration(MAP_COLOR_TRANSITION_MS)
+            .ease(d3.easeCubicInOut)
             .attr("fill", (d: any) => getCountryColor(d.id));
         
         // Update legend colors
@@ -2168,7 +2296,6 @@ Promise.all([
                         .attr('height', rect.height - citationHeight)
                         .style('background', '#f8fafc')
                         .style('border-radius', '12px');
-                    addLogoWatermark(svg as any, rect.width);
 
                     const g = svg.append('g')
                         .attr('transform', `translate(${margin.left}, ${margin.top})`);
@@ -2300,7 +2427,7 @@ Promise.all([
                         .style('line-height', '1.4')
                         .style('max-width', '100%')
                         .style('background', '#f8fafc') // Match container background
-                        .html(`<strong>Suggested Citation:</strong> ${CITATION_CLIMATE}`);
+                        .html(`<strong>Suggested Citation:</strong> ${getDatasetMetadata('climateTargets').suggestedCitation}`);
                     
                     // Color for climate targets (purple to match map)
                     const climateColor = '#7c3aed'; // Purple for climate targets
@@ -2310,6 +2437,7 @@ Promise.all([
                     
                     // Helper to format values
                     const fmtVal = (v: number) => v.toFixed(1);
+                    const climateLabelSpecs: TargetProgressionLabelOptions[] = [];
                     
                     // Draw each target with same logic as renewable targets
                     climateTargetsList.forEach((target: any, index: number) => {
@@ -2402,18 +2530,22 @@ Promise.all([
                                 tooltip.style('visibility', 'hidden');
                             });
                         
-                        // For superseded targets, add label near start
+                        // For superseded targets, label the active segment (drawn after lines)
                         if (endYear !== target.targetYear) {
-                            g.append('text')
-                                .attr('x', xScale(target.decisionYear) + 10)
-                                .attr('y', yScale(target.targetValue))
-                                .attr('dy', '0.35em')
-                                .style('font-size', '10px')
-                                .style('font-weight', '600')
-                                .style('font-family', 'Inter, -apple-system, BlinkMacSystemFont, sans-serif')
-                                .style('fill', climateColor)
-                                .style('opacity', 0.7)
-                                .text(`${fmtVal(target.targetValue)}%`);
+                            climateLabelSpecs.push({
+                                lineY: yScale(target.targetValue),
+                                chartHeight: height,
+                                chartWidth: width,
+                                xStart: xScale(target.decisionYear),
+                                xEnd: xScale(endYear),
+                                placement: 'segment',
+                                text: `${fmtVal(target.targetValue)}%`,
+                                color: climateColor,
+                                className: 'target-label',
+                                targetType: 'climate',
+                                opacity: 0.7,
+                                pointerEvents: 'auto',
+                            });
                         }
                         
                         // End point - only if target reaches its actual deadline (not superseded)
@@ -2440,18 +2572,26 @@ Promise.all([
                                     tooltip.style('visibility', 'hidden');
                                 });
                             
-                            // Label at end point
-                            g.append('text')
-                                .attr('x', xScale(target.targetYear) + 10)
-                                .attr('y', yScale(target.targetValue))
-                                .attr('dy', '0.35em')
-                                .style('font-size', '10px')
-                                .style('font-weight', '600')
-                                .style('font-family', 'Inter, -apple-system, BlinkMacSystemFont, sans-serif')
-                                .style('fill', climateColor)
-                                .text(`${fmtVal(target.targetValue)}%`);
+                            // Label at end point (drawn after lines)
+                            climateLabelSpecs.push({
+                                lineY: yScale(target.targetValue),
+                                chartHeight: height,
+                                chartWidth: width,
+                                xStart: xScale(target.decisionYear),
+                                xEnd: xScale(target.targetYear),
+                                placement: 'end',
+                                text: `${fmtVal(target.targetValue)}%`,
+                                color: climateColor,
+                                className: 'target-label',
+                                targetType: 'climate',
+                                opacity: 1,
+                                pointerEvents: 'auto',
+                            });
                         }
                     });
+
+                    const climateLabelsG = g.append('g').attr('class', 'target-labels-layer');
+                    climateLabelSpecs.forEach((spec) => appendTargetProgressionLabel(climateLabelsG, spec));
                 } else {
                     leftContainer.innerHTML = `
                         <div style="display:flex;align-items:center;justify-content:center;height:100%;">
@@ -2474,7 +2614,6 @@ Promise.all([
                     .attr('height', rect.height - citationHeight)
                     .style('background', '#f8fafc')
                     .style('border-radius', '12px');
-                addLogoWatermark(svg as any, rect.width);
 
                 const g = svg.append('g')
                     .attr('transform', `translate(${margin.left}, ${margin.top})`);
@@ -2614,6 +2753,7 @@ Promise.all([
                 });
                 
                 // Draw lines for each target (horizontal lines at target level)
+                const targetLabelSpecs: TargetProgressionLabelOptions[] = [];
                 sortedTargets.forEach((target: any, index: number) => {
                     const color = targetTypeColors(target.targetType) as string;
                     
@@ -2742,21 +2882,22 @@ Promise.all([
                             tooltip.style('visibility', 'hidden');
                         });
                     
-                    // For superseded targets, add label near the start point (since there's no end circle)
+                    // For superseded targets, label the active segment (drawn after lines)
                     if (endYear !== target.targetYear) {
-                        g.append('text')
-                            .attr('class', `target-label target-type-${target.targetType.replace(/[^a-zA-Z0-9]/g, '-')}`)
-                            .attr('data-target-type', target.targetType)
-                            .attr('x', xScale(target.decisionYear) + 10)
-                            .attr('y', yScale(target.targetValue))
-                            .attr('dy', '0.35em')
-                            .style('font-size', '10px')
-                            .style('font-weight', '600')
-                            .style('font-family', 'Inter, -apple-system, BlinkMacSystemFont, sans-serif')
-                            .style('fill', color)
-                            .style('opacity', shouldBeVisible(target.targetType) ? 0.7 : 0)
-                            .style('pointer-events', shouldBeVisible(target.targetType) ? 'auto' : 'none')
-                            .text(`${fmt1(target.targetValue)}%`);
+                        targetLabelSpecs.push({
+                            lineY: yScale(target.targetValue),
+                            chartHeight: height,
+                            chartWidth: width,
+                            xStart: xScale(target.decisionYear),
+                            xEnd: xScale(endYear),
+                            placement: 'segment',
+                            text: `${fmt1(target.targetValue)}%`,
+                            color,
+                            className: `target-label target-type-${target.targetType.replace(/[^a-zA-Z0-9]/g, '-')}`,
+                            targetType: target.targetType,
+                            opacity: shouldBeVisible(target.targetType) ? 0.7 : 0,
+                            pointerEvents: shouldBeVisible(target.targetType) ? 'auto' : 'none',
+                        });
                     }
                     
                     // If target was superseded, draw a thin dashed line showing where it was originally headed
@@ -2867,22 +3008,26 @@ Promise.all([
                                 tooltip.style('visibility', 'hidden');
                             });
                         
-                        // Add label at end point with target value
-                        g.append('text')
-                            .attr('class', `target-label target-type-${target.targetType.replace(/[^a-zA-Z0-9]/g, '-')}`)
-                            .attr('data-target-type', target.targetType)
-                            .attr('x', xScale(endYear) + 10)
-                            .attr('y', yScale(target.targetValue))
-                            .attr('dy', '0.35em')
-                            .style('font-size', '10px')
-                            .style('font-weight', '600')
-                            .style('font-family', 'Inter, -apple-system, BlinkMacSystemFont, sans-serif')
-                            .style('fill', color)
-                            .style('opacity', shouldBeVisible(target.targetType) ? 1 : 0)
-                            .style('pointer-events', shouldBeVisible(target.targetType) ? 'auto' : 'none')
-                            .text(`${fmt1(target.targetValue)}%`);
+                        // Add label at end point with target value (drawn after lines)
+                        targetLabelSpecs.push({
+                            lineY: yScale(target.targetValue),
+                            chartHeight: height,
+                            chartWidth: width,
+                            xStart: xScale(target.decisionYear),
+                            xEnd: xScale(endYear),
+                            placement: 'end',
+                            text: `${fmt1(target.targetValue)}%`,
+                            color,
+                            className: `target-label target-type-${target.targetType.replace(/[^a-zA-Z0-9]/g, '-')}`,
+                            targetType: target.targetType,
+                            opacity: shouldBeVisible(target.targetType) ? 1 : 0,
+                            pointerEvents: shouldBeVisible(target.targetType) ? 'auto' : 'none',
+                        });
                     }
                 });
+
+                const targetLabelsG = g.append('g').attr('class', 'target-labels-layer');
+                targetLabelSpecs.forEach((spec) => appendTargetProgressionLabel(targetLabelsG, spec));
                 
                 // Legend with interactive filtering
                 const legend = svg.append('g')
@@ -3077,7 +3222,7 @@ Promise.all([
                     .style('line-height', '1.4')
                     .style('max-width', '100%')
                     .style('background', '#f8fafc') // Match container background
-                    .html(`<strong>Suggested Citation:</strong> ${CITATION_TARGETS}`);
+                    .html(`<strong>Suggested Citation:</strong> ${getDatasetMetadata('reTargets').suggestedCitation}`);
 
                 // Removed per-chart overlay in favor of single dashboard overlay
             } else if (leftContainer && !isEvMode && !isClimateTargetsMode) {
@@ -3133,11 +3278,11 @@ Promise.all([
 
                 const rect = tsContainer.getBoundingClientRect();
                 const citationHeight = 60; // Reserve space for citation
-                // Responsive margins for smaller screens
                 const isSmallScreen = rect.width < 768;
-                const margin = isSmallScreen 
-                    ? { top: 30, right: 20, bottom: 20, left: 140 }
-                    : { top: 40, right: 20, bottom: 20, left: 140 };
+                const xAxisBottom = isSmallScreen ? 46 : 52;
+                const margin = isSmallScreen
+                    ? { top: 30, right: 20, bottom: xAxisBottom, left: 140 }
+                    : { top: 40, right: 20, bottom: xAxisBottom, left: 140 };
                 const width = rect.width - margin.left - margin.right;
                 const height = rect.height - margin.top - margin.bottom - citationHeight;
                 const svg = d3.select(tsContainer).append('svg')
@@ -3145,7 +3290,6 @@ Promise.all([
                     .attr('height', rect.height - citationHeight)
                     .style('border-radius', '12px')
                     .style('filter', 'drop-shadow(0 2px 8px rgba(0,0,0,0.06))');
-                addLogoWatermark(svg as any, rect.width);
 
                 const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
                 // Chart title
@@ -3482,16 +3626,16 @@ Promise.all([
                 const stepDash = xDomainDash.length > 24 ? 3 : (xDomainDash.length > 14 ? 2 : 1);
                 const xTicksDash = xDomainDash.filter((_, i) => i % stepDash === 0);
                 const xAxisDash = g.append('g')
+                    .attr('class', 'x-axis')
                     .attr('transform', `translate(0, ${height})`)
-                    .call(d3.axisBottom(x).tickValues(xTicksDash).tickSize(0));
-                const xLabelSize = width <= 420 ? '9px' : (width <= 560 ? '10px' : '12px');
+                    .call(d3.axisBottom(x).tickValues(xTicksDash).tickSize(4).tickPadding(10));
+                const xLabelSize = width <= 420 ? '9px' : (width <= 560 ? '10px' : '11px');
                 xAxisDash.selectAll('text')
                     .style('font-size', xLabelSize)
                     .style('font-family', 'Inter, -apple-system, BlinkMacSystemFont, sans-serif')
                     .style('fill', '#475569')
                     .style('text-anchor', 'middle')
-                    .attr('dx', '0')
-                    .attr('dy', '0');
+                    .attr('dy', '0.85em');
                 xAxisDash.select('.domain')
                     .style('stroke', '#e2e8f0')
                     .style('stroke-width', 1);
@@ -3507,14 +3651,15 @@ Promise.all([
 
                 // Legend removed: y-axis labels suffice for identifying policy types
 
-                // Axis labels (y-label removed for clarity)
                 g.append('text')
-                    .attr('transform', `translate(${width / 2}, ${height + margin.bottom - 5})`)
-                    .style('text-anchor', 'middle')
-                    .style('font-size', '12px')
+                    .attr('class', 'x-axis-label')
+                    .attr('x', width / 2)
+                    .attr('y', height + 38)
+                    .attr('text-anchor', 'middle')
+                    .style('font-size', '11px')
                     .style('font-weight', '600')
                     .style('font-family', 'Inter, -apple-system, BlinkMacSystemFont, sans-serif')
-                    .style('fill', '#475569')
+                    .style('fill', '#64748b')
                     .text('Year');
 
                 // Add Citation
@@ -3526,7 +3671,7 @@ Promise.all([
                     .style('font-family', 'Inter, -apple-system, BlinkMacSystemFont, sans-serif')
                     .style('line-height', '1.4')
                     .style('max-width', '100%')
-                    .html(`<strong>Suggested Citation:</strong> ${isEvMode ? CITATION_EV : CITATION_POLICY}`);
+                    .html(`<strong>Suggested Citation:</strong> ${getDatasetMetadata(isEvMode ? 'evSupport' : 'reSupport').suggestedCitation}`);
 
             } else if (tsContainer) {
                 // Show message when no time series data is available
@@ -3540,6 +3685,11 @@ Promise.all([
             }
 
             const dashboardTop = document.getElementById('dashboard-top');
+            if (dashboardTop) {
+                removeSvgLogoWatermarks(dashboardTop);
+                // Catch legacy async watermarks from cached bundles.
+                setTimeout(() => removeSvgLogoWatermarks(dashboardTop), 120);
+            }
             if (dashboardTop && dashboardTop.querySelector('svg')) {
                 const getDashboardSvgs = (): SVGSVGElement[] | null => {
                     const svgs: SVGSVGElement[] = [];
@@ -3556,7 +3706,7 @@ Promise.all([
 
                 registerGraphDownloadMenu({
                     container: dashboardTop,
-                    title: 'Download dashboard',
+                    title: 'Graph and data',
                     getExportLayout: () => {
                         const svgs = getDashboardSvgs();
                         if (!svgs || svgs.length !== 2) return 'vertical';
@@ -3565,7 +3715,10 @@ Promise.all([
                     },
                     getActiveSvgs: getDashboardSvgs,
                     getFilenameSlug: () => `${countryName.toLowerCase().replace(/\s+/g, '-')}-dashboard`,
-                    getExportCaption: () => getDashboardExportCaption(countryName),
+                    getExportCaption: () => enrichExportCaption(
+                        getDashboardExportCaption(countryName),
+                        resolveDatasetKey(currentMapType)
+                    ),
                     countryDataLabel: `Data for ${countryName}`,
                     onDownloadCountryData: () => downloadCountryData(countryCode3, countryName),
                     onDownloadCountryDataCsv: () => downloadCountryDataCsv(countryCode3, countryName),
@@ -3646,7 +3799,7 @@ Promise.all([
         });
 
         // Chart dimensions
-        const margin = { top: 20, right: 70, bottom: 35, left: 100 };
+        const margin = { top: 20, right: 70, bottom: 44, left: 100 };
         const chartWidth = 300 - margin.left - margin.right;
         const chartHeight = 160 - margin.top - margin.bottom;
 
@@ -3682,7 +3835,6 @@ Promise.all([
                 createFullScreenTimeSeriesChart(timeSeriesChartData, countryName, globalColorScale);
                 openModal();
             });
-        addLogoWatermark(svg as any, chartWidth + margin.left + margin.right);
 
         const g = svg.append('g')
             .attr('transform', `translate(${margin.left},${margin.top})`);
@@ -3722,16 +3874,15 @@ Promise.all([
         const xTicks = xDomain.filter((_, i) => i % step === 0);
         const xAxis = g.append('g')
             .attr('transform', `translate(0,${chartHeight})`)
-            .call(d3.axisBottom(xScale).tickValues(xTicks).tickSize(0))
+            .call(d3.axisBottom(xScale).tickValues(xTicks).tickSize(4).tickPadding(8))
             .style('font-family', 'Inter, -apple-system, BlinkMacSystemFont, sans-serif');
 
         xAxis.selectAll('text')
-            .style('font-size', '11px')
+            .style('font-size', '10px')
             .style('font-weight', '500')
             .style('fill', '#64748b')
             .style('text-anchor', 'middle')
-            .attr('dx', '0')
-            .attr('dy', '0');
+            .attr('dy', '0.85em');
 
         xAxis.select('.domain')
             .style('stroke', '#e2e8f0')
@@ -3789,12 +3940,14 @@ Promise.all([
         // Removed vertical y-axis label to declutter the small chart
 
         g.append('text')
-            .attr('transform', `translate(${chartWidth / 2}, ${chartHeight + margin.bottom - 5})`)
-            .style('text-anchor', 'middle')
-            .style('font-size', '12px')
+            .attr('class', 'x-axis-label')
+            .attr('x', chartWidth / 2)
+            .attr('y', chartHeight + 36)
+            .attr('text-anchor', 'middle')
+            .style('font-size', '11px')
             .style('font-weight', '600')
             .style('font-family', 'Inter, -apple-system, BlinkMacSystemFont, sans-serif')
-            .style('fill', '#475569')
+            .style('fill', '#64748b')
             .style('opacity', 0)
             .text('Year')
             .transition()
@@ -3956,7 +4109,6 @@ Promise.all([
             g.selectAll('.country')
                 .style('display', null)
                 .style('pointer-events', null)
-                .attr('fill', (d: any) => getCountryColor(d.id))
                 .attr('stroke', '#fff')
                 .attr('stroke-width', 0.5);
             g.selectAll('.country-label').style('display', null);
@@ -3976,6 +4128,7 @@ Promise.all([
     });
         
     document.getElementById('world-map-container')?.classList.add('loaded');
+    syncMapDataAttribution();
 
     if (currentMapType === 'regulations') {
         void refreshRegulationsMap();
@@ -4099,14 +4252,14 @@ Promise.all([
                 const isCountry = !!document.querySelector('#buildable-land-view .bl-country-svg');
                 return {
                     title: isCountry ? 'Buildable Land — Country Map' : 'Buildable Land — World Map',
-                    subtitle: 'Regulations · OSM-based buildable area from regulation rules',
-                    legend: 'Map colors show buildable land availability',
+                    subtitle: 'Regulations · policy-eligible share from coded setbacks on OSM (250 m grid)',
+                    legend: 'Green = higher share not excluded by setback rules (not full technical potential)',
                 };
             }
             return {
-                title: 'Build Codes — Constraint Pressure',
-                subtitle: 'Regulations · Surveyed NUTS regions',
-                legend: 'Color scale: regulatory constraint pressure by region',
+                title: 'Build Codes — Net Policy Pressure',
+                subtitle: 'Regulations · Surveyed NUTS regions (Germany, Greece, Ireland)',
+                legend: 'Colour scale: promoting (green) ↔ constraining (red) net pressure by region',
             };
         }
 
@@ -4407,10 +4560,14 @@ Promise.all([
     if (mapContainer) {
         registerGraphDownloadMenu({
             container: mapContainer,
-            title: 'Download map or data',
+            title: 'Graph and data',
             getActiveSvgs: getMapExportSvgs,
             getFilenameSlug: getMapExportFilenameSlug,
-            getExportCaption: getMapExportCaption,
+            getExportCaption: () =>
+                enrichExportCaption(
+                    getMapExportCaption(),
+                    resolveDatasetKey(currentMapType, currentRegulationsSection)
+                ),
             onDownloadDataset: downloadFullDataset,
             onDownloadDatasetCsv: downloadFullDatasetCsv,
         });

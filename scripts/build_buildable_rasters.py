@@ -491,11 +491,22 @@ def download_nuts_geojson(level: int) -> Path:
     return _stream_download(url, target, label=f"NUTS L{level}")
 
 
+def _read_geo_file(path: Path, **kwargs):
+    """Read a vector file via pyogrio (avoids broken fiona.path on some installs)."""
+    import geopandas as gpd
+    import pyogrio
+
+    try:
+        return pyogrio.read_dataframe(str(path), **kwargs)
+    except Exception as exc:
+        print(f"[geo] pyogrio read failed for {path.name}: {exc}; trying geopandas")
+        return gpd.read_file(path, **kwargs)
+
+
 def get_region_polygon(region: str):
     """Return a GeoDataFrame with one row: the polygon of the given region.
     Picks the appropriate NUTS level based on code length.
     """
-    import geopandas as gpd
     levels = [len(region) - 2, 3, 2, 1, 0]
     seen = set()
     for level in levels:
@@ -503,7 +514,7 @@ def get_region_polygon(region: str):
             continue
         seen.add(level)
         path = download_nuts_geojson(level)
-        gdf = gpd.read_file(path)
+        gdf = _read_geo_file(path)
         match = gdf[gdf["NUTS_ID"].str.upper() == region]
         if len(match):
             return match.copy()
@@ -533,7 +544,7 @@ report_all_nodes=no
 report_all_ways=no
 
 [points]
-attributes=name,aeroway,power,man_made,military,landuse
+attributes=name,building,aeroway,power,man_made,military,landuse
 unsignificant=created_by,converted_by,source,attribution
 ignore=area,created_by,converted_by,source,attribution
 
@@ -543,7 +554,7 @@ unsignificant=created_by,converted_by,source,attribution
 ignore=area,created_by,converted_by,source,attribution
 
 [multipolygons]
-attributes=name,landuse,aeroway,leisure,natural,military,boundary,protect_class,protected,man_made,power
+attributes=name,building,landuse,aeroway,leisure,natural,military,boundary,protect_class,protected,man_made,power
 unsignificant=created_by,converted_by,source,attribution
 ignore=created_by,converted_by,source,attribution
 osm_way_id_in_multipolygons=yes
@@ -571,6 +582,12 @@ _OSM_EXTRACT_SPEC: dict[str, tuple[str, str]] = {
     "military":     ("multipolygons", "landuse = 'military' OR military IS NOT NULL"),
     "transmission": ("lines",         "power = 'line'"),
     "radar":        ("points",        "man_made = 'radar'"),
+    # Technical-model layers (buildings, geography) — see buildable_geography.py
+    "buildings_mp": ("multipolygons", "building IS NOT NULL AND building NOT IN ('no','construction','proposed')"),
+    "buildings_pt": ("points",        "building IS NOT NULL AND building NOT IN ('no','construction','proposed')"),
+    "settlement_areas": ("multipolygons", "landuse IN ('residential','commercial','industrial','retail')"),
+    "water": ("multipolygons", "natural IN ('water','bay','strait','wetland') OR landuse IN ('reservoir','basin','salt_pond')"),
+    "forest": ("multipolygons", "landuse IN ('forest','orchard','vineyard') OR natural IN ('wood','scrub')"),
 }
 
 
@@ -598,7 +615,7 @@ def extract_osm_features(
         cache_path = _features_cache_path(pbf_path, layer)
         if cache_path.exists():
             print(f"[osm] cache hit: {layer} -> {cache_path.name}")
-            out[layer] = gpd.read_file(cache_path)
+            out[layer] = _read_geo_file(cache_path)
             continue
 
         spec = _OSM_EXTRACT_SPEC.get(layer)
@@ -683,7 +700,7 @@ def load_external_exclusions(
             out[layer] = gpd.GeoDataFrame(geometry=[], crs="EPSG:4326")
             continue
         print(f"[external] loading {layer} from {path.name}")
-        gdf = gpd.read_file(path, bbox=region_bbox)
+        gdf = _read_geo_file(path, bbox=region_bbox)
         if layer == "natura2000_spa" and "SITETYPE" in gdf.columns:
             gdf = gdf[gdf["SITETYPE"].isin(["A", "C"])]  # SPA = bird-protection
         elif layer == "national_parks" and "SITETYPE" in gdf.columns:
@@ -791,7 +808,8 @@ def buffer_and_union(
 
 def rasterize_buildable(
     exclusions_3035, region_3035, resolution_m: int,
-    wpa_3035=None
+    wpa_3035=None,
+    extra_excl_mask: np.ndarray | None = None,
 ) -> tuple[np.ndarray, dict[str, Any]]:
     """Rasterize the buildable mask at the given resolution (EPSG:3035).
     Returns (values_array, georef_info_dict).
@@ -832,6 +850,9 @@ def rasterize_buildable(
         )
     else:
         excl_mask = np.zeros((height, width), dtype="uint8")
+
+    if extra_excl_mask is not None and extra_excl_mask.shape == excl_mask.shape:
+        excl_mask = np.maximum(excl_mask, extra_excl_mask)
 
     inside = region_mask == 1
     values = np.zeros_like(region_mask, dtype="uint8")
@@ -933,7 +954,7 @@ def load_wind_priority_areas(rules_payload: dict[str, Any], region: str):
     parts = []
     for level in (3, 2, 1):
         path = download_nuts_geojson(level)
-        gdf = gpd.read_file(path)
+        gdf = _read_geo_file(path)
         match = gdf[gdf["NUTS_ID"].str.upper().isin(wpa_codes)]
         if not match.empty:
             parts.append(match[["geometry"]])
@@ -989,10 +1010,12 @@ def write_png_values(values: np.ndarray, target: Path) -> None:
 def write_sidecar(
     target: Path, cfg: Config, georef: dict[str, Any],
     contributing_rules: list[dict[str, Any]],
-    pixel_stats: dict[str, Any]
+    pixel_stats: dict[str, Any],
+    pixel_stats_technical: dict[str, Any] | None = None,
+    contributing_rules_technical: list[dict[str, Any]] | None = None,
 ) -> None:
     sidecar = {
-        "schema_version": 1,
+        "schema_version": 2,
         "generated_at": _dt.datetime.now(tz=_dt.timezone.utc).isoformat(),
         "region": cfg.region,
         "tech": cfg.tech,
@@ -1002,6 +1025,14 @@ def write_sidecar(
         "georef": georef,
         "pixel_stats": pixel_stats,
         "applied_rules": contributing_rules,
+        "models": {
+            "policy": {
+                "label": "Policy setbacks only",
+                "description": "Coded setback rules on coarse OSM residential landuse.",
+                "pixel_stats": pixel_stats,
+                "availability_suffix": "_availability.png",
+            },
+        },
         "schema_notes": {
             "values_png_legend": {
                 "0":   "outside region (bounding-box padding)",
@@ -1018,12 +1049,25 @@ def write_sidecar(
                           "forest-green theme; the red regions read as 'no-build'.",
         },
     }
+    if pixel_stats_technical is not None:
+        sidecar["pixel_stats_technical"] = pixel_stats_technical
+        sidecar["models"]["technical"] = {
+            "label": "Policy + geography",
+            "description": "Setbacks on all OSM buildings/settlements plus water, forest, "
+                           "nature reserves, and slopes steeper than 20°.",
+            "pixel_stats": pixel_stats_technical,
+            "availability_suffix": "_technical_availability.png",
+            "styled_suffix": "_technical_styled.png",
+        }
+        if contributing_rules_technical is not None:
+            sidecar["applied_rules_technical"] = contributing_rules_technical
     with target.open("w", encoding="utf-8") as f:
         json.dump(sidecar, f, ensure_ascii=False, indent=2)
 
 
 def update_manifest(out_root: Path, key: str, sidecar_relpath: str,
-                    cfg: Config, pixel_stats: dict[str, Any]) -> None:
+                    cfg: Config, pixel_stats: dict[str, Any],
+                    pixel_stats_technical: dict[str, Any] | None = None) -> None:
     manifest_path = out_root / "manifest.json"
     if manifest_path.exists():
         with manifest_path.open(encoding="utf-8") as f:
@@ -1035,10 +1079,14 @@ def update_manifest(out_root: Path, key: str, sidecar_relpath: str,
         "resolution_m": cfg.resolution_m,
         "sidecar": sidecar_relpath,
         "buildable_fraction_of_region": pixel_stats.get("buildable_fraction_of_region"),
+        "eligible_share_policy": pixel_stats.get("eligible_share"),
         "buildable_km2": pixel_stats.get("buildable_km2"),
         "region_km2": pixel_stats.get("region_km2"),
         "generated_at": _dt.datetime.now(tz=_dt.timezone.utc).isoformat(),
     }
+    if pixel_stats_technical is not None:
+        manifest["bakes"][key]["eligible_share_technical"] = pixel_stats_technical.get("eligible_share")
+        manifest["bakes"][key]["buildable_km2_technical"] = pixel_stats_technical.get("buildable_km2")
     manifest["last_update"] = _dt.datetime.now(tz=_dt.timezone.utc).isoformat()
     with manifest_path.open("w", encoding="utf-8") as f:
         json.dump(manifest, f, ensure_ascii=False, indent=2)
@@ -1063,9 +1111,14 @@ def main(argv: list[str] | None = None) -> int:
 
     out_styled = OUTPUT_DIR / f"{key}_styled.png"
     out_avail  = OUTPUT_DIR / f"{key}_availability.png"
+    out_technical_avail = OUTPUT_DIR / f"{key}_technical_availability.png"
+    out_technical_styled = OUTPUT_DIR / f"{key}_technical_styled.png"
     out_values = OUTPUT_DIR / f"{key}_values.png"
+    out_technical_values = OUTPUT_DIR / f"{key}_technical_values.png"
     out_json   = OUTPUT_DIR / f"{key}.json"
-    if (out_styled.exists() and out_avail.exists() and out_values.exists()
+    if (out_styled.exists() and out_avail.exists() and out_technical_avail.exists()
+            and out_technical_styled.exists()
+            and out_values.exists() and out_technical_values.exists()
             and out_json.exists() and not cfg.overwrite):
         print(f"[bake] outputs already exist, use --overwrite to re-bake.")
         return 0
@@ -1090,42 +1143,99 @@ def main(argv: list[str] | None = None) -> int:
     bbox_wgs = tuple(region_gdf.total_bounds)  # minx, miny, maxx, maxy
 
     # ------ Stage 4-5: features ------
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from buildable_geography import (  # noqa: E402
+        TECHNICAL_NATURE_LAYERS,
+        TECHNICAL_OSM_LAYERS,
+        applied_rules_for_technical,
+        build_geographic_baseline_union,
+        merge_settlement_layers,
+        slope_exclusion_mask,
+    )
+
     if cfg.smoke:
         print("[bake] --smoke: skipping OSM and external layers")
-        features = {layer: _empty_gdf() for layer in layers_needed}
+        features = {layer: _empty_gdf() for layer in layers_needed | TECHNICAL_OSM_LAYERS}
     else:
         pbf_path = download_pbf(cfg.region)
-        features = extract_osm_features(pbf_path, layers_needed)
+        extract_layers = layers_needed | TECHNICAL_OSM_LAYERS | TECHNICAL_NATURE_LAYERS
+        features = extract_osm_features(pbf_path, extract_layers)
         if not cfg.skip_natura:
-            features.update(load_external_exclusions(layers_needed, bbox_wgs))
+            features.update(load_external_exclusions(
+                extract_layers | layers_needed, bbox_wgs
+            ))
 
-    # ------ Stage 6: buffer & union ------
-    excl_3035, region_3035, contributing = buffer_and_union(features, applied, region_gdf)
+    features["settlements"] = merge_settlement_layers(features)
+
+    # ------ Policy model: setbacks on coarse residential landuse ------
+    excl_policy, region_geom, contributing = buffer_and_union(features, applied, region_gdf)
+
+    # ------ Technical model: settlements + geographic baseline + policy ------
+    from shapely.ops import unary_union
+
+    applied_technical = applied_rules_for_technical(applied)
+    excl_technical_rules, _, contributing_technical = buffer_and_union(
+        features, applied_technical, region_gdf
+    )
+    geo_baseline = build_geographic_baseline_union(features, region_gdf)
+    if geo_baseline is not None and not geo_baseline.is_empty:
+        if excl_technical_rules is None or excl_technical_rules.is_empty:
+            excl_technical = geo_baseline
+        else:
+            excl_technical = unary_union([excl_technical_rules, geo_baseline])
+    else:
+        excl_technical = excl_technical_rules
 
     # ------ Stage 8: WPA additive ------
     wpa_3035 = load_wind_priority_areas(rules_payload, cfg.region) if cfg.tech == "wind" else None
 
-    # ------ Stage 7: rasterize ------
-    values, georef = rasterize_buildable(
-        excl_3035, region_3035, cfg.resolution_m, wpa_3035=wpa_3035
+    # ------ Stage 7: rasterize (policy) ------
+    values_policy, georef = rasterize_buildable(
+        excl_policy, region_geom, cfg.resolution_m, wpa_3035=wpa_3035
     )
-    pixel_stats = _compute_pixel_stats(values, cfg.resolution_m)
-    print(f"[stats] buildable: {pixel_stats['buildable_fraction_of_region']*100:.1f}% "
-          f"of region ({pixel_stats['buildable_km2']:.1f} km^2 of "
-          f"{pixel_stats['region_km2']:.1f} km^2)")
+    pixel_stats_policy = _compute_pixel_stats(values_policy, cfg.resolution_m)
+    print(f"[stats] policy: {pixel_stats_policy['buildable_fraction_of_region']*100:.1f}% "
+          f"of region ({pixel_stats_policy['buildable_km2']:.1f} km^2 of "
+          f"{pixel_stats_policy['region_km2']:.1f} km^2)")
 
-    values_3857, georef_3857 = reproject_to_web_mercator(values, georef)
+    from rasterio.transform import from_bounds
+    minx, miny, maxx, maxy = georef["bounds_3035"]
+    grid_transform = from_bounds(
+        minx, miny, maxx, maxy, georef["width"], georef["height"]
+    )
+    slope_mask = slope_exclusion_mask(
+        region_gdf, grid_transform, (georef["height"], georef["width"])
+    )
+
+    values_technical, _ = rasterize_buildable(
+        excl_technical, region_geom, cfg.resolution_m,
+        wpa_3035=wpa_3035, extra_excl_mask=slope_mask,
+    )
+    pixel_stats_technical = _compute_pixel_stats(values_technical, cfg.resolution_m)
+    print(f"[stats] technical: {pixel_stats_technical['buildable_fraction_of_region']*100:.1f}% "
+          f"of region ({pixel_stats_technical['buildable_km2']:.1f} km^2 of "
+          f"{pixel_stats_technical['region_km2']:.1f} km^2)")
+
+    values_3857, georef_3857 = reproject_to_web_mercator(values_policy, georef)
+    values_technical_3857, _ = reproject_to_web_mercator(values_technical, georef)
 
     # ------ Stage 9: outputs ------
     write_png_styled(values_3857, out_styled)
     write_png_availability(values_3857, out_avail)
+    write_png_availability(values_technical_3857, out_technical_avail)
+    write_png_styled(values_technical_3857, out_technical_styled)
     write_png_values(values_3857, out_values)
-    write_sidecar(out_json, cfg, georef_3857, contributing, pixel_stats)
+    write_png_values(values_technical_3857, out_technical_values)
+    write_sidecar(
+        out_json, cfg, georef_3857, contributing, pixel_stats_policy,
+        pixel_stats_technical=pixel_stats_technical,
+        contributing_rules_technical=contributing_technical,
+    )
     rel = str(out_json.relative_to(PUBLIC_DATA_DIR)).replace(os.sep, "/")
-    update_manifest(OUTPUT_DIR, key, rel, cfg, pixel_stats)
+    update_manifest(OUTPUT_DIR, key, rel, cfg, pixel_stats_policy, pixel_stats_technical)
 
-    print(f"\n[ok] wrote {out_styled.name}, {out_avail.name}, "
-          f"{out_values.name}, {out_json.name}")
+    print(f"\n[ok] wrote {out_styled.name}, {out_avail.name}, {out_technical_avail.name}, "
+          f"{out_values.name}, {out_technical_values.name}, {out_json.name}")
     print(f"[ok] manifest updated -> {OUTPUT_DIR / 'manifest.json'}")
     return 0
 

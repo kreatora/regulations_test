@@ -36,7 +36,10 @@ interface ManifestEntry {
     resolution_m: number;
     sidecar: string;
     buildable_fraction_of_region: number;
+    eligible_share_policy?: number;
+    eligible_share_technical?: number;
     buildable_km2: number;
+    buildable_km2_technical?: number;
     region_km2: number;
     generated_at: string;
 }
@@ -88,6 +91,8 @@ interface Sidecar {
         region_km2: number;
         eligible_share?: number;
     };
+    pixel_stats_technical?: Sidecar['pixel_stats'];
+    models?: Record<string, { label: string; description: string; availability_suffix: string; styled_suffix?: string }>;
     applied_rules: AppliedRule[];
 }
 
@@ -127,13 +132,36 @@ const C_BRICK        = 'rgb(155, 60, 50)';
 const C_AVAIL_GREEN  = 'rgb(35, 139, 69)';
 const C_AVAIL_GREY   = 'rgb(229, 229, 224)';
 
-type OverlayView = 'availability' | 'exclusions';
+type LandModel = 'policy' | 'technical';
+type OverlayStyle = 'availability' | 'exclusions';
 
-const CITATION =
-    'Setback rules: D2.2.1.1_Data collection_regulations for energy infrastructure (Feb 2025). ' +
-    'OSM features: © OpenStreetMap contributors (ODbL). NUTS boundaries: © EuroGeographics for the administrative boundaries (GISCO). ' +
-    'Land-availability methodology inspired by atlite ExclusionContainer / shape availability ' +
-    '(https://atlite.readthedocs.io/en/master/examples/landuse-availability.html).';
+/** Map-style labels and short definitions (shown in the panel below the map, not the filter bar). */
+export const BUILDABLE_STYLE_OPTIONS: ReadonlyArray<{
+    id: OverlayStyle;
+    label: string;
+    hint: string;
+}> = [
+    {
+        id: 'availability',
+        label: 'Land availability',
+        hint: 'Green = policy-eligible land; grey = excluded setbacks on the country map.',
+    },
+    {
+        id: 'exclusions',
+        label: 'Exclusion zones',
+        hint: 'Red = where setback buffers or geographic bans forbid building.',
+    },
+];
+
+const MODEL_LABEL: Record<LandModel, string> = {
+    policy: 'Policy setbacks only',
+    technical: 'Policy + geography',
+};
+
+const MODEL_SHORT: Record<LandModel, string> = {
+    policy: 'Policy-only',
+    technical: 'With geography',
+};
 
 // ---------------------------------------------------------------------------
 // State
@@ -143,7 +171,8 @@ let manifest: Manifest | null = null;
 let nuts0: any = null;
 let activeTech: Tech = 'wind';
 let activeMode: Mode = 'strictest';
-let activeOverlayView: OverlayView = 'availability';
+let activeModel: LandModel = 'policy';
+let activeStyle: OverlayStyle = 'availability';
 let selectedCountry: string | null = null;
 let initialised = false;
 let dataLoadPromise: Promise<void> | null = null;
@@ -152,11 +181,37 @@ let root: HTMLElement | null = null;
 export interface BuildableLandFilters {
     tech: Tech;
     mode: Mode;
-    overlay: OverlayView;
+    model: LandModel;
+    style: OverlayStyle;
 }
 
 export function getBuildableLandFilters(): BuildableLandFilters {
-    return { tech: activeTech, mode: activeMode, overlay: activeOverlayView };
+    return { tech: activeTech, mode: activeMode, model: activeModel, style: activeStyle };
+}
+
+function shareFromBake(bake: ManifestEntry, model: LandModel): number {
+    if (model === 'technical' && bake.eligible_share_technical != null) {
+        return bake.eligible_share_technical;
+    }
+    return bake.eligible_share_policy ?? bake.buildable_fraction_of_region;
+}
+
+function buildableKm2FromBake(bake: ManifestEntry, model: LandModel): number {
+    if (model === 'technical' && bake.buildable_km2_technical != null) {
+        return bake.buildable_km2_technical;
+    }
+    return bake.buildable_km2;
+}
+
+function sidecarStats(sidecar: Sidecar, model: LandModel): Sidecar['pixel_stats'] {
+    if (model === 'technical' && sidecar.pixel_stats_technical) {
+        return sidecar.pixel_stats_technical;
+    }
+    return sidecar.pixel_stats;
+}
+
+function hasTechnicalLayer(bake: ManifestEntry): boolean {
+    return bake.eligible_share_technical != null;
 }
 
 export function isBuildableLandCountryDetailActive(): boolean {
@@ -230,6 +285,8 @@ function renderShell(host: HTMLElement) {
             .bl-stat { background: #ffffff; border: 1px solid ${C_BORDER}; border-radius: 12px; padding: 12px 14px; }
             .bl-stat-value { font-size: 22px; font-weight: 700; color: ${C_FOREST}; line-height: 1.1; }
             .bl-stat-label { font-size: 10.5px; font-weight: 600; color: ${C_PRIMARY}; margin-top: 4px; letter-spacing: 0.4px; text-transform: uppercase; }
+            .bl-about { font-size: 11px; line-height: 1.5; color: ${C_PRIMARY}; margin: -4px 0 10px 0; padding: 8px 12px; background: ${C_SURFACE_LIGHT}; border: 1px solid ${C_BORDER}; border-radius: 10px; }
+            .bl-about strong { color: ${C_FOREST}; }
 
             .bl-stage { background: #ffffff; border: 1px solid ${C_BORDER}; border-radius: 14px; padding: 16px; min-height: 540px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); position: relative; }
 
@@ -276,28 +333,45 @@ function renderShell(host: HTMLElement) {
             .bl-empty { display: flex; align-items: center; justify-content: center; min-height: 280px; color: ${C_PRIMARY}; font-size: 13px; font-style: italic; text-align: center; padding: 24px; }
             .bl-empty strong { color: ${C_FOREST}; }
 
-            .bl-citation { font-size: 9.5px; color: ${C_PRIMARY}; margin-top: 12px; padding: 10px 14px; background: ${C_SURFACE_LIGHT}; border-radius: 10px; line-height: 1.5; border: 1px solid ${C_BORDER}; }
-
             .bl-tooltip { position: fixed; background: ${C_FOREST}; color: #ffffff; padding: 7px 11px; border-radius: 6px; font-size: 11.5px; pointer-events: none; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.2); max-width: 260px; line-height: 1.45; }
             .bl-tooltip strong { color: ${C_PRIMARY_LIGHTER}; }
         </style>
 
         <div class="bl-shell">
             <div class="bl-stat-grid" id="bl-stats"></div>
+            <p class="bl-about" id="bl-about"></p>
             <div id="bl-legend-wrap"></div>
             <div class="bl-stage" id="bl-stage"></div>
-            <div class="bl-citation"><strong>Sources:</strong> ${CITATION}</div>
         </div>
     `;
 }
 
+function renderAboutNote() {
+    const el = document.getElementById('bl-about');
+    if (!el) return;
+    const styleOpt = BUILDABLE_STYLE_OPTIONS.find(o => o.id === activeStyle);
+    el.innerHTML = `
+        <strong>Land models:</strong>
+        Policy-only = setbacks on residential landuse;
+        Policy + geography = also buildings, water, forest, slopes &gt; 20° (250&nbsp;m grid).
+        ${styleOpt ? `<br><strong>${escapeHtml(styleOpt.label)}:</strong> ${escapeHtml(styleOpt.hint)}` : ''}
+    `;
+}
+
+function renderBuildableLandLegendOnly() {
+    const el = document.getElementById('bl-legend-wrap');
+    if (!el) return;
+    el.innerHTML = `<div class="bl-legend">${buildLegendHTML()}</div>`;
+}
+
 function renderBuildableLandLegend() {
+    renderAboutNote();
     const el = document.getElementById('bl-legend-wrap');
     if (!el || selectedCountry) {
         el?.replaceChildren();
         return;
     }
-    el.innerHTML = `<div class="bl-legend">${buildLegendHTML()}</div>`;
+    renderBuildableLandLegendOnly();
 }
 
 function rerender() {
@@ -307,13 +381,15 @@ function rerender() {
 export async function applyBuildableLandFilters(filters: BuildableLandFilters): Promise<void> {
     activeTech = filters.tech;
     activeMode = filters.mode;
-    activeOverlayView = filters.overlay;
+    activeModel = filters.model;
+    activeStyle = filters.style;
     await refreshManifest();
     renderStats();
+    renderAboutNote();
     if (selectedCountry) {
         await renderCountryDetail(selectedCountry);
     } else {
-        renderBuildableLandLegend();
+        renderBuildableLandLegendOnly();
     }
 }
 
@@ -336,19 +412,42 @@ function renderStats() {
     if (!el) return;
     const bakes = manifest ? Object.values(manifest.bakes) : [];
     const matching = bakes.filter(b => b.tech === activeTech && b.mode === activeMode);
-    const totalBuildableKm2 = matching.reduce((s, b) => s + (b.buildable_km2 || 0), 0);
+    const totalBuildableKm2 = matching.reduce((s, b) => s + buildableKm2FromBake(b, activeModel), 0);
     const totalRegionKm2    = matching.reduce((s, b) => s + (b.region_km2    || 0), 0);
     const fraction = totalRegionKm2 > 0 ? totalBuildableKm2 / totalRegionKm2 : 0;
+    const policyFraction = totalRegionKm2 > 0
+        ? matching.reduce((s, b) => s + buildableKm2FromBake(b, 'policy'), 0) / totalRegionKm2
+        : 0;
+    const technicalAvailable = matching.some(hasTechnicalLayer);
 
     const items: Array<{ value: string; label: string }> = [
         { value: String(Object.keys(DATA_COUNTRIES).length), label: 'Countries with rule data' },
-        { value: String(matching.length),
-          label: `${TECH_LABEL[activeTech]} bakes (${MODE_LABEL[activeMode].toLowerCase()})` },
+        { value: String(matching.length), label: 'Regions with land map' },
         { value: matching.length > 0 ? `${(fraction * 100).toFixed(1)}%` : '—',
-          label: 'Eligible share (data countries, weighted)' },
-        { value: matching.length > 0 ? `${Math.round(totalBuildableKm2).toLocaleString()} km²` : '—',
-          label: 'Eligible land area' },
+          label: `${MODEL_SHORT[activeModel]} share (weighted)` },
     ];
+    if (technicalAvailable && matching.length > 0 && activeModel === 'policy') {
+        const techBakes = matching.filter(hasTechnicalLayer);
+        if (techBakes.length > 0) {
+            const techKm2 = techBakes.reduce((s, b) => s + buildableKm2FromBake(b, 'technical'), 0);
+            const techRegion = techBakes.reduce((s, b) => s + b.region_km2, 0);
+            if (techRegion > 0) {
+                items.push({
+                    value: `${((techKm2 / techRegion) * 100).toFixed(1)}%`,
+                    label: 'With geography (same regions)',
+                });
+            }
+        }
+    } else if (matching.length > 0 && activeModel === 'technical') {
+        items.push({
+            value: `${(policyFraction * 100).toFixed(1)}%`,
+            label: 'Policy-only (same regions)',
+        });
+    }
+    items.push({
+        value: matching.length > 0 ? `${Math.round(totalBuildableKm2).toLocaleString()} km²` : '—',
+        label: `${MODEL_SHORT[activeModel]} area`,
+    });
 
     el.innerHTML = items.map(i => `
         <div class="bl-stat">
@@ -381,7 +480,7 @@ function aggregateCountryData(): Map<string, CountryAggregation> {
             result.set(meta.geojsonName, { eligibleShare: -1, buildableKm2: 0, regionKm2: 0, bakeCount: 0 });
             continue;
         }
-        const totalBuildable = bakes.reduce((s, b) => s + b.buildable_km2, 0);
+        const totalBuildable = bakes.reduce((s, b) => s + buildableKm2FromBake(b, activeModel), 0);
         const totalRegion = bakes.reduce((s, b) => s + b.region_km2, 0);
         result.set(meta.geojsonName, {
             eligibleShare: totalRegion > 0 ? totalBuildable / totalRegion : 0,
@@ -490,14 +589,14 @@ function renderEligibleShareLegend(
         .attr('fill', `url(#${gradId})`).attr('stroke', '#cbd5e1');
 
     legend.append('text').attr('x', 0).attr('y', 28)
-        .style('font-size', '10px').style('fill', '#64748b').text('0% eligible');
+        .style('font-size', '10px').style('fill', '#64748b').text('0%');
     legend.append('text').attr('x', 250).attr('y', 28)
         .attr('text-anchor', 'end')
-        .style('font-size', '10px').style('fill', '#64748b').text('100% eligible');
+        .style('font-size', '10px').style('fill', '#64748b').text('100%');
     legend.append('text').attr('x', 125).attr('y', -6)
         .attr('text-anchor', 'middle')
         .style('font-size', '10px').style('fill', '#475569').style('font-weight', '600')
-        .text(`${TECH_LABEL[activeTech]} — Eligible land share`);
+        .text(`${TECH_LABEL[activeTech]} — ${MODEL_SHORT[activeModel].toLowerCase()}`);
 }
 
 function polylabelCentroid(d: any, projection: d3.GeoProjection): [number, number] | null {
@@ -548,7 +647,8 @@ export async function renderBuildableLandOnMap(host: MapHost, filters: Buildable
     await ensureBuildableLandDataLoaded();
     activeTech = filters.tech;
     activeMode = filters.mode;
-    activeOverlayView = filters.overlay;
+    activeModel = filters.model;
+    activeStyle = filters.style;
 
     host.clearRegulationsLayer();
     host.showRegulationBasemap();
@@ -569,15 +669,29 @@ export async function renderBuildableLandOnMap(host: MapHost, filters: Buildable
 }
 
 function buildLegendHTML(): string {
+    if (activeStyle === 'exclusions') {
+        return `
+            <span><span class="bl-legend-swatch" style="background: ${C_BRICK};"></span>Exclusion zone</span>
+            <span><span class="bl-legend-swatch" style="background: ${C_NO_DATA};"></span>No data</span>
+            <span style="font-style:italic;opacity:0.8;">Click a country for overlay</span>`;
+    }
     return `
-        <span><span class="bl-legend-swatch" style="background: ${C_AVAIL_GREEN};"></span>High eligible share</span>
-        <span><span class="bl-legend-swatch" style="background: ${C_NO_DATA};"></span>No data / no raster baked</span>
-        <span style="font-style:italic;opacity:0.8;">Click a country for raster detail + applied rules</span>`;
+        <span><span class="bl-legend-swatch" style="background: ${C_AVAIL_GREEN};"></span>Higher eligible share</span>
+        <span><span class="bl-legend-swatch" style="background: ${C_NO_DATA};"></span>No data</span>
+        <span style="font-style:italic;opacity:0.8;">Click a country for overlay</span>`;
 }
 
-function rasterPngPath(sidecarJsonPath: string, view: OverlayView = activeOverlayView): string {
+function rasterPngPath(
+    sidecarJsonPath: string,
+    model: LandModel = activeModel,
+    style: OverlayStyle = activeStyle,
+): string {
     const base = sidecarJsonPath.replace(/\.json$/, '');
-    if (view === 'availability') return `${base}_availability.png`;
+    if (model === 'technical') {
+        if (style === 'availability') return `${base}_technical_availability.png`;
+        return `${base}_technical_styled.png`;
+    }
+    if (style === 'availability') return `${base}_availability.png`;
     return `${base}_styled.png`;
 }
 
@@ -588,12 +702,12 @@ function buildCountryTooltip(name: string | undefined): string {
 
     const agg = aggregateCountryData().get(meta.geojsonName);
     if (!agg || agg.bakeCount === 0) {
-        return `<strong>${escapeHtml(name)}</strong><br>Rule data available; <em>${TECH_LABEL[activeTech]}</em> raster not yet baked.<br><em style="opacity:0.85;">Click for rule list</em>`;
+        return `<strong>${escapeHtml(name)}</strong><br>Rules available; <em>${TECH_LABEL[activeTech]}</em> land map not ready yet.<br><em style="opacity:0.85;">Click for rule list</em>`;
     }
     return `<strong>${escapeHtml(name)}</strong><br>
-            ${TECH_LABEL[activeTech]} eligible share: <strong>${(agg.eligibleShare * 100).toFixed(1)}%</strong><br>
+            ${TECH_LABEL[activeTech]} ${MODEL_SHORT[activeModel].toLowerCase()}: <strong>${(agg.eligibleShare * 100).toFixed(1)}%</strong><br>
             ${Math.round(agg.buildableKm2).toLocaleString()} km² of ${Math.round(agg.regionKm2).toLocaleString()} km² (${agg.bakeCount} region${agg.bakeCount > 1 ? 's' : ''})<br>
-            <em style="opacity:0.85;">Click for rules + raster detail</em>`;
+            <em style="opacity:0.85;">Click for details</em>`;
 }
 
 // ---------------------------------------------------------------------------
@@ -722,8 +836,8 @@ async function overlayWorldRasters(
                 .attr('href', pngHref)
                 .attr('xlink:href', pngHref)
                 .on('error', function () {
-                    if (activeOverlayView !== 'availability') return;
-                    const fallback = `${baseUrl}data/${rasterPngPath(bake.sidecar, 'exclusions')}`;
+                    if (activeStyle !== 'availability') return;
+                    const fallback = `${baseUrl}data/${rasterPngPath(bake.sidecar, activeModel, 'exclusions')}`;
                     d3.select(this).attr('href', fallback).attr('xlink:href', fallback);
                 });
         }
@@ -800,11 +914,7 @@ async function overlayRasterIfBaked(
             .attr('x', 12).attr('y', 22)
             .style('font-size', '12px').style('font-weight', '600')
             .style('fill', C_PRIMARY)
-            .text(`${TECH_LABEL[activeTech]} · ${MODE_LABEL[activeMode]} raster not yet baked.`);
-        overlayLayer.append('text')
-            .attr('x', 12).attr('y', 40)
-            .style('font-size', '11px').style('fill', C_PRIMARY).style('font-style', 'italic')
-            .text(`Run: python scripts/build_buildable_rasters.py --region ${meta.nutsPrimary} --tech ${activeTech} --mode ${activeMode}`);
+            .text(`${TECH_LABEL[activeTech]} · ${MODE_LABEL[activeMode]} — map not available yet.`);
         return;
     }
 
@@ -845,8 +955,8 @@ async function overlayRasterIfBaked(
             .attr('href', pngHref)
             .attr('xlink:href', pngHref)
             .on('error', function () {
-                if (activeOverlayView !== 'availability') return;
-                const fallback = `${baseUrl}data/${rasterPngPath(bake.sidecar, 'exclusions')}`;
+                if (activeStyle !== 'availability') return;
+                const fallback = `${baseUrl}data/${rasterPngPath(bake.sidecar, activeModel, 'exclusions')}`;
                 d3.select(this).attr('href', fallback).attr('xlink:href', fallback);
             });
 
@@ -865,7 +975,7 @@ async function overlayRasterIfBaked(
     badge.append('text')
         .attr('x', 10).attr('y', 18)
         .style('font-size', '12px').style('font-weight', '700').style('fill', C_FOREST)
-        .text(`${(fraction * 100).toFixed(1)}% eligible for ${TECH_LABEL[activeTech].toLowerCase()}`);
+        .text(`${(fraction * 100).toFixed(1)}% ${MODEL_SHORT[activeModel].toLowerCase()}`);
     badge.append('text')
         .attr('x', 10).attr('y', 34)
         .style('font-size', '10.5px').style('fill', C_PRIMARY)
@@ -904,8 +1014,7 @@ async function loadAndRenderRules(meta: { iso2: string; nutsPrimary: string; nam
     if (!sidecar) {
         panel.innerHTML = `
             <h4>${escapeHtml(meta.name)} — ${TECH_LABEL[activeTech]} rules</h4>
-            <p class="bl-sub">No baked sidecar yet. Run the pipeline to populate this panel:</p>
-            <pre style="background:#fff;padding:10px;border-radius:6px;border:1px solid ${C_BORDER};font-size:11px;line-height:1.5;white-space:pre-wrap;word-break:break-word;">python scripts/build_buildable_rasters.py --region ${meta.nutsPrimary} --tech ${activeTech} --mode ${activeMode}</pre>
+            <p class="bl-sub">Land map not available for this country yet.</p>
         `;
         return;
     }
@@ -913,20 +1022,20 @@ async function loadAndRenderRules(meta: { iso2: string; nutsPrimary: string; nam
     const applied = sidecar.applied_rules.filter(r => r.applied);
     const skipped = sidecar.applied_rules.filter(r => !r.applied);
 
-    const eligibleShare = sidecar.pixel_stats.eligible_share
-        ?? sidecar.pixel_stats.buildable_fraction_of_region;
+    const stats = sidecarStats(sidecar, activeModel);
+    const eligibleShare = stats.eligible_share ?? stats.buildable_fraction_of_region;
 
     panel.innerHTML = `
         <h4>${escapeHtml(meta.name)} — ${TECH_LABEL[activeTech]} rules (${applied.length})</h4>
         <p class="bl-sub">
-            ${MODE_LABEL[activeMode]} · primary region <strong>${escapeHtml(sidecar.region)}</strong>
-            · eligible share <strong>${(eligibleShare * 100).toFixed(1)}%</strong>
-            (${Math.round(sidecar.pixel_stats.buildable_km2).toLocaleString()} km²)
+            ${MODEL_LABEL[activeModel]} · ${MODE_LABEL[activeMode]} · primary region <strong>${escapeHtml(sidecar.region)}</strong>
+            · ${MODEL_SHORT[activeModel].toLowerCase()} <strong>${(eligibleShare * 100).toFixed(1)}%</strong>
+            (${Math.round(stats.buildable_km2).toLocaleString()} km²)
             · turbine H=${sidecar.turbine_geometry.tip_height_m}m / blade=${sidecar.turbine_geometry.blade_length_m}m
         </p>
         <div id="bl-applied-list">${applied.map(r => ruleCardHTML(r)).join('') || `<div class="bl-empty" style="min-height:80px;">No applicable spatial setbacks for this tech in this region.</div>`}</div>
         ${skipped.length > 0 ? `
-            <p class="bl-sub" style="margin-top:14px;">Rules in dataset that did <em>not</em> contribute to the raster (${skipped.length})</p>
+            <p class="bl-sub" style="margin-top:14px;">Rules not shown on the map (${skipped.length})</p>
             <div>${skipped.map(r => ruleCardHTML(r, true)).join('')}</div>
         ` : ''}
     `;

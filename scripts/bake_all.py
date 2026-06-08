@@ -50,6 +50,17 @@ def _is_absorbed_subregion(nuts: str) -> bool:
     return False
 
 
+def _is_valid_nuts(nuts: str) -> bool:
+    """Skip junk NUTS codes from malformed spreadsheet rows."""
+    if len(nuts) < 2 or len(nuts) > 5:
+        return False
+    if not nuts[0].isalpha():
+        return False
+    if nuts.startswith("NAT"):
+        return False
+    return all(c.isalnum() for c in nuts)
+
+
 def _enumerate_pairs() -> list[tuple[str, str]]:
     rules = json.loads(RULES_PATH.read_text(encoding="utf-8"))["rules"]
     pairs: Counter[tuple[str, str]] = Counter()
@@ -59,6 +70,8 @@ def _enumerate_pairs() -> list[tuple[str, str]]:
         if not nuts or not tech:
             continue
         if tech not in SPATIAL_TECHS:
+            continue
+        if not _is_valid_nuts(nuts):
             continue
         if _is_absorbed_subregion(nuts):
             continue

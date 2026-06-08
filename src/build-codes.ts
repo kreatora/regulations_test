@@ -134,9 +134,6 @@ const NUTS_URLS: Record<number, string> = {
     3: `${GISCO_BASE}/NUTS_RG_60M_2021_4326_LEVL_3.geojson`,
 };
 
-const CITATION_BUILD =
-    'D2.2.1.1 Data collection — Regulations for energy infrastructure (Feb 2025). Sustainability Transition Policy Group, FAU Erlangen-Nürnberg. Demo visualisations only — values are taken verbatim from the dataset; the buildable-land model is illustrative.';
-
 // ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
@@ -147,7 +144,7 @@ let initialised = false;
 let dataLoadPromise: Promise<void> | null = null;
 
 export interface BuildCodesFilters {
-    tech: string;
+    tech: 'wind' | 'solar' | 'ev';
     bind: string;
 }
 
@@ -186,7 +183,6 @@ function renderBuildCodesAux() {
     root.innerHTML = `
         <style>
             .bc-shell { position: relative; min-height: 96px; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; color: #1e293b; padding: 4px 2px 0 2px; }
-            .bc-citation { font-size: 9.5px; color: #64748b; margin-top: 8px; padding: 10px 14px; background: #f8fafc; border-radius: 10px; line-height: 1.5; border: 1px solid rgba(148, 163, 184, 0.25); }
             .bc-no-data { display: flex; align-items: center; justify-content: center; min-height: 80px; color: rgb(100, 116, 139); font-size: 13px; font-style: italic; text-align: center; }
             .bc-rule-card { padding: 12px 14px; border-left: 3px solid #cbd5e1; border-radius: 8px; background: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.04); margin-bottom: 8px; cursor: pointer; transition: all 0.15s ease; }
             .bc-rule-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); transform: translateX(2px); }
@@ -214,7 +210,7 @@ function renderBuildCodesAux() {
             .bc-tooltip strong { color: #93c5fd; }
         </style>
         <div class="bc-shell">
-            <div class="bc-citation"><strong>Source:</strong> ${CITATION_BUILD}</div>
+            <p class="bc-no-data" style="display:none" aria-hidden="true"></p>
         </div>
     `;
 }
@@ -469,7 +465,7 @@ export async function renderBuildCodesOnMap(host: MapHost, filters: BuildCodesFi
     for (const f of features) {
         const code = f.properties.NUTS_ID;
         let rs = rulesForRegion(code);
-        if (filters.tech !== 'all') rs = rs.filter(r => r.kind === filters.tech);
+        rs = rs.filter(r => r.kind === filters.tech);
         if (filters.bind === 'binding') rs = rs.filter(r => (r.legally_binding || '').toLowerCase().startsWith('y'));
         metricsByCode.set(code, { ...regulationMetrics(rs), rules: rs });
     }

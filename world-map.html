@@ -150,6 +150,15 @@
             display: block;
         }
 
+        .modal-header-logo {
+            height: 48px;
+            width: auto;
+            max-width: 200px;
+            object-fit: contain;
+            opacity: 1;
+            pointer-events: none;
+        }
+
         .country {
             stroke: #fff;
             stroke-width: 0.5px;
@@ -790,11 +799,8 @@
             </div>
             <div class="mx-auto max-w-5xl mb-4 hidden" id="bc-buildable-help">
                 <p class="text-left italic" style="font-size: 0.85rem; color: #334155;">
-                    Land availability from coded setback rules and OpenStreetMap features (EPSG:3035 raster,
-                    similar to <a href="https://atlite.readthedocs.io/en/master/examples/landuse-availability.html" target="_blank" rel="noopener noreferrer">atlite's ExclusionContainer</a>).
-                    <strong style="color: rgb(35, 139, 69);">Green</strong> = eligible land;
-                    <strong style="color: rgb(155, 60, 50);">brick red</strong> (exclusion view) = no-build zones.
-                    Toggle map view and click a highlighted country for rules and regional eligible share.
+                    Sub-national build-code setbacks on a 250&nbsp;m grid.
+                    Land models and map colours are explained in the panel below the map.
                 </p>
             </div>
             
@@ -918,9 +924,10 @@
     <!-- Modal for dashboard (adaptive 85% of viewport) -->
     <div id="chart-modal" class="fixed inset-0 flex items-center justify-center p-4 z-50 hidden">
         <div id="modal-window" class="rounded-lg shadow-2xl relative" style="background-color: rgba(255, 255, 255, 0.90); width: 85vw; height: 85vh;">
-            <div id="modal-header" class="flex justify-between items-center p-4 bg-gray-100 bg-opacity-80 rounded-t-lg cursor-move">
-                <h3 id="modal-title" class="text-lg font-semibold text-gray-800">Country Dashboard</h3>
-                <button id="close-modal" class="text-gray-500 hover:text-gray-700 text-2xl font-bold">&times;</button>
+            <div id="modal-header" class="flex items-center gap-3 p-4 bg-gray-100 bg-opacity-80 rounded-t-lg cursor-move">
+                <h3 id="modal-title" class="text-lg font-semibold text-gray-800 flex-1 min-w-0 truncate">Country Dashboard</h3>
+                <img id="modal-header-logo" src="images/CLIMATE POLICY ATLAS LOGO-Photoroom.png" alt="" class="modal-header-logo shrink-0" aria-hidden="true">
+                <button id="close-modal" class="text-gray-500 hover:text-gray-700 text-2xl font-bold shrink-0 leading-none" type="button" aria-label="Close">&times;</button>
             </div>
             <div id="modal-content" class="p-4 h-[calc(100%-60px)] overflow-auto"></div>
         </div>
@@ -963,8 +970,8 @@
         </div>
     </footer>
 
-    <script type="module" src="/src/world-map.ts?v=20260528"></script>
-    <script type="module" src="/src/build-codes.ts?v=20260528"></script>
-    <script type="module" src="/src/buildable-land.ts?v=20260506"></script>
+    <script type="module" src="/src/world-map.ts?v=20260608o"></script>
+    <script type="module" src="/src/build-codes.ts?v=20260608o"></script>
+    <script type="module" src="/src/buildable-land.ts?v=20260608o"></script>
 </body>
 </html>

@@ -3,8 +3,8 @@
  *
  * Download controls for Climate Policy Atlas graphs and maps.
  *
- * - `registerGraphDownloadMenu(opts)`: fixed download button with a dropdown
- *   (PNG / PDF / optional full dataset).
+ * - `registerGraphDownloadMenu(opts)`: "Graph and data" button with sidebar
+ *   (graph exports + data downloads).
  * - `registerDownloadableGraph(svg, opts)`: legacy per-container PNG button.
  */
 
@@ -12,8 +12,15 @@ import { jsPDF } from 'jspdf';
 
 const STYLE_ID = 'cpa-graph-export-styles';
 
+import { ATLAS_SITE_LABEL } from './data-metadata';
+
 const SOURCE_LINE =
     'Source: Climate Policy Atlas · Sustainability Transition Policy Group, FAU Erlangen-Nürnberg';
+
+const HEADER_LOGO_MAX_WIDTH = 200;
+const HEADER_LOGO_MAX_HEIGHT = 56;
+const HEADER_PAD_X = 24;
+const HEADER_PAD_TOP = 20;
 
 // SVG style properties we copy from getComputedStyle into inline style.
 // Keep this list short on purpose — copying every computed style makes the
@@ -53,6 +60,19 @@ export interface GraphExportCaption {
     title: string;
     subtitle?: string;
     legend?: string;
+    /** Short data-source label (OWID-style footer line 1). */
+    dataSource?: string;
+    /** Full suggested citation for reuse (export footer). */
+    suggestedCitation?: string;
+    /** License shorthand, e.g. "CC BY 4.0". */
+    license?: string;
+    /** Page slug appended to ATLAS_SITE_LABEL in export footer. */
+    pageSlug?: string;
+    /**
+     * When false, omit the header logo (e.g. when the live view already shows it elsewhere).
+     * Default: true.
+     */
+    showHeaderLogo?: boolean;
 }
 
 export interface GraphDownloadMenuOptions {
@@ -184,24 +204,20 @@ function ensureStyles(): void {
             width: 44px;
             height: 44px;
             padding: 0;
-            border: 1px solid rgba(100, 116, 139, 0.45);
+            border: 1px solid rgba(100, 116, 139, 0.42);
             border-radius: 50%;
             background: rgba(255, 255, 255, 0.88);
             color: rgb(30, 41, 59);
-            box-shadow: 0 4px 16px rgba(15, 23, 42, 0.14);
+            box-shadow: 0 4px 16px rgba(15, 23, 42, 0.12);
             cursor: pointer;
             backdrop-filter: blur(8px);
-            transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+            transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
         }
-        .cpa-download-trigger:hover:not([aria-busy="true"]):not(:disabled) {
-            background: #ffffff;
-            border-color: rgba(51, 65, 85, 0.75);
-            box-shadow: 0 6px 20px rgba(15, 23, 42, 0.18);
-        }
-        .cpa-download-trigger[aria-expanded="true"] {
-            background: rgb(30, 41, 59);
-            color: #ffffff;
-            border-color: rgb(30, 41, 59);
+        .cpa-download-trigger:hover:not([aria-busy="true"]):not(:disabled),
+        .cpa-download-menu.is-open .cpa-download-trigger {
+            background: rgba(255, 255, 255, 0.94);
+            border-color: rgba(100, 116, 139, 0.55);
+            box-shadow: 0 5px 18px rgba(15, 23, 42, 0.15);
         }
         .cpa-download-trigger[aria-busy="true"],
         .cpa-download-trigger:disabled {
@@ -212,27 +228,51 @@ function ensureStyles(): void {
             width: 20px;
             height: 20px;
             display: block;
+            flex-shrink: 0;
         }
-        .cpa-download-panel {
+        .cpa-download-sidebar {
             position: absolute;
-            bottom: calc(100% + 10px);
-            right: 0;
-            min-width: 220px;
-            padding: 6px;
+            bottom: 0;
+            right: calc(100% + 12px);
+            width: 252px;
+            max-height: min(70vh, 420px);
+            overflow-y: auto;
+            padding: 10px;
             border: 1px solid rgba(148, 163, 184, 0.55);
-            border-radius: 12px;
-            background: rgba(255, 255, 255, 0.96);
-            box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18);
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.98);
+            box-shadow: 0 16px 40px rgba(15, 23, 42, 0.2);
             backdrop-filter: blur(12px);
             opacity: 0;
             visibility: hidden;
-            transform: translateY(6px);
-            transition: opacity 0.16s ease, transform 0.16s ease, visibility 0.16s ease;
+            transform: translateX(10px);
+            transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s ease;
+            pointer-events: none;
         }
-        .cpa-download-panel.is-open {
+        .cpa-download-menu.is-open .cpa-download-sidebar {
             opacity: 1;
             visibility: visible;
-            transform: translateY(0);
+            transform: translateX(0);
+            pointer-events: auto;
+        }
+        .cpa-download-sidebar-header {
+            padding: 4px 10px 8px;
+            font: 700 13px "Libre Baskerville", Georgia, serif;
+            color: rgb(15, 23, 42);
+            border-bottom: 1px solid rgba(226, 232, 240, 0.95);
+            margin-bottom: 6px;
+        }
+        .cpa-download-section + .cpa-download-section {
+            margin-top: 4px;
+            padding-top: 4px;
+            border-top: 1px solid rgba(226, 232, 240, 0.8);
+        }
+        .cpa-download-section-title {
+            padding: 6px 10px 4px;
+            font: 700 10px Inter, -apple-system, BlinkMacSystemFont, sans-serif;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: rgb(100, 116, 139);
         }
         .cpa-download-item {
             display: flex;
@@ -271,6 +311,18 @@ function ensureStyles(): void {
             font-weight: 500;
             font-size: 10px;
             color: rgb(100, 116, 139);
+        }
+        @media (max-width: 640px) {
+            .cpa-download-sidebar {
+                right: 0;
+                bottom: calc(100% + 10px);
+                width: min(92vw, 280px);
+                max-height: min(60vh, 380px);
+                transform: translateY(8px);
+            }
+            .cpa-download-menu.is-open .cpa-download-sidebar {
+                transform: translateY(0);
+            }
         }
     `;
     document.head.appendChild(style);
@@ -341,7 +393,7 @@ function normalizeSvgs(input: SVGSVGElement | SVGSVGElement[] | null): SVGSVGEle
 }
 
 /**
- * Fixed download button with dropdown: PNG, PDF, and optional full dataset.
+ * Fixed "Graph and data" button with a sidebar: graph exports + data downloads.
  */
 export function registerGraphDownloadMenu(options: GraphDownloadMenuOptions): void {
     ensureStyles();
@@ -355,21 +407,45 @@ export function registerGraphDownloadMenu(options: GraphDownloadMenuOptions): vo
         container.style.position = 'relative';
     }
 
+    const triggerLabel = options.title || 'Graph and data';
+
     const root = document.createElement('div');
     root.className = 'cpa-download-menu' + (options.fixed === true ? ' is-viewport-fixed' : '');
 
     const trigger = document.createElement('button');
     trigger.type = 'button';
     trigger.className = 'cpa-download-trigger';
-    trigger.setAttribute('aria-label', options.title || 'Download');
-    trigger.setAttribute('title', options.title || 'Download');
-    trigger.setAttribute('aria-haspopup', 'menu');
+    trigger.setAttribute('aria-label', triggerLabel);
+    trigger.setAttribute('title', triggerLabel);
+    trigger.setAttribute('aria-haspopup', 'dialog');
     trigger.setAttribute('aria-expanded', 'false');
     trigger.innerHTML = DOWNLOAD_ICON_SVG;
 
-    const panel = document.createElement('div');
-    panel.className = 'cpa-download-panel';
-    panel.setAttribute('role', 'menu');
+    const sidebar = document.createElement('aside');
+    sidebar.className = 'cpa-download-sidebar';
+    sidebar.setAttribute('role', 'dialog');
+    sidebar.setAttribute('aria-label', triggerLabel);
+
+    const sidebarHeader = document.createElement('div');
+    sidebarHeader.className = 'cpa-download-sidebar-header';
+    sidebarHeader.textContent = triggerLabel;
+    sidebar.appendChild(sidebarHeader);
+
+    const runBusy = async (action: () => void | Promise<void>) => {
+        if (trigger.getAttribute('aria-busy') === 'true') return;
+        closePanel();
+        trigger.setAttribute('aria-busy', 'true');
+        trigger.disabled = true;
+        try {
+            await action();
+        } catch (err) {
+            console.error('[graph-export] Download action failed', err);
+            showToast(container, 'Download failed. See console for details.');
+        } finally {
+            trigger.removeAttribute('aria-busy');
+            trigger.disabled = false;
+        }
+    };
 
     const makeItem = (icon: string, label: string, note: string | undefined, action: () => void | Promise<void>) => {
         const btn = document.createElement('button');
@@ -385,21 +461,21 @@ export function registerGraphDownloadMenu(options: GraphDownloadMenuOptions): vo
         btn.addEventListener('click', async (event) => {
             event.preventDefault();
             event.stopPropagation();
-            if (trigger.getAttribute('aria-busy') === 'true') return;
-            closePanel();
-            trigger.setAttribute('aria-busy', 'true');
-            trigger.disabled = true;
-            try {
-                await action();
-            } catch (err) {
-                console.error('[graph-export] Download action failed', err);
-                showToast(container, 'Download failed. See console for details.');
-            } finally {
-                trigger.removeAttribute('aria-busy');
-                trigger.disabled = false;
-            }
+            await runBusy(action);
         });
         return btn;
+    };
+
+    const appendSection = (title: string, items: HTMLButtonElement[]) => {
+        if (items.length === 0) return;
+        const section = document.createElement('div');
+        section.className = 'cpa-download-section';
+        const heading = document.createElement('div');
+        heading.className = 'cpa-download-section-title';
+        heading.textContent = title;
+        section.appendChild(heading);
+        items.forEach((item) => section.appendChild(item));
+        sidebar.appendChild(section);
     };
 
     const sourceLine = options.sourceLine || SOURCE_LINE;
@@ -407,26 +483,29 @@ export function registerGraphDownloadMenu(options: GraphDownloadMenuOptions): vo
     const resolveLayout = (): 'horizontal' | 'vertical' =>
         options.getExportLayout?.() ?? options.exportLayout ?? 'vertical';
 
-    panel.appendChild(makeItem(PNG_ICON_SVG, 'Graph as PNG', undefined, async () => {
-        const svgs = normalizeSvgs(options.getActiveSvgs());
-        if (svgs.length === 0) throw new Error('No graph is available to export.');
-        const slug = options.getFilenameSlug();
-        const layout = resolveLayout();
-        const blob = await svgsToPngBlob(svgs, sourceLine, true, resolveCaption(), layout);
-        triggerDownload(blob, buildExportFilename(slug, 'png'));
-    }));
+    const graphItems = [
+        makeItem(PNG_ICON_SVG, 'Graph as PNG', undefined, async () => {
+            const svgs = normalizeSvgs(options.getActiveSvgs());
+            if (svgs.length === 0) throw new Error('No graph is available to export.');
+            const slug = options.getFilenameSlug();
+            const layout = resolveLayout();
+            const blob = await svgsToPngBlob(svgs, sourceLine, true, resolveCaption(), layout);
+            triggerDownload(blob, buildExportFilename(slug, 'png'));
+        }),
+        makeItem(PDF_ICON_SVG, 'Graph as PDF', undefined, async () => {
+            const svgs = normalizeSvgs(options.getActiveSvgs());
+            if (svgs.length === 0) throw new Error('No graph is available to export.');
+            const slug = options.getFilenameSlug();
+            const layout = resolveLayout();
+            const blob = await svgsToPdfBlob(svgs, sourceLine, true, resolveCaption(), layout);
+            triggerDownload(blob, buildExportFilename(slug, 'pdf'));
+        }),
+    ];
 
-    panel.appendChild(makeItem(PDF_ICON_SVG, 'Graph as PDF', undefined, async () => {
-        const svgs = normalizeSvgs(options.getActiveSvgs());
-        if (svgs.length === 0) throw new Error('No graph is available to export.');
-        const slug = options.getFilenameSlug();
-        const layout = resolveLayout();
-        const blob = await svgsToPdfBlob(svgs, sourceLine, true, resolveCaption(), layout);
-        triggerDownload(blob, buildExportFilename(slug, 'pdf'));
-    }));
+    const dataItems: HTMLButtonElement[] = [];
 
     if (options.onDownloadCountryData) {
-        panel.appendChild(makeItem(
+        dataItems.push(makeItem(
             COUNTRY_DATA_ICON_SVG,
             options.countryDataLabel || 'Country data',
             'Filtered .xlsx',
@@ -435,9 +514,9 @@ export function registerGraphDownloadMenu(options: GraphDownloadMenuOptions): vo
     }
 
     if (options.onDownloadCountryDataCsv) {
-        panel.appendChild(makeItem(
+        dataItems.push(makeItem(
             CSV_ICON_SVG,
-            options.countryDataLabel ? `${options.countryDataLabel} (CSV)` : 'Country data (CSV)',
+            options.countryDataLabel ? `${options.countryDataLabel} (csv)` : 'Country data (csv)',
             'Filtered .csv (zip)',
             async () => { await options.onDownloadCountryDataCsv!(); }
         ));
@@ -445,28 +524,37 @@ export function registerGraphDownloadMenu(options: GraphDownloadMenuOptions): vo
 
     const showDataset = options.showDatasetOption !== false && !!options.onDownloadDataset;
     if (showDataset && options.onDownloadDataset) {
-        panel.appendChild(makeItem(DATASET_ICON_SVG, 'Full dataset', 'All countries (.xlsx)', async () => {
+        dataItems.push(makeItem(DATASET_ICON_SVG, 'Full dataset', 'All countries (.xlsx)', async () => {
             await options.onDownloadDataset!();
         }));
     }
 
     const showDatasetCsv = options.showDatasetOption !== false && !!options.onDownloadDatasetCsv;
     if (showDatasetCsv && options.onDownloadDatasetCsv) {
-        panel.appendChild(makeItem(CSV_ICON_SVG, 'Full dataset (CSV)', 'All countries (.csv zip)', async () => {
+        dataItems.push(makeItem(CSV_ICON_SVG, 'Full dataset (csv)', 'All countries (.csv zip)', async () => {
             await options.onDownloadDatasetCsv!();
         }));
     }
 
+    appendSection('Graphs', graphItems);
+    appendSection('Data downloads', dataItems);
+
+    let closeTimer: number | undefined;
     const openPanel = () => {
-        panel.classList.add('is-open');
+        window.clearTimeout(closeTimer);
+        root.classList.add('is-open');
         trigger.setAttribute('aria-expanded', 'true');
     };
     const closePanel = () => {
-        panel.classList.remove('is-open');
+        root.classList.remove('is-open');
         trigger.setAttribute('aria-expanded', 'false');
     };
+    const scheduleClose = () => {
+        window.clearTimeout(closeTimer);
+        closeTimer = window.setTimeout(closePanel, 180);
+    };
     const togglePanel = () => {
-        if (panel.classList.contains('is-open')) closePanel();
+        if (root.classList.contains('is-open')) closePanel();
         else openPanel();
     };
 
@@ -476,6 +564,11 @@ export function registerGraphDownloadMenu(options: GraphDownloadMenuOptions): vo
         togglePanel();
     });
 
+    root.addEventListener('mouseenter', openPanel);
+    root.addEventListener('mouseleave', scheduleClose);
+    sidebar.addEventListener('mouseenter', openPanel);
+    sidebar.addEventListener('mouseleave', scheduleClose);
+
     const onDocumentClick = (event: MouseEvent) => {
         if (!root.contains(event.target as Node)) closePanel();
     };
@@ -484,7 +577,7 @@ export function registerGraphDownloadMenu(options: GraphDownloadMenuOptions): vo
         if (event.key === 'Escape') closePanel();
     });
 
-    root.appendChild(panel);
+    root.appendChild(sidebar);
     root.appendChild(trigger);
     container.appendChild(root);
 }
@@ -607,6 +700,43 @@ async function loadFooterLogo(): Promise<HTMLImageElement | null> {
     }
 }
 
+/** Fit an image into a bounding box without changing aspect ratio. */
+function fitImageRect(
+    naturalWidth: number,
+    naturalHeight: number,
+    maxWidth: number,
+    maxHeight: number
+): { width: number; height: number } {
+    if (!naturalWidth || !naturalHeight) {
+        return { width: maxWidth, height: maxHeight };
+    }
+    const ratio = naturalWidth / naturalHeight;
+    let width = maxWidth;
+    let height = width / ratio;
+    if (height > maxHeight) {
+        height = maxHeight;
+        width = height * ratio;
+    }
+    return { width, height };
+}
+
+function shouldShowHeaderLogo(caption?: GraphExportCaption | null): boolean {
+    return caption?.showHeaderLogo !== false;
+}
+
+function resolveHeaderLogoRect(
+    logoImage: HTMLImageElement | null,
+    caption?: GraphExportCaption | null
+): { width: number; height: number } | null {
+    if (!logoImage || !shouldShowHeaderLogo(caption)) return null;
+    return fitImageRect(
+        logoImage.naturalWidth,
+        logoImage.naturalHeight,
+        HEADER_LOGO_MAX_WIDTH,
+        HEADER_LOGO_MAX_HEIGHT
+    );
+}
+
 function wrapCanvasText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
     const words = text.split(/\s+/).filter(Boolean);
     if (words.length === 0) return [];
@@ -625,56 +755,76 @@ function wrapCanvasText(ctx: CanvasRenderingContext2D, text: string, maxWidth: n
     return lines;
 }
 
+function headerTextMaxWidth(width: number, logoRect: { width: number; height: number } | null): number {
+    const logoReserve = logoRect ? logoRect.width + 16 : 0;
+    return Math.max(120, width - HEADER_PAD_X * 2 - logoReserve);
+}
+
 function measureExportHeaderHeight(
     width: number,
-    caption?: GraphExportCaption | null
+    caption?: GraphExportCaption | null,
+    logoRect: { width: number; height: number } | null = null
 ): number {
     if (!caption?.title) return 0;
 
     const temp = document.createElement('canvas').getContext('2d');
-    if (!temp) return 88;
+    if (!temp) return 96;
 
-    const maxWidth = Math.max(120, width - 48);
-    let height = 22;
+    const maxWidth = headerTextMaxWidth(width, logoRect);
+    let height = HEADER_PAD_TOP;
 
-    temp.font = '700 20px Inter, Arial, sans-serif';
-    height += wrapCanvasText(temp, caption.title, maxWidth).length * 24;
+    temp.font = '700 22px "Libre Baskerville", Georgia, serif';
+    height += wrapCanvasText(temp, caption.title, maxWidth).length * 26;
 
     if (caption.subtitle) {
-        temp.font = '500 13px Inter, Arial, sans-serif';
-        height += wrapCanvasText(temp, caption.subtitle, maxWidth).length * 18;
+        temp.font = '400 13px Inter, Arial, sans-serif';
+        height += wrapCanvasText(temp, caption.subtitle, maxWidth).length * 18 + 4;
     }
 
     if (caption.legend) {
         temp.font = '500 12px Inter, Arial, sans-serif';
-        height += wrapCanvasText(temp, caption.legend, maxWidth).length * 16;
+        height += wrapCanvasText(temp, caption.legend, maxWidth).length * 16 + 2;
     }
 
-    return height + 20;
+    const logoHeight = logoRect?.height ?? 0;
+    return Math.max(height + 18, HEADER_PAD_TOP + logoHeight + 12);
 }
 
 function drawExportHeader(
     ctx: CanvasRenderingContext2D,
     width: number,
-    caption?: GraphExportCaption | null
+    caption: GraphExportCaption | null | undefined,
+    logoImage: HTMLImageElement | null,
+    logoRect: { width: number; height: number } | null
 ): number {
     if (!caption?.title) return 0;
 
-    const x = 24;
-    const maxWidth = Math.max(120, width - 48);
-    let y = 22;
+    const x = HEADER_PAD_X;
+    const maxWidth = headerTextMaxWidth(width, logoRect);
+    let y = HEADER_PAD_TOP;
+
+    if (logoImage && logoRect) {
+        ctx.drawImage(
+            logoImage,
+            width - HEADER_PAD_X - logoRect.width,
+            HEADER_PAD_TOP,
+            logoRect.width,
+            logoRect.height
+        );
+    }
 
     ctx.textBaseline = 'top';
     ctx.fillStyle = '#0f172a';
-    ctx.font = '700 20px Inter, Arial, sans-serif';
+    ctx.font = '700 22px "Libre Baskerville", Georgia, serif';
     wrapCanvasText(ctx, caption.title, maxWidth).forEach((line) => {
         ctx.fillText(line, x, y);
-        y += 24;
+        y += 26;
     });
 
     if (caption.subtitle) {
         ctx.fillStyle = '#475569';
-        ctx.font = '500 13px Inter, Arial, sans-serif';
+        ctx.font = '400 13px Inter, Arial, sans-serif';
+        y += 2;
         wrapCanvasText(ctx, caption.subtitle, maxWidth).forEach((line) => {
             ctx.fillText(line, x, y);
             y += 18;
@@ -684,15 +834,48 @@ function drawExportHeader(
     if (caption.legend) {
         ctx.fillStyle = '#64748b';
         ctx.font = '500 12px Inter, Arial, sans-serif';
+        y += 2;
         wrapCanvasText(ctx, caption.legend, maxWidth).forEach((line) => {
             ctx.fillText(line, x, y);
             y += 16;
         });
     }
 
+    const logoHeight = logoRect?.height ?? 0;
+    const dividerY = Math.max(y + 8, HEADER_PAD_TOP + logoHeight + 8);
     ctx.fillStyle = '#e2e8f0';
-    ctx.fillRect(24, y + 6, width - 48, 1);
-    return y + 20;
+    ctx.fillRect(HEADER_PAD_X, dividerY, width - HEADER_PAD_X * 2, 1);
+    return dividerY + 14;
+}
+
+function measureExportFooterHeight(
+    width: number,
+    caption?: GraphExportCaption | null,
+    legacySourceLine?: string
+): number {
+    const temp = document.createElement('canvas').getContext('2d');
+    if (!temp) return caption?.dataSource ? 88 : 64;
+
+    const maxWidth = Math.max(120, width - 32);
+    let lines = 0;
+
+    if (caption?.dataSource) {
+        temp.font = '11px Inter, Arial, sans-serif';
+        lines += wrapCanvasText(temp, `Data source: ${caption.dataSource}`, maxWidth).length;
+        if (caption.suggestedCitation) {
+            temp.font = '10px Inter, Arial, sans-serif';
+            lines += wrapCanvasText(temp, `Suggested citation: ${caption.suggestedCitation}`, maxWidth).length;
+        }
+        const slug = caption.pageSlug || 'world-map';
+        temp.font = '10px Inter, Arial, sans-serif';
+        lines += 1; // `${ATLAS_SITE_LABEL}/${slug} | ${license}`
+        void wrapCanvasText(temp, `${ATLAS_SITE_LABEL}/${slug} | ${caption.license || 'CC BY 4.0'}`, maxWidth);
+    } else {
+        temp.font = '11px Inter, Arial, sans-serif';
+        lines += wrapCanvasText(temp, legacySourceLine || SOURCE_LINE, maxWidth).length + 1;
+    }
+
+    return 16 + lines * 14 + 12;
 }
 
 function drawExportFooter(
@@ -700,26 +883,49 @@ function drawExportFooter(
     width: number,
     graphHeight: number,
     sourceLine: string,
-    logoImage: HTMLImageElement | null
+    caption?: GraphExportCaption | null
 ): void {
     ctx.fillStyle = '#e2e8f0';
     ctx.fillRect(0, graphHeight, width, 1);
 
-    let textX = 16;
-    if (logoImage) {
-        const logoSize = 38;
-        ctx.drawImage(logoImage, 16, graphHeight + 12, logoSize, logoSize);
-        textX = 16 + logoSize + 12;
+    const x = 16;
+    const maxWidth = Math.max(120, width - 32);
+    let y = graphHeight + 14;
+    ctx.textBaseline = 'top';
+
+    if (caption?.dataSource) {
+        ctx.fillStyle = '#64748b';
+        ctx.font = '11px Inter, Arial, sans-serif';
+        wrapCanvasText(ctx, `Data source: ${caption.dataSource}`, maxWidth).forEach((line) => {
+            ctx.fillText(line, x, y);
+            y += 14;
+        });
+
+        if (caption.suggestedCitation) {
+            ctx.fillStyle = '#64748b';
+            ctx.font = '10px Inter, Arial, sans-serif';
+            wrapCanvasText(ctx, `Suggested citation: ${caption.suggestedCitation}`, maxWidth).forEach((line) => {
+                ctx.fillText(line, x, y);
+                y += 13;
+            });
+        }
+
+        const slug = caption.pageSlug || 'world-map';
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '10px Inter, Arial, sans-serif';
+        ctx.fillText(`${ATLAS_SITE_LABEL}/${slug} | ${caption.license || 'CC BY 4.0'}`, x, y);
+        return;
     }
 
-    ctx.fillStyle = '#1e293b';
-    ctx.font = '700 14px Inter, Arial, sans-serif';
-    ctx.textBaseline = 'top';
-    ctx.fillText('Climate Policy Atlas', textX, graphHeight + 16);
-
-    ctx.fillStyle = '#475569';
+    ctx.fillStyle = '#64748b';
     ctx.font = '11px Inter, Arial, sans-serif';
-    ctx.fillText(sourceLine, textX, graphHeight + 36);
+    wrapCanvasText(ctx, sourceLine, maxWidth).forEach((line) => {
+        ctx.fillText(line, x, y);
+        y += 14;
+    });
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '10px Inter, Arial, sans-serif';
+    ctx.fillText(`${ATLAS_SITE_LABEL}/world-map | CC BY 4.0`, x, y);
 }
 
 function compositeGraphSize(
@@ -785,15 +991,16 @@ async function svgsToPngBlob(
     }
 
     const parts = await Promise.all(svgs.map((svg) => prepareSvgImage(svg)));
-    const footerHeight = 64;
     const gap = svgs.length > 1 ? 16 : 0;
     const graphSize = compositeGraphSize(parts, layout, gap);
     const width = graphSize.width;
     const graphHeight = graphSize.height;
-    const headerHeight = measureExportHeaderHeight(width, caption);
+    const logoImage = await loadFooterLogo();
+    const logoRect = resolveHeaderLogoRect(logoImage, caption);
+    const headerHeight = measureExportHeaderHeight(width, caption, logoRect);
+    const footerHeight = measureExportFooterHeight(width, caption, sourceLine);
     const totalHeight = headerHeight + graphHeight + footerHeight;
     const pixelRatio = resolveExportPixelRatio(maxQuality);
-    const logoImage = await loadFooterLogo();
 
     const canvas = document.createElement('canvas');
     canvas.width = Math.round(width * pixelRatio);
@@ -805,9 +1012,9 @@ async function svgsToPngBlob(
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, width, totalHeight);
 
-    drawExportHeader(ctx, width, caption);
+    drawExportHeader(ctx, width, caption, logoImage, logoRect);
     drawCompositeGraphs(ctx, parts, layout, gap, 0, headerHeight, width, graphHeight);
-    drawExportFooter(ctx, width, headerHeight + graphHeight, sourceLine, logoImage);
+    drawExportFooter(ctx, width, headerHeight + graphHeight, sourceLine, caption);
 
     return new Promise<Blob>((resolve, reject) => {
         canvas.toBlob(

@@ -85,9 +85,12 @@
       "resolution_m": 250,
       "sidecar": "buildable/DE3_wind_strictest_250m.json",
       "buildable_fraction_of_region": 0.834476483762598,
+      "eligible_share_policy": 0.834476483762598,
       "buildable_km2": 745.1875,
       "region_km2": 893.0,
-      "generated_at": "2026-05-06T14:27:20.650462+00:00"
+      "generated_at": "2026-06-08T12:12:42.080775+00:00",
+      "eligible_share_technical": 0.33643617021276595,
+      "buildable_km2_technical": 300.4375
     },
     "DE4_solar_strictest_250m": {
       "region": "DE4",
@@ -343,5 +346,5 @@
       "generated_at": "2026-05-06T14:51:27.592547+00:00"
     }
   },
-  "last_update": "2026-05-06T14:51:27.592547+00:00"
+  "last_update": "2026-06-08T12:12:42.080780+00:00"
 }
