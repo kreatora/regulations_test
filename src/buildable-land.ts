@@ -94,6 +94,22 @@ interface Sidecar {
     pixel_stats_technical?: Sidecar['pixel_stats'];
     models?: Record<string, { label: string; description: string; availability_suffix: string; styled_suffix?: string }>;
     applied_rules: AppliedRule[];
+    applied_rules_technical?: AppliedRule[];
+}
+
+function sidecarRules(sidecar: Sidecar, model: LandModel): { applied: AppliedRule[]; skipped: AppliedRule[] } {
+    const allRules = model === 'technical' && sidecar.applied_rules_technical?.length
+        ? sidecar.applied_rules_technical
+        : sidecar.applied_rules;
+    return {
+        applied: allRules.filter(r => r.applied),
+        skipped: allRules.filter(r => !r.applied),
+    };
+}
+
+function rasterModelForBake(bake: ManifestEntry): LandModel {
+    if (activeModel === 'technical' && !hasTechnicalLayer(bake)) return 'policy';
+    return activeModel;
 }
 
 // ---------------------------------------------------------------------------
@@ -287,6 +303,8 @@ function renderShell(host: HTMLElement) {
             .bl-stat-label { font-size: 10.5px; font-weight: 600; color: ${C_PRIMARY}; margin-top: 4px; letter-spacing: 0.4px; text-transform: uppercase; }
             .bl-about { font-size: 11px; line-height: 1.5; color: ${C_PRIMARY}; margin: -4px 0 10px 0; padding: 8px 12px; background: ${C_SURFACE_LIGHT}; border: 1px solid ${C_BORDER}; border-radius: 10px; }
             .bl-about strong { color: ${C_FOREST}; }
+            .bl-about ul { margin: 4px 0 0; padding-left: 1.15em; }
+            .bl-about li { margin: 2px 0; }
 
             .bl-stage { background: #ffffff; border: 1px solid ${C_BORDER}; border-radius: 14px; padding: 16px; min-height: 540px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); position: relative; }
 
@@ -339,7 +357,7 @@ function renderShell(host: HTMLElement) {
 
         <div class="bl-shell">
             <div class="bl-stat-grid" id="bl-stats"></div>
-            <p class="bl-about" id="bl-about"></p>
+            <div class="bl-about" id="bl-about"></div>
             <div id="bl-legend-wrap"></div>
             <div class="bl-stage" id="bl-stage"></div>
         </div>
@@ -351,10 +369,14 @@ function renderAboutNote() {
     if (!el) return;
     const styleOpt = BUILDABLE_STYLE_OPTIONS.find(o => o.id === activeStyle);
     el.innerHTML = `
-        <strong>Land models:</strong>
-        Policy-only = setbacks on residential landuse;
-        Policy + geography = also buildings, water, forest, slopes &gt; 20° (250&nbsp;m grid).
-        ${styleOpt ? `<br><strong>${escapeHtml(styleOpt.label)}:</strong> ${escapeHtml(styleOpt.hint)}` : ''}
+        <strong>What the map shows</strong>
+        <ul>
+            <li><strong>Policy-only:</strong> Coded setbacks on residential landuse plus rule layers (motorway, airport, military, etc.) on a 250&nbsp;m grid.</li>
+            <li><strong>Policy + geography:</strong> All of the above, plus OSM buildings and settlements, water, forest, and slopes &gt; 20° where elevation data exists. Green = eligible; grey = excluded.</li>
+            <li><strong>Map styles:</strong> Land availability (green/grey) and Exclusion zones (red) use the same baked cells with different colours.</li>
+            <li><strong>World view:</strong> Choropleth of eligible share by country. <strong>Country detail:</strong> stacked regional PNG overlays — pre-baked rasters, not live OSM; 250&nbsp;m cells show patterns, not individual buildings.</li>
+        </ul>
+        ${styleOpt ? `<strong>${escapeHtml(styleOpt.label)}:</strong> ${escapeHtml(styleOpt.hint)}` : ''}
     `;
 }
 
@@ -923,6 +945,7 @@ async function overlayRasterIfBaked(
     const ordered = [...bakes].sort((a, b) => b.region_km2 - a.region_km2);
     let totalBuildableKm2 = 0;
     let totalRegionKm2 = 0;
+    let usedPolicyFallback = false;
 
     for (const bake of ordered) {
         let sidecar: Sidecar | null = null;
@@ -946,7 +969,10 @@ async function overlayRasterIfBaked(
         const br = projection([maxLng, minLat]);
         if (!tl || !br) continue;
 
-        const pngHref = `${baseUrl}data/${rasterPngPath(bake.sidecar)}`;
+        const rasterModel = rasterModelForBake(bake);
+        if (rasterModel !== activeModel) usedPolicyFallback = true;
+
+        const pngHref = `${baseUrl}data/${rasterPngPath(bake.sidecar, rasterModel)}`;
         overlayLayer.append('image')
             .attr('x', tl[0]).attr('y', tl[1])
             .attr('width',  br[0] - tl[0])
@@ -955,21 +981,29 @@ async function overlayRasterIfBaked(
             .attr('href', pngHref)
             .attr('xlink:href', pngHref)
             .on('error', function () {
+                const img = d3.select(this);
+                if (activeModel === 'technical' && rasterModel === 'technical') {
+                    usedPolicyFallback = true;
+                    const policyHref = `${baseUrl}data/${rasterPngPath(bake.sidecar, 'policy', activeStyle)}`;
+                    img.attr('href', policyHref).attr('xlink:href', policyHref);
+                    return;
+                }
                 if (activeStyle !== 'availability') return;
-                const fallback = `${baseUrl}data/${rasterPngPath(bake.sidecar, activeModel, 'exclusions')}`;
-                d3.select(this).attr('href', fallback).attr('xlink:href', fallback);
+                const fallback = `${baseUrl}data/${rasterPngPath(bake.sidecar, rasterModel, 'exclusions')}`;
+                img.attr('href', fallback).attr('xlink:href', fallback);
             });
 
-        totalBuildableKm2 += bake.buildable_km2;
+        totalBuildableKm2 += buildableKm2FromBake(bake, activeModel);
         totalRegionKm2    += bake.region_km2;
     }
 
     if (totalRegionKm2 === 0) return;
     const fraction = totalBuildableKm2 / totalRegionKm2;
     const regionList = ordered.map(b => b.region).join(', ');
-    const badge = mapLayer.append('g').attr('transform', `translate(12, ${mapHeight - 56})`);
+    const badgeH = usedPolicyFallback ? 58 : 44;
+    const badge = mapLayer.append('g').attr('transform', `translate(12, ${mapHeight - badgeH - 12})`);
     badge.append('rect')
-        .attr('width', 268).attr('height', 44)
+        .attr('width', 268).attr('height', badgeH)
         .attr('rx', 8)
         .attr('fill', '#ffffff').attr('stroke', C_BORDER);
     badge.append('text')
@@ -980,6 +1014,12 @@ async function overlayRasterIfBaked(
         .attr('x', 10).attr('y', 34)
         .style('font-size', '10.5px').style('fill', C_PRIMARY)
         .text(`${Math.round(totalBuildableKm2).toLocaleString()} km² of ${Math.round(totalRegionKm2).toLocaleString()} km² · ${regionList}`);
+    if (usedPolicyFallback) {
+        badge.append('text')
+            .attr('x', 10).attr('y', 50)
+            .style('font-size', '10px').style('fill', C_BRICK).style('font-weight', '600')
+            .text('Some regions: policy-only overlay (technical bake pending)');
+    }
 }
 
 function findCountryBakes(meta: { iso2: string; nutsPrimary: string }): ManifestEntry[] {
@@ -1019,11 +1059,11 @@ async function loadAndRenderRules(meta: { iso2: string; nutsPrimary: string; nam
         return;
     }
 
-    const applied = sidecar.applied_rules.filter(r => r.applied);
-    const skipped = sidecar.applied_rules.filter(r => !r.applied);
+    const { applied, skipped } = sidecarRules(sidecar, activeModel);
 
     const stats = sidecarStats(sidecar, activeModel);
     const eligibleShare = stats.eligible_share ?? stats.buildable_fraction_of_region;
+    const technicalPending = activeModel === 'technical' && !sidecar.pixel_stats_technical;
 
     panel.innerHTML = `
         <h4>${escapeHtml(meta.name)} — ${TECH_LABEL[activeTech]} rules (${applied.length})</h4>
@@ -1032,6 +1072,7 @@ async function loadAndRenderRules(meta: { iso2: string; nutsPrimary: string; nam
             · ${MODEL_SHORT[activeModel].toLowerCase()} <strong>${(eligibleShare * 100).toFixed(1)}%</strong>
             (${Math.round(stats.buildable_km2).toLocaleString()} km²)
             · turbine H=${sidecar.turbine_geometry.tip_height_m}m / blade=${sidecar.turbine_geometry.blade_length_m}m
+            ${technicalPending ? `<br><span style="color:${C_BRICK};">Technical layer still baking — showing policy data where needed.</span>` : ''}
         </p>
         <div id="bl-applied-list">${applied.map(r => ruleCardHTML(r)).join('') || `<div class="bl-empty" style="min-height:80px;">No applicable spatial setbacks for this tech in this region.</div>`}</div>
         ${skipped.length > 0 ? `

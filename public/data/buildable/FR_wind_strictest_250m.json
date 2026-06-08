@@ -1,6 +1,6 @@
 {
-  "schema_version": 1,
-  "generated_at": "2026-05-06T14:50:22.148211+00:00",
+  "schema_version": 2,
+  "generated_at": "2026-06-08T20:05:35.187782+00:00",
   "region": "FR",
   "tech": "wind",
   "mode": "strictest",
@@ -24,8 +24,8 @@
       74.70751696182239,
       51.32810547192934
     ],
-    "width": 4000,
-    "height": 2601,
+    "width": 62797,
+    "height": 40846,
     "resolution_m_source": 250
   },
   "pixel_stats": {
@@ -35,10 +35,10 @@
     "wpa_pixels": 0,
     "excluded_pixels": 382504,
     "buildable_fraction_of_region": 0.962550722435515,
+    "eligible_share": 0.962550722435515,
     "buildable_km2": 614463.625,
     "region_km2": 638370.125,
-    "pixel_area_km2": 0.0625,
-    "eligible_share": 0.962550722435515
+    "pixel_area_km2": 0.0625
   },
   "applied_rules": [
     {
@@ -57,6 +57,43 @@
       "applied": true
     }
   ],
+  "models": {
+    "policy": {
+      "label": "Policy setbacks only",
+      "description": "Coded setback rules on coarse OSM residential landuse.",
+      "pixel_stats": {
+        "total_pixels_grid": 1277185494,
+        "region_pixels": 10213922,
+        "buildable_pixels": 9831418,
+        "wpa_pixels": 0,
+        "excluded_pixels": 382504,
+        "buildable_fraction_of_region": 0.962550722435515,
+        "eligible_share": 0.962550722435515,
+        "buildable_km2": 614463.625,
+        "region_km2": 638370.125,
+        "pixel_area_km2": 0.0625
+      },
+      "availability_suffix": "_availability.png"
+    },
+    "technical": {
+      "label": "Policy + geography",
+      "description": "Setbacks on all OSM buildings/settlements plus water, forest, nature reserves, and slopes steeper than 20°.",
+      "pixel_stats": {
+        "total_pixels_grid": 1277185494,
+        "region_pixels": 10213922,
+        "buildable_pixels": 8160838,
+        "wpa_pixels": 0,
+        "excluded_pixels": 2053084,
+        "buildable_fraction_of_region": 0.7989916116453601,
+        "eligible_share": 0.7989916116453601,
+        "buildable_km2": 510052.375,
+        "region_km2": 638370.125,
+        "pixel_area_km2": 0.0625
+      },
+      "availability_suffix": "_technical_availability.png",
+      "styled_suffix": "_technical_styled.png"
+    }
+  },
   "schema_notes": {
     "values_png_legend": {
       "0": "outside region (bounding-box padding)",
@@ -70,5 +107,34 @@
       "site_green rgba(141,192,133,140)": "WPA additive (encouraged)"
     },
     "styled_png": "RGBA overlay tuned to the Climate Policy Atlas forest-green theme; the red regions read as 'no-build'."
-  }
+  },
+  "pixel_stats_technical": {
+    "total_pixels_grid": 1277185494,
+    "region_pixels": 10213922,
+    "buildable_pixels": 8160838,
+    "wpa_pixels": 0,
+    "excluded_pixels": 2053084,
+    "buildable_fraction_of_region": 0.7989916116453601,
+    "eligible_share": 0.7989916116453601,
+    "buildable_km2": 510052.375,
+    "region_km2": 638370.125,
+    "pixel_area_km2": 0.0625
+  },
+  "applied_rules_technical": [
+    {
+      "variable": "1_distance_residential buildings",
+      "layer": "settlements",
+      "setback_m": 500.0,
+      "condition": null,
+      "year": 2011,
+      "legally_binding": true,
+      "source_name": null,
+      "source_link": "https://publications.jrc.ec.europa.eu/repository/bitstream/JRC109698/kjna29083enn_1.pdf",
+      "raw_value": 500.0,
+      "raw_unit": "m",
+      "multiplier_resolved": false,
+      "feature_count": 86226,
+      "applied": true
+    }
+  ]
 }

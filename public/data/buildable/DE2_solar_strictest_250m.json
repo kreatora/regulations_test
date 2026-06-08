@@ -1,6 +1,6 @@
 {
-  "schema_version": 1,
-  "generated_at": "2026-05-06T14:22:33.989213+00:00",
+  "schema_version": 2,
+  "generated_at": "2026-06-08T16:54:34.036498+00:00",
   "region": "DE2",
   "tech": "solar",
   "mode": "strictest",
@@ -35,10 +35,10 @@
     "wpa_pixels": 0,
     "excluded_pixels": 5691,
     "buildable_fraction_of_region": 0.9949605682842555,
+    "eligible_share": 0.9949605682842555,
     "buildable_km2": 70225.1875,
     "region_km2": 70580.875,
-    "pixel_area_km2": 0.0625,
-    "eligible_share": 0.9949605682842555
+    "pixel_area_km2": 0.0625
   },
   "applied_rules": [
     {
@@ -48,7 +48,7 @@
       "condition": "Proximity to federal streets and railways",
       "year": null,
       "legally_binding": true,
-      "source_name": "Bundesfernstra\u00dfengesett",
+      "source_name": "Bundesfernstraßengesett",
       "source_link": "https://www.gesetze-im-internet.de/fstrg/BJNR009030953.html",
       "raw_value": 40.0,
       "raw_unit": "m",
@@ -63,7 +63,7 @@
       "condition": "Nature reserves such as Natura 2000 areas",
       "year": 2013,
       "legally_binding": false,
-      "source_name": "Gesetz \u00fcber Naturschutz und Landschaftspflege (Bundesnaturschuzgesetz BNatschG)",
+      "source_name": "Gesetz über Naturschutz und Landschaftspflege (Bundesnaturschuzgesetz BNatschG)",
       "source_link": "https://www.gesetze-im-internet.de/bnatschg_2009/",
       "raw_value": null,
       "raw_unit": null,
@@ -73,6 +73,43 @@
       "reason": "no features in layer"
     }
   ],
+  "models": {
+    "policy": {
+      "label": "Policy setbacks only",
+      "description": "Coded setback rules on coarse OSM residential landuse.",
+      "pixel_stats": {
+        "total_pixels_grid": 2087584,
+        "region_pixels": 1129294,
+        "buildable_pixels": 1123603,
+        "wpa_pixels": 0,
+        "excluded_pixels": 5691,
+        "buildable_fraction_of_region": 0.9949605682842555,
+        "eligible_share": 0.9949605682842555,
+        "buildable_km2": 70225.1875,
+        "region_km2": 70580.875,
+        "pixel_area_km2": 0.0625
+      },
+      "availability_suffix": "_availability.png"
+    },
+    "technical": {
+      "label": "Policy + geography",
+      "description": "Setbacks on all OSM buildings/settlements plus water, forest, nature reserves, and slopes steeper than 20°.",
+      "pixel_stats": {
+        "total_pixels_grid": 2087584,
+        "region_pixels": 1129294,
+        "buildable_pixels": 792150,
+        "wpa_pixels": 0,
+        "excluded_pixels": 337144,
+        "buildable_fraction_of_region": 0.7014559538968594,
+        "eligible_share": 0.7014559538968594,
+        "buildable_km2": 49509.375,
+        "region_km2": 70580.875,
+        "pixel_area_km2": 0.0625
+      },
+      "availability_suffix": "_technical_availability.png",
+      "styled_suffix": "_technical_styled.png"
+    }
+  },
   "schema_notes": {
     "values_png_legend": {
       "0": "outside region (bounding-box padding)",
@@ -86,5 +123,50 @@
       "site_green rgba(141,192,133,140)": "WPA additive (encouraged)"
     },
     "styled_png": "RGBA overlay tuned to the Climate Policy Atlas forest-green theme; the red regions read as 'no-build'."
-  }
+  },
+  "pixel_stats_technical": {
+    "total_pixels_grid": 2087584,
+    "region_pixels": 1129294,
+    "buildable_pixels": 792150,
+    "wpa_pixels": 0,
+    "excluded_pixels": 337144,
+    "buildable_fraction_of_region": 0.7014559538968594,
+    "eligible_share": 0.7014559538968594,
+    "buildable_km2": 49509.375,
+    "region_km2": 70580.875,
+    "pixel_area_km2": 0.0625
+  },
+  "applied_rules_technical": [
+    {
+      "variable": "2_distance_motorway",
+      "layer": "motorway",
+      "setback_m": 40.0,
+      "condition": "Proximity to federal streets and railways",
+      "year": null,
+      "legally_binding": true,
+      "source_name": "Bundesfernstraßengesett",
+      "source_link": "https://www.gesetze-im-internet.de/fstrg/BJNR009030953.html",
+      "raw_value": 40.0,
+      "raw_unit": "m",
+      "multiplier_resolved": false,
+      "feature_count": 30029,
+      "applied": true
+    },
+    {
+      "variable": "15_exclusion area",
+      "layer": "natura2000",
+      "setback_m": 0.0,
+      "condition": "Nature reserves such as Natura 2000 areas",
+      "year": 2013,
+      "legally_binding": false,
+      "source_name": "Gesetz über Naturschutz und Landschaftspflege (Bundesnaturschuzgesetz BNatschG)",
+      "source_link": "https://www.gesetze-im-internet.de/bnatschg_2009/",
+      "raw_value": null,
+      "raw_unit": null,
+      "multiplier_resolved": false,
+      "feature_count": 0,
+      "applied": false,
+      "reason": "no features in layer"
+    }
+  ]
 }

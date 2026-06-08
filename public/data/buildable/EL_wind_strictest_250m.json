@@ -1,6 +1,6 @@
 {
-  "schema_version": 1,
-  "generated_at": "2026-05-06T14:09:48.686503+00:00",
+  "schema_version": 2,
+  "generated_at": "2026-06-08T17:38:44.777241+00:00",
   "region": "EL",
   "tech": "wind",
   "mode": "strictest",
@@ -35,10 +35,10 @@
     "wpa_pixels": 6618,
     "excluded_pixels": 23730,
     "buildable_fraction_of_region": 0.9887432580512032,
+    "eligible_share": 0.9887432580512032,
     "buildable_km2": 130271.25,
     "region_km2": 131754.375,
-    "pixel_area_km2": 0.0625,
-    "eligible_share": 0.9887432580512032
+    "pixel_area_km2": 0.0625
   },
   "applied_rules": [
     {
@@ -121,6 +121,43 @@
       "reason": "no features in layer"
     }
   ],
+  "models": {
+    "policy": {
+      "label": "Policy setbacks only",
+      "description": "Coded setback rules on coarse OSM residential landuse.",
+      "pixel_stats": {
+        "total_pixels_grid": 12150435,
+        "region_pixels": 2108070,
+        "buildable_pixels": 2077722,
+        "wpa_pixels": 6618,
+        "excluded_pixels": 23730,
+        "buildable_fraction_of_region": 0.9887432580512032,
+        "eligible_share": 0.9887432580512032,
+        "buildable_km2": 130271.25,
+        "region_km2": 131754.375,
+        "pixel_area_km2": 0.0625
+      },
+      "availability_suffix": "_availability.png"
+    },
+    "technical": {
+      "label": "Policy + geography",
+      "description": "Setbacks on all OSM buildings/settlements plus water, forest, nature reserves, and slopes steeper than 20°.",
+      "pixel_stats": {
+        "total_pixels_grid": 12150435,
+        "region_pixels": 2108070,
+        "buildable_pixels": 1731092,
+        "wpa_pixels": 104004,
+        "excluded_pixels": 272974,
+        "buildable_fraction_of_region": 0.8705099925524294,
+        "eligible_share": 0.8705099925524294,
+        "buildable_km2": 114693.5,
+        "region_km2": 131754.375,
+        "pixel_area_km2": 0.0625
+      },
+      "availability_suffix": "_technical_availability.png",
+      "styled_suffix": "_technical_styled.png"
+    }
+  },
   "schema_notes": {
     "values_png_legend": {
       "0": "outside region (bounding-box padding)",
@@ -134,5 +171,98 @@
       "site_green rgba(141,192,133,140)": "WPA additive (encouraged)"
     },
     "styled_png": "RGBA overlay tuned to the Climate Policy Atlas forest-green theme; the red regions read as 'no-build'."
-  }
+  },
+  "pixel_stats_technical": {
+    "total_pixels_grid": 12150435,
+    "region_pixels": 2108070,
+    "buildable_pixels": 1731092,
+    "wpa_pixels": 104004,
+    "excluded_pixels": 272974,
+    "buildable_fraction_of_region": 0.8705099925524294,
+    "eligible_share": 0.8705099925524294,
+    "buildable_km2": 114693.5,
+    "region_km2": 131754.375,
+    "pixel_area_km2": 0.0625
+  },
+  "applied_rules_technical": [
+    {
+      "variable": "9_distance_others",
+      "layer": "protected_areas",
+      "setback_m": 3000.0,
+      "condition": "applicable to World Heritage Sites, other major monuments, archaeological sites and historical sites; this distance is not applicable if the wind turbine is not visible from the site",
+      "year": 2008,
+      "legally_binding": true,
+      "source_name": "Ministry of the Environemnt and Energy 2008 - FEK2464B 2008 RES",
+      "source_link": "https://ypen.gov.gr/wp-content/uploads/2020/11/FEK2464B_2008_RES.pdf",
+      "raw_value": 3000.0,
+      "raw_unit": "m",
+      "multiplier_resolved": false,
+      "feature_count": 0,
+      "applied": false,
+      "reason": "no features in layer"
+    },
+    {
+      "variable": "1_distance_residential buildings",
+      "layer": "settlements",
+      "setback_m": 1500.0,
+      "condition": "applicable to projects with capacity smaller than 20 kW(p) that have qualified for a special environmental exception certificate and are developed close to similar projects that have also qualified for a special environmental exception certificate, or close to similar projects, and the aggregated capacity of the two projects is greater than 20 kW(p)",
+      "year": 2008,
+      "legally_binding": true,
+      "source_name": "Ministry of the Environemnt and Energy 2008 - FEK2464B 2008 RES",
+      "source_link": "https://ypen.gov.gr/wp-content/uploads/2020/11/FEK2464B_2008_RES.pdf",
+      "raw_value": 1500.0,
+      "raw_unit": "m",
+      "multiplier_resolved": false,
+      "feature_count": 4372,
+      "applied": true
+    },
+    {
+      "variable": "9_distance_others",
+      "layer": "water_protection",
+      "setback_m": 1500.0,
+      "condition": "applicable to swimming areas; this distance is not applicable if the wind turbine is not visible from the swimming area",
+      "year": 2008,
+      "legally_binding": true,
+      "source_name": "Ministry of the Environemnt and Energy 2008 - FEK2464B 2008 RES",
+      "source_link": "https://ypen.gov.gr/wp-content/uploads/2020/11/FEK2464B_2008_RES.pdf",
+      "raw_value": 1500.0,
+      "raw_unit": "m",
+      "multiplier_resolved": false,
+      "feature_count": 0,
+      "applied": false,
+      "reason": "no features in layer"
+    },
+    {
+      "variable": "9_distance_others",
+      "layer": "natura2000",
+      "setback_m": 150.0,
+      "condition": "applicable to projects with capacity smaller than 500 kW(p), that have also qualified for a special environmental exception; the distance refers to Natura 2000 areas",
+      "year": 2010,
+      "legally_binding": true,
+      "source_name": "Ministry of the Environment, Energy and Climate Change 2010 - FEK85A 2010 3852",
+      "source_link": "https://www.kodiko.gr/nomologia/download_fek?f=fek/2010/a/fek_a_85_2010.pdf&t=26e309aea85f5918d2679a8c110aee53",
+      "raw_value": 150.0,
+      "raw_unit": "m",
+      "multiplier_resolved": false,
+      "feature_count": 0,
+      "applied": false,
+      "reason": "no features in layer"
+    },
+    {
+      "variable": "15_exclusion area",
+      "layer": "national_parks",
+      "setback_m": 0.0,
+      "condition": null,
+      "year": 2008,
+      "legally_binding": true,
+      "source_name": "Ministry of the Environemnt and Energy 2008 - FEK2464B 2008 RES",
+      "source_link": "https://ypen.gov.gr/wp-content/uploads/2020/11/FEK2464B_2008_RES.pdf",
+      "raw_value": null,
+      "raw_unit": null,
+      "multiplier_resolved": false,
+      "feature_count": 0,
+      "applied": false,
+      "reason": "no features in layer"
+    }
+  ]
 }

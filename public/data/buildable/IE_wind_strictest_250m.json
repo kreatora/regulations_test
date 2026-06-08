@@ -1,6 +1,6 @@
 {
-  "schema_version": 1,
-  "generated_at": "2026-05-06T13:24:20.228961+00:00",
+  "schema_version": 2,
+  "generated_at": "2026-06-08T20:11:57.542406+00:00",
   "region": "IE",
   "tech": "wind",
   "mode": "strictest",
@@ -35,10 +35,10 @@
     "wpa_pixels": 0,
     "excluded_pixels": 51617,
     "buildable_fraction_of_region": 0.9538757109602934,
+    "eligible_share": 0.9538757109602934,
     "buildable_km2": 66716.75,
     "region_km2": 69942.8125,
-    "pixel_area_km2": 0.0625,
-    "eligible_share": 0.9538757109602934
+    "pixel_area_km2": 0.0625
   },
   "applied_rules": [
     {
@@ -66,7 +66,7 @@
       "source_name": "Wind Energy Development Guidelines (2006)",
       "source_link": "https://ie.rwe.com/-/media/RWE/RWE-UK/downloads/wind-energy-development-guidelines-2006.pdf",
       "raw_value": 1.0,
-      "raw_unit": "time of height and blade of wind turbine",
+      "raw_unit": "time of height of the turbine and blade",
       "multiplier_resolved": true,
       "feature_count": 10086,
       "applied": true
@@ -87,6 +87,43 @@
       "applied": true
     }
   ],
+  "models": {
+    "policy": {
+      "label": "Policy setbacks only",
+      "description": "Coded setback rules on coarse OSM residential landuse.",
+      "pixel_stats": {
+        "total_pixels_grid": 2222170,
+        "region_pixels": 1119085,
+        "buildable_pixels": 1067468,
+        "wpa_pixels": 0,
+        "excluded_pixels": 51617,
+        "buildable_fraction_of_region": 0.9538757109602934,
+        "eligible_share": 0.9538757109602934,
+        "buildable_km2": 66716.75,
+        "region_km2": 69942.8125,
+        "pixel_area_km2": 0.0625
+      },
+      "availability_suffix": "_availability.png"
+    },
+    "technical": {
+      "label": "Policy + geography",
+      "description": "Setbacks on all OSM buildings/settlements plus water, forest, nature reserves, and slopes steeper than 20°.",
+      "pixel_stats": {
+        "total_pixels_grid": 2222170,
+        "region_pixels": 1119085,
+        "buildable_pixels": 969865,
+        "wpa_pixels": 0,
+        "excluded_pixels": 149220,
+        "buildable_fraction_of_region": 0.8666589222445122,
+        "eligible_share": 0.8666589222445122,
+        "buildable_km2": 60616.5625,
+        "region_km2": 69942.8125,
+        "pixel_area_km2": 0.0625
+      },
+      "availability_suffix": "_technical_availability.png",
+      "styled_suffix": "_technical_styled.png"
+    }
+  },
   "schema_notes": {
     "values_png_legend": {
       "0": "outside region (bounding-box padding)",
@@ -100,5 +137,64 @@
       "site_green rgba(141,192,133,140)": "WPA additive (encouraged)"
     },
     "styled_png": "RGBA overlay tuned to the Climate Policy Atlas forest-green theme; the red regions read as 'no-build'."
-  }
+  },
+  "pixel_stats_technical": {
+    "total_pixels_grid": 2222170,
+    "region_pixels": 1119085,
+    "buildable_pixels": 969865,
+    "wpa_pixels": 0,
+    "excluded_pixels": 149220,
+    "buildable_fraction_of_region": 0.8666589222445122,
+    "eligible_share": 0.8666589222445122,
+    "buildable_km2": 60616.5625,
+    "region_km2": 69942.8125,
+    "pixel_area_km2": 0.0625
+  },
+  "applied_rules_technical": [
+    {
+      "variable": "1_distance_residential buildings",
+      "layer": "settlements",
+      "setback_m": 600.0,
+      "condition": null,
+      "year": 2019,
+      "legally_binding": false,
+      "source_name": "Draft Revised\nWind Energy Development Guidelines",
+      "source_link": null,
+      "raw_value": 4.0,
+      "raw_unit": "time of height of wind turbine",
+      "multiplier_resolved": true,
+      "feature_count": 16402,
+      "applied": true
+    },
+    {
+      "variable": "2_distance_motorway",
+      "layer": "motorway",
+      "setback_m": 210.0,
+      "condition": null,
+      "year": 2006,
+      "legally_binding": false,
+      "source_name": "Wind Energy Development Guidelines (2006)",
+      "source_link": "https://ie.rwe.com/-/media/RWE/RWE-UK/downloads/wind-energy-development-guidelines-2006.pdf",
+      "raw_value": 1.0,
+      "raw_unit": "time of height of the turbine and blade",
+      "multiplier_resolved": true,
+      "feature_count": 10086,
+      "applied": true
+    },
+    {
+      "variable": "6_distance_transmission lines",
+      "layer": "transmission",
+      "setback_m": 23.0,
+      "condition": null,
+      "year": 2006,
+      "legally_binding": false,
+      "source_name": "Wind Energy Development Guidelines (2006)",
+      "source_link": "https://ie.rwe.com/-/media/RWE/RWE-UK/downloads/wind-energy-development-guidelines-2006.pdf",
+      "raw_value": 23.0,
+      "raw_unit": "m",
+      "multiplier_resolved": false,
+      "feature_count": 1881,
+      "applied": true
+    }
+  ]
 }
