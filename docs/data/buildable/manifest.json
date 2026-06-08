@@ -8,9 +8,12 @@
       "resolution_m": 250,
       "sidecar": "buildable/IE_wind_strictest_250m.json",
       "buildable_fraction_of_region": 0.9538757109602934,
+      "eligible_share_policy": 0.9538757109602934,
       "buildable_km2": 66716.75,
       "region_km2": 69942.8125,
-      "generated_at": "2026-05-06T13:24:20.236460+00:00"
+      "generated_at": "2026-06-08T20:11:57.550414+00:00",
+      "eligible_share_technical": 0.8666589222445122,
+      "buildable_km2_technical": 60616.5625
     },
     "DE2_wind_strictest_250m": {
       "region": "DE2",
@@ -19,9 +22,12 @@
       "resolution_m": 250,
       "sidecar": "buildable/DE2_wind_strictest_250m.json",
       "buildable_fraction_of_region": 0.734890117188261,
+      "eligible_share_policy": 0.734890117188261,
       "buildable_km2": 51869.1875,
       "region_km2": 70580.875,
-      "generated_at": "2026-05-06T13:25:06.288047+00:00"
+      "generated_at": "2026-06-08T16:41:42.175071+00:00",
+      "eligible_share_technical": 0.36627485845138646,
+      "buildable_km2_technical": 25852.0
     },
     "EL_wind_strictest_250m": {
       "region": "EL",
@@ -30,9 +36,12 @@
       "resolution_m": 250,
       "sidecar": "buildable/EL_wind_strictest_250m.json",
       "buildable_fraction_of_region": 0.9887432580512032,
+      "eligible_share_policy": 0.9887432580512032,
       "buildable_km2": 130271.25,
       "region_km2": 131754.375,
-      "generated_at": "2026-05-06T14:09:48.702018+00:00"
+      "generated_at": "2026-06-08T17:38:44.783742+00:00",
+      "eligible_share_technical": 0.8705099925524294,
+      "buildable_km2_technical": 114693.5
     },
     "DE2_solar_strictest_250m": {
       "region": "DE2",
@@ -41,9 +50,12 @@
       "resolution_m": 250,
       "sidecar": "buildable/DE2_solar_strictest_250m.json",
       "buildable_fraction_of_region": 0.9949605682842555,
+      "eligible_share_policy": 0.9949605682842555,
       "buildable_km2": 70225.1875,
       "region_km2": 70580.875,
-      "generated_at": "2026-05-06T14:22:33.999241+00:00"
+      "generated_at": "2026-06-08T16:54:34.043497+00:00",
+      "eligible_share_technical": 0.7014559538968594,
+      "buildable_km2_technical": 49509.375
     },
     "DE1_solar_strictest_250m": {
       "region": "DE1",
@@ -52,9 +64,12 @@
       "resolution_m": 250,
       "sidecar": "buildable/DE1_solar_strictest_250m.json",
       "buildable_fraction_of_region": 0.9949879732182835,
+      "eligible_share_policy": 0.9949879732182835,
       "buildable_km2": 35832.875,
       "region_km2": 36013.375,
-      "generated_at": "2026-05-06T14:24:26.917932+00:00"
+      "generated_at": "2026-06-08T16:49:14.510630+00:00",
+      "eligible_share_technical": 0.6574883636982094,
+      "buildable_km2_technical": 23678.375
     },
     "DE1_wind_strictest_250m": {
       "region": "DE1",
@@ -63,9 +78,12 @@
       "resolution_m": 250,
       "sidecar": "buildable/DE1_wind_strictest_250m.json",
       "buildable_fraction_of_region": 0.99402478940116,
+      "eligible_share_policy": 0.99402478940116,
       "buildable_km2": 35798.1875,
       "region_km2": 36013.375,
-      "generated_at": "2026-05-06T14:26:32.575708+00:00"
+      "generated_at": "2026-06-08T16:50:49.995414+00:00",
+      "eligible_share_technical": 0.656603275866258,
+      "buildable_km2_technical": 23646.5
     },
     "DE3_solar_strictest_250m": {
       "region": "DE3",
@@ -74,9 +92,12 @@
       "resolution_m": 250,
       "sidecar": "buildable/DE3_solar_strictest_250m.json",
       "buildable_fraction_of_region": 0.9894316909294513,
+      "eligible_share_policy": 0.9894316909294513,
       "buildable_km2": 883.5625,
       "region_km2": 893.0,
-      "generated_at": "2026-05-06T14:26:51.331512+00:00"
+      "generated_at": "2026-06-08T16:54:38.158375+00:00",
+      "eligible_share_technical": 0.7958426651735723,
+      "buildable_km2_technical": 710.6875
     },
     "DE3_wind_strictest_250m": {
       "region": "DE3",
@@ -99,9 +120,12 @@
       "resolution_m": 250,
       "sidecar": "buildable/DE4_solar_strictest_250m.json",
       "buildable_fraction_of_region": 0.9963850596517854,
+      "eligible_share_policy": 0.9963850596517854,
       "buildable_km2": 29544.0625,
       "region_km2": 29651.25,
-      "generated_at": "2026-05-06T14:28:01.691767+00:00"
+      "generated_at": "2026-06-08T16:57:29.510317+00:00",
+      "eligible_share_technical": 0.7016398971375575,
+      "buildable_km2_technical": 20804.5
     },
     "DE4_wind_strictest_250m": {
       "region": "DE4",
@@ -110,9 +134,12 @@
       "resolution_m": 250,
       "sidecar": "buildable/DE4_wind_strictest_250m.json",
       "buildable_fraction_of_region": 0.9379199865098437,
+      "eligible_share_policy": 0.9379199865098437,
       "buildable_km2": 27810.5,
       "region_km2": 29651.25,
-      "generated_at": "2026-05-06T14:29:25.147062+00:00"
+      "generated_at": "2026-06-08T16:58:15.725919+00:00",
+      "eligible_share_technical": 0.6002529404325282,
+      "buildable_km2_technical": 17798.25
     },
     "DE5_solar_strictest_250m": {
       "region": "DE5",
@@ -121,9 +148,12 @@
       "resolution_m": 250,
       "sidecar": "buildable/DE5_solar_strictest_250m.json",
       "buildable_fraction_of_region": 0.9752792256142964,
+      "eligible_share_policy": 0.9752792256142964,
       "buildable_km2": 409.3125,
       "region_km2": 419.6875,
-      "generated_at": "2026-05-06T14:29:29.543200+00:00"
+      "generated_at": "2026-06-08T16:58:23.773047+00:00",
+      "eligible_share_technical": 0.8838421444527178,
+      "buildable_km2_technical": 370.9375
     },
     "DE5_wind_strictest_250m": {
       "region": "DE5",
@@ -132,9 +162,12 @@
       "resolution_m": 250,
       "sidecar": "buildable/DE5_wind_strictest_250m.json",
       "buildable_fraction_of_region": 0.5664929262844378,
+      "eligible_share_policy": 0.5664929262844378,
       "buildable_km2": 237.75,
       "region_km2": 419.6875,
-      "generated_at": "2026-05-06T14:29:34.503634+00:00"
+      "generated_at": "2026-06-08T16:58:27.258162+00:00",
+      "eligible_share_technical": 0.34653760238272524,
+      "buildable_km2_technical": 145.4375
     },
     "DE6_solar_strictest_250m": {
       "region": "DE6",
@@ -143,9 +176,12 @@
       "resolution_m": 250,
       "sidecar": "buildable/DE6_solar_strictest_250m.json",
       "buildable_fraction_of_region": 0.9842271293375394,
+      "eligible_share_policy": 0.9842271293375394,
       "buildable_km2": 741.0,
       "region_km2": 752.875,
-      "generated_at": "2026-05-06T14:29:41.985516+00:00"
+      "generated_at": "2026-06-08T16:58:53.088023+00:00",
+      "eligible_share_technical": 0.8802091980740495,
+      "buildable_km2_technical": 662.6875
     },
     "DE6_wind_strictest_250m": {
       "region": "DE6",
@@ -154,9 +190,12 @@
       "resolution_m": 250,
       "sidecar": "buildable/DE6_wind_strictest_250m.json",
       "buildable_fraction_of_region": 0.6698489125020753,
+      "eligible_share_policy": 0.6698489125020753,
       "buildable_km2": 504.3125,
       "region_km2": 752.875,
-      "generated_at": "2026-05-06T14:30:01.482132+00:00"
+      "generated_at": "2026-06-08T16:58:58.194617+00:00",
+      "eligible_share_technical": 0.38942387514527643,
+      "buildable_km2_technical": 293.1875
     },
     "DE7_solar_strictest_250m": {
       "region": "DE7",
@@ -165,9 +204,12 @@
       "resolution_m": 250,
       "sidecar": "buildable/DE7_solar_strictest_250m.json",
       "buildable_fraction_of_region": 0.9927424272022827,
+      "eligible_share_policy": 0.9927424272022827,
       "buildable_km2": 20962.625,
       "region_km2": 21115.875,
-      "generated_at": "2026-05-06T14:30:41.379913+00:00"
+      "generated_at": "2026-06-08T17:02:09.198373+00:00",
+      "eligible_share_technical": 0.6329302006192024,
+      "buildable_km2_technical": 13364.875
     },
     "DE7_wind_strictest_250m": {
       "region": "DE7",
@@ -176,9 +218,12 @@
       "resolution_m": 250,
       "sidecar": "buildable/DE7_wind_strictest_250m.json",
       "buildable_fraction_of_region": 0.8181078217218088,
+      "eligible_share_policy": 0.8181078217218088,
       "buildable_km2": 17275.0625,
       "region_km2": 21115.875,
-      "generated_at": "2026-05-06T14:32:57.435358+00:00"
+      "generated_at": "2026-06-08T17:03:11.285413+00:00",
+      "eligible_share_technical": 0.3949427859371208,
+      "buildable_km2_technical": 8339.5625
     },
     "DE8_wind_strictest_250m": {
       "region": "DE8",
@@ -187,9 +232,12 @@
       "resolution_m": 250,
       "sidecar": "buildable/DE8_wind_strictest_250m.json",
       "buildable_fraction_of_region": 0.9583089636946538,
+      "eligible_share_policy": 0.9583089636946538,
       "buildable_km2": 22119.6875,
       "region_km2": 23082.0,
-      "generated_at": "2026-05-06T14:33:54.127110+00:00"
+      "generated_at": "2026-06-08T17:04:41.585189+00:00",
+      "eligible_share_technical": 0.727046508101551,
+      "buildable_km2_technical": 16781.6875
     },
     "DE9_solar_strictest_250m": {
       "region": "DE9",
@@ -198,9 +246,12 @@
       "resolution_m": 250,
       "sidecar": "buildable/DE9_solar_strictest_250m.json",
       "buildable_fraction_of_region": 0.9957477857963469,
+      "eligible_share_policy": 0.9957477857963469,
       "buildable_km2": 47507.5625,
       "region_km2": 47710.4375,
-      "generated_at": "2026-05-06T14:35:01.991001+00:00"
+      "generated_at": "2026-06-08T17:09:24.830199+00:00",
+      "eligible_share_technical": 0.8235645502097942,
+      "buildable_km2_technical": 39292.625
     },
     "DEA_solar_strictest_250m": {
       "region": "DEA",
@@ -209,9 +260,12 @@
       "resolution_m": 250,
       "sidecar": "buildable/DEA_solar_strictest_250m.json",
       "buildable_fraction_of_region": 0.9910629240485925,
+      "eligible_share_policy": 0.9910629240485925,
       "buildable_km2": 33815.5625,
       "region_km2": 34120.5,
-      "generated_at": "2026-05-06T14:38:41.146047+00:00"
+      "generated_at": "2026-06-08T17:19:03.831243+00:00",
+      "eligible_share_technical": 0.7933170674521183,
+      "buildable_km2_technical": 27068.375
     },
     "DEA_wind_strictest_250m": {
       "region": "DEA",
@@ -220,9 +274,12 @@
       "resolution_m": 250,
       "sidecar": "buildable/DEA_wind_strictest_250m.json",
       "buildable_fraction_of_region": 0.988976568338682,
+      "eligible_share_policy": 0.988976568338682,
       "buildable_km2": 33744.375,
       "region_km2": 34120.5,
-      "generated_at": "2026-05-06T14:40:43.824140+00:00"
+      "generated_at": "2026-06-08T17:21:01.121872+00:00",
+      "eligible_share_technical": 0.7915640890373822,
+      "buildable_km2_technical": 27008.5625
     },
     "DEB_solar_strictest_250m": {
       "region": "DEB",
@@ -231,9 +288,12 @@
       "resolution_m": 250,
       "sidecar": "buildable/DEB_solar_strictest_250m.json",
       "buildable_fraction_of_region": 0.9928661377660244,
+      "eligible_share_policy": 0.9928661377660244,
       "buildable_km2": 19710.875,
       "region_km2": 19852.5,
-      "generated_at": "2026-05-06T14:41:14.245407+00:00"
+      "generated_at": "2026-06-08T17:23:54.427686+00:00",
+      "eligible_share_technical": 0.6280978466188137,
+      "buildable_km2_technical": 12469.3125
     },
     "DEB_wind_strictest_250m": {
       "region": "DEB",
@@ -242,9 +302,12 @@
       "resolution_m": 250,
       "sidecar": "buildable/DEB_wind_strictest_250m.json",
       "buildable_fraction_of_region": 0.8401807077194308,
+      "eligible_share_policy": 0.8401807077194308,
       "buildable_km2": 16679.6875,
       "region_km2": 19852.5,
-      "generated_at": "2026-05-06T14:42:24.831863+00:00"
+      "generated_at": "2026-06-08T17:25:02.406186+00:00",
+      "eligible_share_technical": 0.4331224027200605,
+      "buildable_km2_technical": 8598.5625
     },
     "DEC_wind_strictest_250m": {
       "region": "DEC",
@@ -253,9 +316,12 @@
       "resolution_m": 250,
       "sidecar": "buildable/DEC_wind_strictest_250m.json",
       "buildable_fraction_of_region": 0.8925647938983216,
+      "eligible_share_policy": 0.8925647938983216,
       "buildable_km2": 2296.625,
       "region_km2": 2573.0625,
-      "generated_at": "2026-05-06T14:42:43.684572+00:00"
+      "generated_at": "2026-06-08T17:25:31.729499+00:00",
+      "eligible_share_technical": 0.5547377881415628,
+      "buildable_km2_technical": 1427.375
     },
     "DED_wind_strictest_250m": {
       "region": "DED",
@@ -264,9 +330,12 @@
       "resolution_m": 250,
       "sidecar": "buildable/DED_wind_strictest_250m.json",
       "buildable_fraction_of_region": 0.8042021532478267,
+      "eligible_share_policy": 0.8042021532478267,
       "buildable_km2": 14836.625,
       "region_km2": 18448.875,
-      "generated_at": "2026-05-06T14:44:15.095083+00:00"
+      "generated_at": "2026-06-08T17:28:12.667862+00:00",
+      "eligible_share_technical": 0.5302288079896471,
+      "buildable_km2_technical": 9782.125
     },
     "DEE_wind_strictest_250m": {
       "region": "DEE",
@@ -275,9 +344,12 @@
       "resolution_m": 250,
       "sidecar": "buildable/DEE_wind_strictest_250m.json",
       "buildable_fraction_of_region": 0.9769232874130063,
+      "eligible_share_policy": 0.9769232874130063,
       "buildable_km2": 20082.0625,
       "region_km2": 20556.4375,
-      "generated_at": "2026-05-06T14:45:16.717464+00:00"
+      "generated_at": "2026-06-08T17:29:52.906040+00:00",
+      "eligible_share_technical": 0.7982475076238283,
+      "buildable_km2_technical": 16409.125
     },
     "DEF_solar_strictest_250m": {
       "region": "DEF",
@@ -286,9 +358,12 @@
       "resolution_m": 250,
       "sidecar": "buildable/DEF_solar_strictest_250m.json",
       "buildable_fraction_of_region": 0.9947107016684391,
+      "eligible_share_policy": 0.9947107016684391,
       "buildable_km2": 15609.0625,
       "region_km2": 15692.0625,
-      "generated_at": "2026-05-06T14:45:41.764897+00:00"
+      "generated_at": "2026-06-08T17:31:33.234171+00:00",
+      "eligible_share_technical": 0.90944864640961,
+      "buildable_km2_technical": 14271.125
     },
     "DEF_wind_strictest_250m": {
       "region": "DEF",
@@ -296,10 +371,13 @@
       "mode": "strictest",
       "resolution_m": 250,
       "sidecar": "buildable/DEF_wind_strictest_250m.json",
-      "buildable_fraction_of_region": 0.8057337905708698,
-      "buildable_km2": 12643.625,
+      "buildable_fraction_of_region": 0.9545311522943526,
+      "eligible_share_policy": 0.9545311522943526,
+      "buildable_km2": 14978.5625,
       "region_km2": 15692.0625,
-      "generated_at": "2026-05-06T14:46:54.363118+00:00"
+      "generated_at": "2026-06-08T17:32:03.773959+00:00",
+      "eligible_share_technical": 0.8707348062117393,
+      "buildable_km2_technical": 13663.625
     },
     "DEG_wind_strictest_250m": {
       "region": "DEG",
@@ -308,9 +386,12 @@
       "resolution_m": 250,
       "sidecar": "buildable/DEG_wind_strictest_250m.json",
       "buildable_fraction_of_region": 0.8847109478687614,
+      "eligible_share_policy": 0.8847109478687614,
       "buildable_km2": 14331.875,
       "region_km2": 16199.5,
-      "generated_at": "2026-05-06T14:48:09.931370+00:00"
+      "generated_at": "2026-06-08T17:33:45.852799+00:00",
+      "eligible_share_technical": 0.5644695823945184,
+      "buildable_km2_technical": 9144.125
     },
     "EL_solar_strictest_250m": {
       "region": "EL",
@@ -319,9 +400,12 @@
       "resolution_m": 250,
       "sidecar": "buildable/EL_solar_strictest_250m.json",
       "buildable_fraction_of_region": 1.0,
+      "eligible_share_policy": 1.0,
       "buildable_km2": 131754.375,
       "region_km2": 131754.375,
-      "generated_at": "2026-05-06T14:48:12.569028+00:00"
+      "generated_at": "2026-06-08T17:37:06.088989+00:00",
+      "eligible_share_technical": 0.8943721033931511,
+      "buildable_km2_technical": 117837.4375
     },
     "FR_wind_strictest_250m": {
       "region": "FR",
@@ -330,9 +414,12 @@
       "resolution_m": 250,
       "sidecar": "buildable/FR_wind_strictest_250m.json",
       "buildable_fraction_of_region": 0.962550722435515,
+      "eligible_share_policy": 0.962550722435515,
       "buildable_km2": 614463.625,
       "region_km2": 638370.125,
-      "generated_at": "2026-05-06T14:50:22.220570+00:00"
+      "generated_at": "2026-06-08T20:05:35.235905+00:00",
+      "eligible_share_technical": 0.7989916116453601,
+      "buildable_km2_technical": 510052.375
     },
     "DE9_wind_strictest_250m": {
       "region": "DE9",
@@ -341,10 +428,13 @@
       "resolution_m": 250,
       "sidecar": "buildable/DE9_wind_strictest_250m.json",
       "buildable_fraction_of_region": 0.9569027741571223,
+      "eligible_share_policy": 0.9569027741571223,
       "buildable_km2": 45654.25,
       "region_km2": 47710.4375,
-      "generated_at": "2026-05-06T14:51:27.592547+00:00"
+      "generated_at": "2026-06-08T17:10:45.030864+00:00",
+      "eligible_share_technical": 0.7696245711433688,
+      "buildable_km2_technical": 36719.125
     }
   },
-  "last_update": "2026-06-08T12:12:42.080780+00:00"
+  "last_update": "2026-06-08T20:11:57.550414+00:00"
 }

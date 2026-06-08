@@ -1,6 +1,6 @@
 {
-  "schema_version": 1,
-  "generated_at": "2026-05-06T14:40:43.813298+00:00",
+  "schema_version": 2,
+  "generated_at": "2026-06-08T17:21:01.115239+00:00",
   "region": "DEA",
   "tech": "wind",
   "mode": "strictest",
@@ -35,10 +35,10 @@
     "wpa_pixels": 0,
     "excluded_pixels": 6018,
     "buildable_fraction_of_region": 0.988976568338682,
+    "eligible_share": 0.988976568338682,
     "buildable_km2": 33744.375,
     "region_km2": 34120.5,
-    "pixel_area_km2": 0.0625,
-    "eligible_share": 0.988976568338682
+    "pixel_area_km2": 0.0625
   },
   "applied_rules": [
     {
@@ -48,7 +48,7 @@
       "condition": "Radar stations",
       "year": 2023,
       "legally_binding": true,
-      "source_name": "Bundesaufsichtsamt f\u00fcr Flugsicherung",
+      "source_name": "Bundesaufsichtsamt für Flugsicherung",
       "source_link": "https://www.baf.bund.de/DE/Themen/Flugsicherungstechnik/Anlagenschutz/anlagenschutz_aktuelleThemen.html]",
       "raw_value": 5000.0,
       "raw_unit": "m",
@@ -64,7 +64,7 @@
       "condition": "established flight procedures",
       "year": 2016,
       "legally_binding": true,
-      "source_name": "\u00a7\u00a7 12 - 18 Luftverkehrsgesetz (LuftVG)",
+      "source_name": "§§ 12 - 18 Luftverkehrsgesetz (LuftVG)",
       "source_link": "https://www.gesetze-im-internet.de/luftvg/",
       "raw_value": 1000.0,
       "raw_unit": "m",
@@ -79,7 +79,7 @@
       "condition": "autobahn",
       "year": 2007,
       "legally_binding": true,
-      "source_name": "Bundesfernstra\u00dfengesetz",
+      "source_name": "Bundesfernstraßengesetz",
       "source_link": "https://www.gesetze-im-internet.de/fstrg/BJNR009030953.html",
       "raw_value": 40.0,
       "raw_unit": "m",
@@ -94,7 +94,7 @@
       "condition": "Natura 2000 areas",
       "year": 2013,
       "legally_binding": false,
-      "source_name": "Gesetz \u00fcber Naturschutz und Landschaftspflege (Bundesnaturschuzgesetz BNatschG)",
+      "source_name": "Gesetz über Naturschutz und Landschaftspflege (Bundesnaturschuzgesetz BNatschG)",
       "source_link": "https://dejure.org/gesetze/BNatSchG/31.html\nhttps://dejure.org/gesetze/BNatSchG/45b.html",
       "raw_value": null,
       "raw_unit": null,
@@ -104,6 +104,43 @@
       "reason": "no features in layer"
     }
   ],
+  "models": {
+    "policy": {
+      "label": "Policy setbacks only",
+      "description": "Coded setback rules on coarse OSM residential landuse.",
+      "pixel_stats": {
+        "total_pixels_grid": 972582,
+        "region_pixels": 545928,
+        "buildable_pixels": 539910,
+        "wpa_pixels": 0,
+        "excluded_pixels": 6018,
+        "buildable_fraction_of_region": 0.988976568338682,
+        "eligible_share": 0.988976568338682,
+        "buildable_km2": 33744.375,
+        "region_km2": 34120.5,
+        "pixel_area_km2": 0.0625
+      },
+      "availability_suffix": "_availability.png"
+    },
+    "technical": {
+      "label": "Policy + geography",
+      "description": "Setbacks on all OSM buildings/settlements plus water, forest, nature reserves, and slopes steeper than 20°.",
+      "pixel_stats": {
+        "total_pixels_grid": 972582,
+        "region_pixels": 545928,
+        "buildable_pixels": 432137,
+        "wpa_pixels": 0,
+        "excluded_pixels": 113791,
+        "buildable_fraction_of_region": 0.7915640890373822,
+        "eligible_share": 0.7915640890373822,
+        "buildable_km2": 27008.5625,
+        "region_km2": 34120.5,
+        "pixel_area_km2": 0.0625
+      },
+      "availability_suffix": "_technical_availability.png",
+      "styled_suffix": "_technical_styled.png"
+    }
+  },
   "schema_notes": {
     "values_png_legend": {
       "0": "outside region (bounding-box padding)",
@@ -117,5 +154,81 @@
       "site_green rgba(141,192,133,140)": "WPA additive (encouraged)"
     },
     "styled_png": "RGBA overlay tuned to the Climate Policy Atlas forest-green theme; the red regions read as 'no-build'."
-  }
+  },
+  "pixel_stats_technical": {
+    "total_pixels_grid": 972582,
+    "region_pixels": 545928,
+    "buildable_pixels": 432137,
+    "wpa_pixels": 0,
+    "excluded_pixels": 113791,
+    "buildable_fraction_of_region": 0.7915640890373822,
+    "eligible_share": 0.7915640890373822,
+    "buildable_km2": 27008.5625,
+    "region_km2": 34120.5,
+    "pixel_area_km2": 0.0625
+  },
+  "applied_rules_technical": [
+    {
+      "variable": "9_distance_others",
+      "layer": "radar",
+      "setback_m": 5000.0,
+      "condition": "Radar stations",
+      "year": 2023,
+      "legally_binding": true,
+      "source_name": "Bundesaufsichtsamt für Flugsicherung",
+      "source_link": "https://www.baf.bund.de/DE/Themen/Flugsicherungstechnik/Anlagenschutz/anlagenschutz_aktuelleThemen.html]",
+      "raw_value": 5000.0,
+      "raw_unit": "m",
+      "multiplier_resolved": false,
+      "feature_count": 0,
+      "applied": false,
+      "reason": "no features in layer"
+    },
+    {
+      "variable": "5_distance_airports",
+      "layer": "airport",
+      "setback_m": 1000.0,
+      "condition": "established flight procedures",
+      "year": 2016,
+      "legally_binding": true,
+      "source_name": "§§ 12 - 18 Luftverkehrsgesetz (LuftVG)",
+      "source_link": "https://www.gesetze-im-internet.de/luftvg/",
+      "raw_value": 1000.0,
+      "raw_unit": "m",
+      "multiplier_resolved": false,
+      "feature_count": 6,
+      "applied": true
+    },
+    {
+      "variable": "2_distance_motorway",
+      "layer": "motorway",
+      "setback_m": 40.0,
+      "condition": "autobahn",
+      "year": 2007,
+      "legally_binding": true,
+      "source_name": "Bundesfernstraßengesetz",
+      "source_link": "https://www.gesetze-im-internet.de/fstrg/BJNR009030953.html",
+      "raw_value": 40.0,
+      "raw_unit": "m",
+      "multiplier_resolved": false,
+      "feature_count": 31716,
+      "applied": true
+    },
+    {
+      "variable": "15_exclusion area",
+      "layer": "natura2000",
+      "setback_m": 0.0,
+      "condition": "Natura 2000 areas",
+      "year": 2013,
+      "legally_binding": false,
+      "source_name": "Gesetz über Naturschutz und Landschaftspflege (Bundesnaturschuzgesetz BNatschG)",
+      "source_link": "https://dejure.org/gesetze/BNatSchG/31.html\nhttps://dejure.org/gesetze/BNatSchG/45b.html",
+      "raw_value": null,
+      "raw_unit": null,
+      "multiplier_resolved": false,
+      "feature_count": 0,
+      "applied": false,
+      "reason": "no features in layer"
+    }
+  ]
 }

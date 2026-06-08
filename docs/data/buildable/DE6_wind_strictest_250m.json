@@ -1,6 +1,6 @@
 {
-  "schema_version": 1,
-  "generated_at": "2026-05-06T14:30:01.467132+00:00",
+  "schema_version": 2,
+  "generated_at": "2026-06-08T16:58:58.187609+00:00",
   "region": "DE6",
   "tech": "wind",
   "mode": "strictest",
@@ -35,10 +35,10 @@
     "wpa_pixels": 0,
     "excluded_pixels": 3977,
     "buildable_fraction_of_region": 0.6698489125020753,
+    "eligible_share": 0.6698489125020753,
     "buildable_km2": 504.3125,
     "region_km2": 752.875,
-    "pixel_area_km2": 0.0625,
-    "eligible_share": 0.6698489125020753
+    "pixel_area_km2": 0.0625
   },
   "applied_rules": [
     {
@@ -48,7 +48,7 @@
       "condition": "Radar stations",
       "year": 2023,
       "legally_binding": true,
-      "source_name": "Bundesaufsichtsamt f\u00fcr Flugsicherung",
+      "source_name": "Bundesaufsichtsamt für Flugsicherung",
       "source_link": "https://www.baf.bund.de/DE/Themen/Flugsicherungstechnik/Anlagenschutz/anlagenschutz_aktuelleThemen.html]",
       "raw_value": 5000.0,
       "raw_unit": "m",
@@ -64,7 +64,7 @@
       "condition": "established flight procedures",
       "year": 2016,
       "legally_binding": true,
-      "source_name": "\u00a7\u00a7 12 - 18 Luftverkehrsgesetz (LuftVG)",
+      "source_name": "§§ 12 - 18 Luftverkehrsgesetz (LuftVG)",
       "source_link": "https://www.gesetze-im-internet.de/luftvg/",
       "raw_value": 1000.0,
       "raw_unit": "m",
@@ -79,7 +79,7 @@
       "condition": "residential areas",
       "year": 2013,
       "legally_binding": true,
-      "source_name": "Fl\u00e4chennutzungsplan f\u00fcr die Freie Hansestadt Hamburg",
+      "source_name": "Flächennutzungsplan für die Freie Hansestadt Hamburg",
       "source_link": "https://www.hamburg.de/contentblob/4258584/5505ff8406761a2210fb09e422600ce6/data/133-windenergieanlagen-text-begruendung.pdf",
       "raw_value": 500.0,
       "raw_unit": "m",
@@ -94,7 +94,7 @@
       "condition": "nature reserves, national parks & national biosphere reserves,natural monuments,legally nature monuments, landscape components ,protected biotopes",
       "year": 2013,
       "legally_binding": false,
-      "source_name": "B\u00fcrgerschaft der Freien und Hansestadt Hamburg",
+      "source_name": "Bürgerschaft der Freien und Hansestadt Hamburg",
       "source_link": "https://www.hamburg.de/contentblob/4258584/5505ff8406761a2210fb09e422600ce6/data/133-windenergieanlagen-text-begruendung.pdf",
       "raw_value": 200.0,
       "raw_unit": "m",
@@ -140,7 +140,7 @@
       "condition": "Natura 2000 areas",
       "year": 2013,
       "legally_binding": false,
-      "source_name": "Gesetz \u00fcber Naturschutz und Landschaftspflege (Bundesnaturschuzgesetz BNatschG)",
+      "source_name": "Gesetz über Naturschutz und Landschaftspflege (Bundesnaturschuzgesetz BNatschG)",
       "source_link": "https://dejure.org/gesetze/BNatSchG/31.html\nhttps://dejure.org/gesetze/BNatSchG/45b.html",
       "raw_value": null,
       "raw_unit": null,
@@ -156,7 +156,7 @@
       "condition": "Settlement areas, individual houses or scattered settlements in the open countryside, transport facilities, national and international protected areas, forests and waters, areas of ornithological value",
       "year": 2012,
       "legally_binding": true,
-      "source_name": "B\u00fcrgerschaft der Freien und Hansestadt Hamburg",
+      "source_name": "Bürgerschaft der Freien und Hansestadt Hamburg",
       "source_link": "https://www.buergerschaft-hh.de/parldok/dokument/42887/aenderung_des_flaechennutzungsplans_fuer_die_freie_und_hansestadt_hamburg_eignungsgebiete_fuer_windenergieanlagen_in_hamburg_aenderung_des_landschafts.pdf",
       "raw_value": null,
       "raw_unit": null,
@@ -166,6 +166,43 @@
       "reason": "no features in layer"
     }
   ],
+  "models": {
+    "policy": {
+      "label": "Policy setbacks only",
+      "description": "Coded setback rules on coarse OSM residential landuse.",
+      "pixel_stats": {
+        "total_pixels_grid": 129516,
+        "region_pixels": 12046,
+        "buildable_pixels": 8069,
+        "wpa_pixels": 0,
+        "excluded_pixels": 3977,
+        "buildable_fraction_of_region": 0.6698489125020753,
+        "eligible_share": 0.6698489125020753,
+        "buildable_km2": 504.3125,
+        "region_km2": 752.875,
+        "pixel_area_km2": 0.0625
+      },
+      "availability_suffix": "_availability.png"
+    },
+    "technical": {
+      "label": "Policy + geography",
+      "description": "Setbacks on all OSM buildings/settlements plus water, forest, nature reserves, and slopes steeper than 20°.",
+      "pixel_stats": {
+        "total_pixels_grid": 129516,
+        "region_pixels": 12046,
+        "buildable_pixels": 4691,
+        "wpa_pixels": 0,
+        "excluded_pixels": 7355,
+        "buildable_fraction_of_region": 0.38942387514527643,
+        "eligible_share": 0.38942387514527643,
+        "buildable_km2": 293.1875,
+        "region_km2": 752.875,
+        "pixel_area_km2": 0.0625
+      },
+      "availability_suffix": "_technical_availability.png",
+      "styled_suffix": "_technical_styled.png"
+    }
+  },
   "schema_notes": {
     "values_png_legend": {
       "0": "outside region (bounding-box padding)",
@@ -179,5 +216,143 @@
       "site_green rgba(141,192,133,140)": "WPA additive (encouraged)"
     },
     "styled_png": "RGBA overlay tuned to the Climate Policy Atlas forest-green theme; the red regions read as 'no-build'."
-  }
+  },
+  "pixel_stats_technical": {
+    "total_pixels_grid": 129516,
+    "region_pixels": 12046,
+    "buildable_pixels": 4691,
+    "wpa_pixels": 0,
+    "excluded_pixels": 7355,
+    "buildable_fraction_of_region": 0.38942387514527643,
+    "eligible_share": 0.38942387514527643,
+    "buildable_km2": 293.1875,
+    "region_km2": 752.875,
+    "pixel_area_km2": 0.0625
+  },
+  "applied_rules_technical": [
+    {
+      "variable": "9_distance_others",
+      "layer": "radar",
+      "setback_m": 5000.0,
+      "condition": "Radar stations",
+      "year": 2023,
+      "legally_binding": true,
+      "source_name": "Bundesaufsichtsamt für Flugsicherung",
+      "source_link": "https://www.baf.bund.de/DE/Themen/Flugsicherungstechnik/Anlagenschutz/anlagenschutz_aktuelleThemen.html]",
+      "raw_value": 5000.0,
+      "raw_unit": "m",
+      "multiplier_resolved": false,
+      "feature_count": 0,
+      "applied": false,
+      "reason": "no features in layer"
+    },
+    {
+      "variable": "5_distance_airports",
+      "layer": "airport",
+      "setback_m": 1000.0,
+      "condition": "established flight procedures",
+      "year": 2016,
+      "legally_binding": true,
+      "source_name": "§§ 12 - 18 Luftverkehrsgesetz (LuftVG)",
+      "source_link": "https://www.gesetze-im-internet.de/luftvg/",
+      "raw_value": 1000.0,
+      "raw_unit": "m",
+      "multiplier_resolved": false,
+      "feature_count": 1,
+      "applied": true
+    },
+    {
+      "variable": "1_distance_residential buildings",
+      "layer": "settlements",
+      "setback_m": 500.0,
+      "condition": "residential areas",
+      "year": 2013,
+      "legally_binding": true,
+      "source_name": "Flächennutzungsplan für die Freie Hansestadt Hamburg",
+      "source_link": "https://www.hamburg.de/contentblob/4258584/5505ff8406761a2210fb09e422600ce6/data/133-windenergieanlagen-text-begruendung.pdf",
+      "raw_value": 500.0,
+      "raw_unit": "m",
+      "multiplier_resolved": false,
+      "feature_count": 842,
+      "applied": true
+    },
+    {
+      "variable": "9_distance_others",
+      "layer": "protected_areas",
+      "setback_m": 200.0,
+      "condition": "nature reserves, national parks & national biosphere reserves,natural monuments,legally nature monuments, landscape components ,protected biotopes",
+      "year": 2013,
+      "legally_binding": false,
+      "source_name": "Bürgerschaft der Freien und Hansestadt Hamburg",
+      "source_link": "https://www.hamburg.de/contentblob/4258584/5505ff8406761a2210fb09e422600ce6/data/133-windenergieanlagen-text-begruendung.pdf",
+      "raw_value": 200.0,
+      "raw_unit": "m",
+      "multiplier_resolved": false,
+      "feature_count": 0,
+      "applied": false,
+      "reason": "no features in layer"
+    },
+    {
+      "variable": "2_distance_motorway",
+      "layer": "motorway",
+      "setback_m": 150.0,
+      "condition": "proximity to streets",
+      "year": 2013,
+      "legally_binding": true,
+      "source_name": "Senat der Freien und Hansestadt Hamburg",
+      "source_link": "https://www.buergerschaft-hh.de/parldok/dokument/42887/aenderung_des_flaechennutzungsplans_fuer_die_freie_und_hansestadt_hamburg_eignungsgebiete_fuer_windenergieanlagen_in_hamburg_aenderung_des_landschafts.pdf",
+      "raw_value": 1.0,
+      "raw_unit": "time of height of wind turbine",
+      "multiplier_resolved": true,
+      "feature_count": 1607,
+      "applied": true
+    },
+    {
+      "variable": "6_distance_transmission lines",
+      "layer": "transmission",
+      "setback_m": 100.0,
+      "condition": null,
+      "year": 2013,
+      "legally_binding": true,
+      "source_name": "Senat der Freien und Hansestadt Hamburg",
+      "source_link": "https://www.buergerschaft-hh.de/parldok/dokument/42887/aenderung_des_flaechennutzungsplans_fuer_die_freie_und_hansestadt_hamburg_eignungsgebiete_fuer_windenergieanlagen_in_hamburg_aenderung_des_landschafts.pdf",
+      "raw_value": 100.0,
+      "raw_unit": "m",
+      "multiplier_resolved": false,
+      "feature_count": 527,
+      "applied": true
+    },
+    {
+      "variable": "15_exclusion area",
+      "layer": "natura2000",
+      "setback_m": 0.0,
+      "condition": "Natura 2000 areas",
+      "year": 2013,
+      "legally_binding": false,
+      "source_name": "Gesetz über Naturschutz und Landschaftspflege (Bundesnaturschuzgesetz BNatschG)",
+      "source_link": "https://dejure.org/gesetze/BNatSchG/31.html\nhttps://dejure.org/gesetze/BNatSchG/45b.html",
+      "raw_value": null,
+      "raw_unit": null,
+      "multiplier_resolved": false,
+      "feature_count": 0,
+      "applied": false,
+      "reason": "no features in layer"
+    },
+    {
+      "variable": "15_exclusion area",
+      "layer": "protected_areas",
+      "setback_m": 0.0,
+      "condition": "Settlement areas, individual houses or scattered settlements in the open countryside, transport facilities, national and international protected areas, forests and waters, areas of ornithological value",
+      "year": 2012,
+      "legally_binding": true,
+      "source_name": "Bürgerschaft der Freien und Hansestadt Hamburg",
+      "source_link": "https://www.buergerschaft-hh.de/parldok/dokument/42887/aenderung_des_flaechennutzungsplans_fuer_die_freie_und_hansestadt_hamburg_eignungsgebiete_fuer_windenergieanlagen_in_hamburg_aenderung_des_landschafts.pdf",
+      "raw_value": null,
+      "raw_unit": null,
+      "multiplier_resolved": false,
+      "feature_count": 0,
+      "applied": false,
+      "reason": "no features in layer"
+    }
+  ]
 }
