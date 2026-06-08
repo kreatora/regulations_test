@@ -1,1 +1,0 @@
-import"./input.C8vLQBPS.js";/* empty css               */import{R as o,j as e,a as r}from"./client.DK97sMh2.js";import"./_commonjsHelpers.Cpj98o6Y.js";const t=document.getElementById("root");t&&o.createRoot(t).render(e.jsx(r.StrictMode,{}));
