@@ -220,7 +220,7 @@ function renderPanelPressureLegend(maxAbs: number) {
     if (!legend) return;
     legend.style.display = 'block';
     legend.innerHTML = `
-        <div class="regulations-map-panel-legend-title">Net policy pressure</div>
+        <div class="regulations-map-panel-legend-title">Regulation balance</div>
         <div class="regulations-map-panel-legend-bar"></div>
         <div class="regulations-map-panel-legend-labels">
             <span>Promoting</span>
@@ -489,7 +489,7 @@ export async function renderBuildCodesOnMap(host: MapHost, filters: BuildCodesFi
             const code = d.properties.NUTS_ID;
             const info = metricsByCode.get(code);
             const label = nutsDisplayName(d.properties);
-            tooltipShow(`<strong>${label}</strong> (${code})<br/>Constraining: <strong>${info?.constrainingCount ?? 0}</strong><br/>Promoting: <strong>${info?.promotingCount ?? 0}</strong><br/>Net pressure: <strong>${info?.netScore ?? 0}</strong><br/>Policy count: <strong>${info?.policyCount ?? 0}</strong><br/>Binding regulations: <strong>${info?.bindingCount ?? 0}</strong>`, e);
+            tooltipShow(`<strong>${label}</strong> (${code})<br/>Constraining: <strong>${info?.constrainingCount ?? 0}</strong><br/>Promoting: <strong>${info?.promotingCount ?? 0}</strong><br/>Balance (constraining - promoting): <strong>${info?.netScore ?? 0}</strong><br/>Policy count: <strong>${info?.policyCount ?? 0}</strong><br/>Binding regulations: <strong>${info?.bindingCount ?? 0}</strong>`, e);
         })
         .on('mouseleave', tooltipHide)
         .on('click', (_e: any, d: any) => {

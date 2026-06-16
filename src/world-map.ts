@@ -891,23 +891,9 @@ function renderRegulationsFilters() {
         <div class="regulations-filter-group">
             <span class="regulations-filter-label">Technology</span>
             <div class="regulations-filter-options">
-                ${(['wind', 'solar', 'ev'] as const).map((tech) => `
+                ${(['wind', 'solar'] as const).map((tech) => `
                     <button type="button" class="regulations-filter-option${blFilters.tech === tech ? ' active' : ''}" data-bl-tech="${tech}">
                         ${tech.charAt(0).toUpperCase() + tech.slice(1)}
-                    </button>
-                `).join('')}
-            </div>
-        </div>
-        <div class="regulations-filter-group">
-            <span class="regulations-filter-label">Rule mode</span>
-            <div class="regulations-filter-options">
-                ${([
-                    { id: 'strictest', label: 'Strictest' },
-                    { id: 'latest', label: 'Latest' },
-                    { id: 'binding', label: 'Binding' },
-                ] as const).map((opt) => `
-                    <button type="button" class="regulations-filter-option${blFilters.mode === opt.id ? ' active' : ''}" data-bl-mode="${opt.id}">
-                        ${opt.label}
                     </button>
                 `).join('')}
             </div>
@@ -943,13 +929,6 @@ function renderRegulationsFilters() {
     filtersEl.querySelectorAll<HTMLButtonElement>('[data-bl-tech]').forEach((btn) => {
         btn.addEventListener('click', () => {
             blFilters = { ...blFilters, tech: (btn.dataset.blTech as BuildableLandFilters['tech']) || 'wind' };
-            renderRegulationsFilters();
-            void refreshRegulationsMap(true);
-        });
-    });
-    filtersEl.querySelectorAll<HTMLButtonElement>('[data-bl-mode]').forEach((btn) => {
-        btn.addEventListener('click', () => {
-            blFilters = { ...blFilters, mode: (btn.dataset.blMode as BuildableLandFilters['mode']) || 'strictest' };
             renderRegulationsFilters();
             void refreshRegulationsMap(true);
         });
@@ -1042,6 +1021,11 @@ function setRegulationsVisible(visible: boolean) {
     worldHelp?.classList.toggle('hidden', visible);
 
     if (visible) {
+        // Hard reset immediately when entering Regulations mode so old choropleth
+        // colors (e.g. climate-target purples) cannot linger during async render.
+        host?.clearRegulationsLayer();
+        host?.showRegulationBasemap();
+        host?.hideDefaultLegend();
         setRegulationsSection(currentRegulationsSection);
         return;
     }
@@ -1669,10 +1653,11 @@ Promise.all([
                         climateTargetsData[countryCode3] = [];
                     }
                     
+                    const normalizedReductionValue = Math.abs(parsedTargetAverage);
                     climateTargetsData[countryCode3].push({
                         yearDecision: parsedYearDecision,
                         yearTarget: parsedYearTarget,
-                        targetValue: parsedTargetAverage,
+                        targetValue: normalizedReductionValue,
                         countryName: countryCode3toName[countryCode3] || countryCode3,
                         targetUnit: targetUnit
                     });
@@ -1797,13 +1782,12 @@ Promise.all([
     const evColorScale = d3.scaleSequential(d3.interpolateRgb('#fff5eb', '#f97316'))
         .domain([minEv, maxEv]);
 
-    // Create color scale for climate targets
-    // REVERSED: Lower values (e.g., -100) represent bigger reductions, so they should be darkest
+    // Create color scale for climate targets (stored as positive reduction percentages).
     const climateTargetValues = Object.values(latestClimateTargetsData).map((d: any) => d.targetValue);
-    const minClimateTarget = climateTargetValues.length > 0 ? d3.min(climateTargetValues) : -100;
-    const maxClimateTarget = climateTargetValues.length > 0 ? d3.max(climateTargetValues) : 0;
+    const minClimateTarget = climateTargetValues.length > 0 ? d3.min(climateTargetValues) : 0;
+    const maxClimateTarget = climateTargetValues.length > 0 ? d3.max(climateTargetValues) : 100;
     const climateTargetsColorScale = d3.scaleSequential(d3.interpolatePurples)
-        .domain([maxClimateTarget as number, minClimateTarget as number]); // REVERSED: max to min
+        .domain([minClimateTarget as number, maxClimateTarget as number]);
 
     // Store color scales in allData
     allData.policies.colorScale = policyColorScale;
@@ -1909,7 +1893,7 @@ Promise.all([
         };
         if (currentMapType === 'policies') {
             const policyCount = policyData[countryCode] || 'No data';
-            return `<strong>${countryName}</strong><br/>RE Support: ${policyCount}`;
+            return `<strong>${countryName}</strong><br/>Renewable electricity support policies: ${policyCount}`;
         } else if (currentMapType === 'targets') {
             const currentTargetData = allData.targets.dataByType[currentTargetType] || {};
             const targetInfo = currentTargetData[countryCode];
@@ -1928,7 +1912,7 @@ Promise.all([
                 if (currentClimateTargetYearGroup === 'latest') {
                     // Show the most recent target (by decision year)
                     const latestTarget = targets.sort((a: any, b: any) => b.yearDecision - a.yearDecision)[0];
-                    return `<strong>${countryName}</strong><br/>Emission Target: ${fmt1(latestTarget.targetValue)}% by ${latestTarget.yearTarget}<br/>Decision Year: ${latestTarget.yearDecision}`;
+                    return `<strong>${countryName}</strong><br/>Emissions reduction target: ${fmt1(latestTarget.targetValue)}% by ${latestTarget.yearTarget}<br/>Decision Year: ${latestTarget.yearDecision}`;
                 }
                 
                 // Year group filtering - show target matching the selected year group
@@ -1939,7 +1923,7 @@ Promise.all([
                 
                 if (matchingTargets.length > 0) {
                     const latestMatchingTarget = matchingTargets.sort((a: any, b: any) => b.yearDecision - a.yearDecision)[0];
-                    return `<strong>${countryName}</strong><br/>Emission Target: ${fmt1(latestMatchingTarget.targetValue)}% by ${latestMatchingTarget.yearTarget}<br/>Decision Year: ${latestMatchingTarget.yearDecision}`;
+                    return `<strong>${countryName}</strong><br/>Emissions reduction target: ${fmt1(latestMatchingTarget.targetValue)}% by ${latestMatchingTarget.yearTarget}<br/>Decision Year: ${latestMatchingTarget.yearDecision}`;
                 } else {
                     return `<strong>${countryName}</strong><br/>No emission target data for ${currentClimateTargetYearGroup}`;
                 }
@@ -2102,6 +2086,76 @@ Promise.all([
             if (upperAbbr.has(lower)) return lower.toUpperCase();
             return lower.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
         };
+        const wrapAxisTickText = (
+            axisGroup: d3.Selection<SVGGElement, unknown, null, undefined>,
+            maxWidthPx: number
+        ) => {
+            axisGroup.selectAll<SVGTextElement, unknown>('text').each(function () {
+                const textEl = d3.select(this);
+                const raw = (textEl.text() || '').trim();
+                if (!raw) return;
+                const words = raw.split(/\s+/);
+                textEl.text(null);
+                let line: string[] = [];
+                let lineNumber = 0;
+                const lineHeightEm = 1.05;
+                let tspan = textEl.append('tspan')
+                    .attr('x', textEl.attr('x') || 0)
+                    .attr('dy', '0em');
+                for (const word of words) {
+                    line.push(word);
+                    tspan.text(line.join(' '));
+                    if ((tspan.node()?.getComputedTextLength() || 0) > maxWidthPx && line.length > 1) {
+                        line.pop();
+                        tspan.text(line.join(' '));
+                        line = [word];
+                        lineNumber += 1;
+                        tspan = textEl.append('tspan')
+                            .attr('x', textEl.attr('x') || 0)
+                            .attr('dy', `${lineHeightEm}em`)
+                            .text(word);
+                    }
+                }
+            });
+        };
+        const supportShiftFromDetail = (detailRaw: any): number => {
+            const detail = String(detailRaw || '').trim().toLowerCase();
+            if (!detail) return 0;
+            if (/(increase|increased|raise|raised|expand|expanded|higher|more generous)/.test(detail)) return 1;
+            if (/(decrease|decreased|reduc|lower|lowered|cut|cuts|phase.?down|less generous)/.test(detail)) return -1;
+            return 0;
+        };
+        const computeSupportToneByYear = (
+            code3: string,
+            measure: string,
+            yearsSeq: number[]
+        ): Record<number, number> => {
+            const perYearShift = new Map<number, number>();
+            policyCsv.forEach((row: any) => {
+                const cName = normalizePolicyCountryName(row[countryColumnName]);
+                const rowCode3 = countryNameMap[cName || ''];
+                if (rowCode3 !== code3) return;
+                const rowMeasure = String(row[measureColumnName] || 'Unknown');
+                if (rowMeasure !== measure) return;
+                const rowYear = Number(row[yearColumnName]);
+                if (!Number.isFinite(rowYear)) return;
+                const shift = supportShiftFromDetail(row[policyChangedDetailColumnName]);
+                if (!shift) return;
+                perYearShift.set(rowYear, (perYearShift.get(rowYear) || 0) + shift);
+            });
+            let running = 0;
+            const toneByYear: Record<number, number> = {};
+            yearsSeq.forEach((y) => {
+                running += perYearShift.get(y) || 0;
+                toneByYear[y] = Math.max(-4, Math.min(4, running));
+            });
+            return toneByYear;
+        };
+        const toneAdjustedColor = (baseColor: string, tone: number): string => {
+            const hsl = d3.hsl(baseColor);
+            hsl.l = Math.max(0.15, Math.min(0.92, hsl.l - (tone * 0.055)));
+            return hsl.formatHex();
+        };
 
         const fmt1 = (v: any) => {
             const n = Number(v);
@@ -2109,6 +2163,7 @@ Promise.all([
             const rounded = Math.round(n * 10) / 10;
             return String(rounded);
         };
+        const currentYear = new Date().getFullYear();
 
 		// Check if we're in EV mode
 		const isEvModeEarly = currentMapType === 'ev';
@@ -2325,7 +2380,7 @@ Promise.all([
                         .style('font-weight', '700')
                         .style('font-family', 'Inter, -apple-system, BlinkMacSystemFont, sans-serif')
                         .style('fill', '#1e293b')
-                        .text('Climate Targets Progression');
+                        .text('Climate Emissions Reduction Targets');
 
                     // Determine the year range
                     const allYears = climateTargetsList.flatMap((t: any) => [t.decisionYear, t.targetYear]).filter(y => Number.isFinite(y));
@@ -2456,6 +2511,9 @@ Promise.all([
                         const endYear = (nextTarget && nextTarget.decisionYear < target.targetYear) 
                             ? nextTarget.decisionYear 
                             : target.targetYear;
+                        const isSuperseded = endYear !== target.targetYear;
+                        const isExpired = target.targetYear < currentYear;
+                        const isHistorical = isSuperseded || isExpired;
                         
                         // Draw horizontal line from decision year to end year
                         g.append('line')
@@ -2465,13 +2523,14 @@ Promise.all([
                             .attr('y2', yScale(target.targetValue))
                             .style('stroke', climateColor)
                             .style('stroke-width', 3)
-                            .style('opacity', 0.8)
+                            .style('stroke-dasharray', isHistorical ? '4,3' : null)
+                            .style('opacity', isHistorical ? 0.38 : 0.8)
                             .style('cursor', 'pointer')
                             .on('mouseenter', function(event: any) {
                                 const [mouseX, mouseY] = d3.pointer(event, targetsContainer);
-                                const tooltipText = endYear !== target.targetYear 
-                                    ? `${fmtVal(target.targetValue)}% target from ${target.decisionYear} to ${endYear} (superseded, original deadline: ${target.targetYear})`
-                                    : `${fmtVal(target.targetValue)}% target from ${target.decisionYear} to ${target.targetYear}`;
+                                const tooltipText = isSuperseded
+                                    ? `${fmtVal(target.targetValue)}% emissions reduction target from ${target.decisionYear} to ${endYear} (superseded, original deadline: ${target.targetYear})`
+                                    : `${fmtVal(target.targetValue)}% emissions reduction target from ${target.decisionYear} to ${target.targetYear}${isExpired ? ' (expired)' : ''}`;
                                 tooltip
                                     .style('visibility', 'visible')
                                     .html(tooltipText)
@@ -2483,7 +2542,7 @@ Promise.all([
                             });
                         
                         // If superseded by same-year target, draw vertical dashed connection line
-                        if (nextTarget && endYear !== target.targetYear) {
+                        if (nextTarget && isSuperseded) {
                             g.append('line')
                                 .attr('x1', xScale(endYear))
                                 .attr('x2', xScale(endYear))
@@ -2498,7 +2557,7 @@ Promise.all([
                                     const [mouseX, mouseY] = d3.pointer(event, targetsContainer);
                                     tooltip
                                         .style('visibility', 'visible')
-                                        .html(`Target for ${target.targetYear} updated in ${nextTarget.decisionYear}<br/>From ${fmtVal(target.targetValue)}% to ${fmtVal(nextTarget.targetValue)}%`)
+                                        .html(`Target for ${target.targetYear} updated in ${nextTarget.decisionYear}<br/>From ${fmtVal(target.targetValue)}% to ${fmtVal(nextTarget.targetValue)}% emissions reduction`)
                                         .style('top', (mouseY + 10) + 'px')
                                         .style('left', (mouseX + 10) + 'px');
                                 })
@@ -2521,7 +2580,7 @@ Promise.all([
                                 const [mouseX, mouseY] = d3.pointer(event, targetsContainer);
                                 tooltip
                                     .style('visibility', 'visible')
-                                    .html(`Decision: ${target.decisionYear}<br/>Target: ${fmtVal(target.targetValue)}% by ${target.targetYear}`)
+                                    .html(`Decision: ${target.decisionYear}<br/>Target: ${fmtVal(target.targetValue)}% emissions reduction by ${target.targetYear}`)
                                     .style('top', (mouseY + 10) + 'px')
                                     .style('left', (mouseX + 10) + 'px');
                             })
@@ -2531,7 +2590,7 @@ Promise.all([
                             });
                         
                         // For superseded targets, label the active segment (drawn after lines)
-                        if (endYear !== target.targetYear) {
+                        if (isSuperseded) {
                             climateLabelSpecs.push({
                                 lineY: yScale(target.targetValue),
                                 chartHeight: height,
@@ -2543,7 +2602,7 @@ Promise.all([
                                 color: climateColor,
                                 className: 'target-label',
                                 targetType: 'climate',
-                                opacity: 0.7,
+                                opacity: isHistorical ? 0.35 : 0.7,
                                 pointerEvents: 'auto',
                             });
                         }
@@ -2563,7 +2622,7 @@ Promise.all([
                                     const [mouseX, mouseY] = d3.pointer(event, targetsContainer);
                                     tooltip
                                         .style('visibility', 'visible')
-                                        .html(`Target deadline: ${target.targetYear}<br/>Target: ${fmtVal(target.targetValue)}%`)
+                                        .html(`Target deadline: ${target.targetYear}<br/>Target: ${fmtVal(target.targetValue)}% emissions reduction`)
                                         .style('top', (mouseY + 10) + 'px')
                                         .style('left', (mouseX + 10) + 'px');
                                 })
@@ -2584,7 +2643,7 @@ Promise.all([
                                 color: climateColor,
                                 className: 'target-label',
                                 targetType: 'climate',
-                                opacity: 1,
+                                opacity: isHistorical ? 0.4 : 1,
                                 pointerEvents: 'auto',
                             });
                         }
@@ -2781,9 +2840,12 @@ Promise.all([
                     const endYear = (nextTarget && nextTarget.decisionYear < target.targetYear) 
                         ? nextTarget.decisionYear 
                         : target.targetYear;
+                    const isSuperseded = endYear !== target.targetYear;
+                    const isExpired = target.targetYear < currentYear;
+                    const isHistorical = isSuperseded || isExpired;
                     
                     // Draw horizontal line from decision year to end year at the target value level
-                    const lineTooltipText = `${fmt1(target.targetValue)}% target from ${target.decisionYear} to ${endYear}${endYear !== target.targetYear ? ` (superseded, original deadline: ${target.targetYear})` : ''}`;
+                    const lineTooltipText = `${fmt1(target.targetValue)}% target from ${target.decisionYear} to ${endYear}${isSuperseded ? ` (superseded, original deadline: ${target.targetYear})` : ''}${isExpired ? ' (expired)' : ''}`;
                     g.append('line')
                         .attr('class', `target-line target-type-${target.targetType.replace(/[^a-zA-Z0-9]/g, '-')}`)
                         .attr('data-target-type', target.targetType)
@@ -2793,7 +2855,8 @@ Promise.all([
                         .attr('y2', yScale(target.targetValue))
                         .style('stroke', color)
                         .style('stroke-width', 3)
-                        .style('opacity', shouldBeVisible(target.targetType) ? 0.8 : 0)
+                        .style('stroke-dasharray', isHistorical ? '4,3' : null)
+                        .style('opacity', shouldBeVisible(target.targetType) ? (isHistorical ? 0.35 : 0.8) : 0)
                         .style('pointer-events', shouldBeVisible(target.targetType) ? 'auto' : 'none')
                         .style('cursor', 'pointer')
                         .on('mouseenter', function(event: any) {
@@ -2815,7 +2878,7 @@ Promise.all([
                         });
                     
                     // If this target was superseded by a same-year target, draw a vertical dashed line connecting them
-                    if (nextTarget && endYear !== target.targetYear) {
+                    if (nextTarget && isSuperseded) {
                         const connectionTooltip = `Target for ${target.targetYear} updated in ${nextTarget.decisionYear}<br/>From ${fmt1(target.targetValue)}% to ${fmt1(nextTarget.targetValue)}%`;
                         g.append('line')
                             .attr('class', `target-line-connection target-type-${target.targetType.replace(/[^a-zA-Z0-9]/g, '-')}`)
@@ -2883,7 +2946,7 @@ Promise.all([
                         });
                     
                     // For superseded targets, label the active segment (drawn after lines)
-                    if (endYear !== target.targetYear) {
+                    if (isSuperseded) {
                         targetLabelSpecs.push({
                             lineY: yScale(target.targetValue),
                             chartHeight: height,
@@ -2895,7 +2958,7 @@ Promise.all([
                             color,
                             className: `target-label target-type-${target.targetType.replace(/[^a-zA-Z0-9]/g, '-')}`,
                             targetType: target.targetType,
-                            opacity: shouldBeVisible(target.targetType) ? 0.7 : 0,
+                            opacity: shouldBeVisible(target.targetType) ? (isHistorical ? 0.35 : 0.7) : 0,
                             pointerEvents: shouldBeVisible(target.targetType) ? 'auto' : 'none',
                         });
                     }
@@ -2903,7 +2966,7 @@ Promise.all([
                     // If target was superseded, draw a thin dashed line showing where it was originally headed
                     // BUT only if the superseding target has an EARLIER target year
                     // (if the new target covers the same or later year, no need for dashed line - it's "absorbed")
-                    const shouldDrawDashedLine = endYear !== target.targetYear && 
+                    const shouldDrawDashedLine = isSuperseded && 
                         (!nextTarget || nextTarget.targetYear < target.targetYear);
                     
                     if (shouldDrawDashedLine) {
@@ -3020,7 +3083,7 @@ Promise.all([
                             color,
                             className: `target-label target-type-${target.targetType.replace(/[^a-zA-Z0-9]/g, '-')}`,
                             targetType: target.targetType,
-                            opacity: shouldBeVisible(target.targetType) ? 1 : 0,
+                            opacity: shouldBeVisible(target.targetType) ? (isHistorical ? 0.4 : 1) : 0,
                             pointerEvents: shouldBeVisible(target.targetType) ? 'auto' : 'none',
                         });
                     }
@@ -3369,7 +3432,7 @@ Promise.all([
                     const title = document.createElement('div');
                     title.style.display = 'flex';
                     title.style.justifyContent = 'space-between';
-                    title.style.alignItems = 'center';
+                    title.style.alignItems = 'flex-start';
                     title.style.marginBottom = '8px';
                     // Format measure for display: Title Case by default; if exactly FIT/TGC, use all caps
                     function formatPolicyTypeDisplay(m: string): string {
@@ -3381,7 +3444,7 @@ Promise.all([
                         return mm.replace(/\w\S*/g, (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
                     }
                     const formattedMeasure = formatPolicyTypeDisplay(measure);
-                    title.innerHTML = `<span style="font-weight:600; color:#111827; font-size:${isNarrow ? '14px' : '16px'};">${countryName} — ${formattedMeasure} (${year})</span>`;
+                    title.innerHTML = `<span style="font-weight:600; color:#111827; font-size:${isNarrow ? '14px' : '16px'}; line-height:1.3; white-space:normal; word-break:break-word; padding-right:10px;">${countryName} — ${formattedMeasure} (${year})</span>`;
                     const close = document.createElement('button');
                     close.textContent = '×';
                     close.style.fontSize = '18px';
@@ -3519,7 +3582,7 @@ Promise.all([
                                 
                                 item.innerHTML = `
                                     ${tgcHtml}
-                                    ${titleHtml ? `<div style="font-weight:600; color:#374151; font-size:${isNarrow ? '13px' : '14px'};">${titleHtml}</div>` : ''}
+                                    ${titleHtml ? `<div style="font-weight:600; color:#374151; font-size:${isNarrow ? '13px' : '14px'}; white-space:normal; word-break:break-word; line-height:1.3;">${titleHtml}</div>` : ''}
                                     <div style="font-size:${isNarrow ? '11px' : '12px'}; color:#4b5563;">Tech: ${formatTechType(f('Technology_type') || '')}</div>
                                     ${currencyVal && currencyVal !== '-' ? `<div style="font-size:${isNarrow ? '11px' : '12px'}; color:#4b5563;">Currency: ${currencyVal}</div>` : ''}
                                     ${unitDisplayVal ? `<div style="font-size:${isNarrow ? '11px' : '12px'}; color:#4b5563;">Unit: ${unitDisplayVal}</div>` : ''}
@@ -3539,10 +3602,21 @@ Promise.all([
                     parent.appendChild(box);
                 }
 
-                // Cells (non-stacked) - use appropriate color scale based on mode
-                const cellColorFn = isEvMode 
-                    ? (measure: string) => timeSeriesColorScale(measure) as string
-                    : (measure: string) => getMeasureColor(measure);
+                const supportToneByMeasureYear: Record<string, Record<number, number>> = {};
+                if (!isEvMode) {
+                    sortedPolicyTypes.forEach((measure) => {
+                        supportToneByMeasureYear[measure] = computeSupportToneByYear(countryCode3, measure, years);
+                    });
+                }
+                // Cells (non-stacked) - in policy mode, intensity reflects support shifts:
+                // darker after increases, lighter after decreases.
+                const cellColorFn = isEvMode
+                    ? (measure: string, _year: number) => timeSeriesColorScale(measure) as string
+                    : (measure: string, year: number) => {
+                        const base = getMeasureColor(measure);
+                        const tone = supportToneByMeasureYear[measure]?.[year] || 0;
+                        return toneAdjustedColor(base, tone);
+                    };
                 
                 g.selectAll('.policy-cell')
                     .data(cells)
@@ -3554,7 +3628,7 @@ Promise.all([
                     .attr('width', x.bandwidth())
                     .attr('height', yBand.bandwidth())
                     .attr('rx', 3).attr('ry', 3)
-                    .attr('fill', d => cellColorFn(d.measure))
+                    .attr('fill', d => cellColorFn(d.measure, Number(d.year)))
                     .style('opacity', 0.95)
                     .style('cursor', 'pointer')
                     .on('click', function(event, d: any) {
@@ -3645,6 +3719,7 @@ Promise.all([
                     .style('font-size', '12px')
                     .style('font-family', 'Inter, -apple-system, BlinkMacSystemFont, sans-serif')
                     .style('fill', '#475569');
+                wrapAxisTickText(yAxisDash as any, Math.max(110, Math.min(220, margin.left - 18)));
                 yAxisDash.select('.domain')
                     .style('stroke', '#e2e8f0')
                     .style('stroke-width', 1);
@@ -3672,6 +3747,17 @@ Promise.all([
                     .style('line-height', '1.4')
                     .style('max-width', '100%')
                     .html(`<strong>Suggested Citation:</strong> ${getDatasetMetadata(isEvMode ? 'evSupport' : 'reSupport').suggestedCitation}`);
+                if (!isEvMode) {
+                    d3.select(tsContainer).append('div')
+                        .style('margin-top', '-12px')
+                        .style('padding', '0 20px 14px 20px')
+                        .style('font-size', '9px')
+                        .style('color', '#64748b')
+                        .style('font-family', 'Inter, -apple-system, BlinkMacSystemFont, sans-serif')
+                        .style('line-height', '1.35')
+                        .style('max-width', '100%')
+                        .html(`<strong>Color intensity:</strong> Darker shades indicate support increases over time; lighter shades indicate support decreases.`);
+                }
 
             } else if (tsContainer) {
                 // Show message when no time series data is available
@@ -3897,6 +3983,7 @@ Promise.all([
             .style('font-weight', '500')
             .style('fill', '#64748b')
             .attr('dx', '-0.5em');
+        wrapAxisTickText(yAxis as any, Math.max(110, Math.min(200, margin.left - 18)));
 
         yAxis.select('.domain')
             .style('stroke', '#e2e8f0')
@@ -4098,6 +4185,7 @@ Promise.all([
         countryCode3to2: countryCodeMapping,
         showRegulationBasemap: () => {
             g.selectAll('.country')
+                .interrupt()
                 .style('display', null)
                 .style('pointer-events', 'none')
                 .attr('fill', '#b0b0b0')
@@ -4257,9 +4345,9 @@ Promise.all([
                 };
             }
             return {
-                title: 'Build Codes — Net Policy Pressure',
+                title: 'Build Codes — Regulation Balance',
                 subtitle: 'Regulations · Surveyed NUTS regions (Germany, Greece, Ireland)',
-                legend: 'Colour scale: promoting (green) ↔ constraining (red) net pressure by region',
+                legend: 'Colour scale: promoting (green) ↔ constraining (red) balance by region (not policy quality)',
             };
         }
 
@@ -4268,7 +4356,7 @@ Promise.all([
                 return {
                     title: 'Renewable Energy Support Policies',
                     subtitle: 'World map by country',
-                    legend: 'Color scale: number of RE support policies per country (darker = more)',
+                    legend: 'Color scale: number of renewable electricity support policies per country (darker = more)',
                 };
             case 'ev':
                 return {
@@ -4284,9 +4372,9 @@ Promise.all([
                 };
             case 'climateTargets':
                 return {
-                    title: 'Climate Emission Targets',
+                    title: 'Climate Emissions Reduction Targets',
                     subtitle: `EU countries · ${climateYearLabel}`,
-                    legend: 'Color scale: emission reduction target (% change vs 1990 baseline)',
+                    legend: 'Color scale: emissions reduction target (% vs 1990 baseline)',
                 };
             default:
                 return { title: 'Climate Policy Atlas Map', subtitle: 'World map' };
@@ -4326,23 +4414,23 @@ Promise.all([
                 };
             case 'climateTargets':
                 return {
-                    title: `${countryName} — Climate Emission Targets`,
+                    title: `${countryName} — Climate Emissions Reduction Targets`,
                     subtitle: climateYearLabel,
-                    legend: 'Emission reduction targets (% change compared to 1990 baseline)',
+                    legend: 'Emissions reduction targets (% compared to 1990 baseline)',
                 };
             default:
                 if (leftHasChart && rightHasChart) {
                     return {
                         title: `${countryName} — Country Dashboard`,
-                        subtitle: 'RE support policies and renewable energy targets',
-                        legend: 'Left: renewable energy targets progression · Right: RE support policy introduction timeline by year',
+                        subtitle: 'Renewable electricity support policies and renewable energy targets',
+                        legend: 'Left: renewable energy targets progression · Right: renewable electricity support policy introduction timeline by year',
                     };
                 }
                 if (rightHasChart) {
                     return {
-                        title: `${countryName} — RE Support Policy Timeline`,
+                        title: `${countryName} — Renewable Electricity Support Policy Timeline`,
                         subtitle: 'Country dashboard',
-                        legend: 'Bars show when each RE support policy type was introduced by year',
+                        legend: 'Bars show when each renewable electricity support policy type was introduced by year',
                     };
                 }
                 if (leftHasChart) {
@@ -4354,7 +4442,7 @@ Promise.all([
                 }
                 return {
                     title: `${countryName} — Country Dashboard`,
-                    subtitle: 'Country dashboard · RE support policies',
+                    subtitle: 'Country dashboard · renewable electricity support policies',
                     legend: 'Dashboard charts for the selected country',
                 };
         }

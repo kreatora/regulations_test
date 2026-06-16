@@ -237,19 +237,21 @@
             transform: translateY(-50%);
             font-weight: 700;
             /* Scale text slightly with viewport while keeping bounds */
-            font-size: clamp(8px, 1.2vw, 10px);
+            font-size: clamp(7px, 1.05vw, 9px);
             letter-spacing: 0.2px;
+            line-height: 1.12;
             transition: all 0.3s ease;
             cursor: pointer;
             -webkit-user-select: none;
                -moz-user-select: none;
                     user-select: none;
             z-index: 10;
-            padding: 4px 6px;
+            padding: 3px 4px;
             border-radius: 12px;
             min-width: 0;
             text-align: center;
-            white-space: nowrap;
+            white-space: normal;
+            max-width: calc(20% - 12px);
         }
         
         .toggle-option:hover {
@@ -757,7 +759,7 @@
             display: block;
         }
     </style>
-  <script type="module" crossorigin src="./assets/worldMap.BbfThjYY.js"></script>
+  <script type="module" crossorigin src="./assets/worldMap.CtBVxMxf.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/input.Cr7ttY5c.js">
   <link rel="stylesheet" crossorigin href="./assets/main.Bq6he3K7.css">
   <link rel="stylesheet" crossorigin href="./assets/shared.BoYeBbxS.css">
@@ -815,23 +817,23 @@
                 <!-- Hidden radio buttons for compatibility -->
                     <label style="display: none;">
                         <input type="radio" name="mapType" value="policies" checked>
-                        <span>RE Support</span>
+                        <span>Renewable Electricity Support</span>
                     </label>
                     <label style="display: none;">
                         <input type="radio" name="mapType" value="ev">
-                        <span>EV Support</span>
+                        <span>Electric Vehicle Support</span>
                     </label>
                     <label style="display: none;">
                         <input type="radio" name="mapType" value="targets">
-                        <span>TARGETS</span>
+                        <span>Renewable Electricity Targets</span>
                     </label>
                     <label style="display: none;">
                         <input type="radio" name="mapType" value="climateTargets">
-                        <span>CLIMATE TARGETS</span>
+                        <span>Climate Targets</span>
                     </label>
                     <label style="display: none;">
                         <input type="radio" name="mapType" value="regulations">
-                        <span>REGULATIONS</span>
+                        <span>Siting Regulations</span>
                     </label>
                 
                 <div id="loading-message">Loading data, please wait a moment...</div>
@@ -843,11 +845,11 @@
                     <div class="toggle-switch-container">
                         <div class="toggle-switch" data-active="policies" id="mapTypeToggle">
                             <div class="toggle-slider"></div>
-                            <div class="toggle-option first">RE Support</div>
-                            <div class="toggle-option second">EV Support</div>
-                            <div class="toggle-option third">RE Targets</div>
-                            <div class="toggle-option fourth">Climate</div>
-                            <div class="toggle-option fifth">Regulations</div>
+                            <div class="toggle-option first">Renewable Electricity Support</div>
+                            <div class="toggle-option second">Electric Vehicle Support</div>
+                            <div class="toggle-option third">Renewable Electricity Targets</div>
+                            <div class="toggle-option fourth">Climate Targets</div>
+                            <div class="toggle-option fifth">Siting Regulations</div>
                         </div>
 
                         <!-- Targets Submenu -->

@@ -31,7 +31,7 @@ import { getMapHost } from './map-host';
 
 interface ManifestEntry {
     region: string;
-    tech: 'wind' | 'solar' | 'ev';
+    tech: 'wind' | 'solar';
     mode: 'strictest' | 'latest' | 'binding';
     resolution_m: number;
     sidecar: string;
@@ -123,10 +123,10 @@ const DATA_COUNTRIES: Record<string, { iso2: string; nutsPrimary: string; name: 
     France:  { iso2: 'FR', nutsPrimary: 'FR',  name: 'France',  geojsonName: 'France'  },
 };
 
-type Tech = 'wind' | 'solar' | 'ev';
+type Tech = 'wind' | 'solar';
 type Mode = 'strictest' | 'latest' | 'binding';
-const TECHS: Tech[] = ['wind', 'solar', 'ev'];
-const TECH_LABEL: Record<Tech, string> = { wind: 'Wind', solar: 'Solar', ev: 'EV charging' };
+const TECHS: Tech[] = ['wind', 'solar'];
+const TECH_LABEL: Record<Tech, string> = { wind: 'Wind', solar: 'Solar' };
 const MODES: Mode[] = ['strictest', 'latest', 'binding'];
 const MODE_LABEL: Record<Mode, string> = {
     strictest: 'Strictest rule',
@@ -160,12 +160,12 @@ export const BUILDABLE_STYLE_OPTIONS: ReadonlyArray<{
     {
         id: 'availability',
         label: 'Land availability',
-        hint: 'Green = policy-eligible land; grey = excluded setbacks on the country map.',
+        hint: 'Green = eligible land plus WPA/priority-area additive cells; grey = excluded setbacks on the country map.',
     },
     {
         id: 'exclusions',
         label: 'Exclusion zones',
-        hint: 'Red = where setback buffers or geographic bans forbid building.',
+        hint: 'Red = where setback buffers or geographic bans forbid building; green = WPA/priority-area additive cells.',
     },
 ];
 
@@ -373,6 +373,7 @@ function renderAboutNote() {
         <ul>
             <li><strong>Policy-only:</strong> Coded setbacks on residential landuse plus rule layers (motorway, airport, military, etc.) on a 250&nbsp;m grid.</li>
             <li><strong>Policy + geography:</strong> All of the above, plus OSM buildings and settlements, water, forest, and slopes &gt; 20° where elevation data exists. Green = eligible; grey = excluded.</li>
+            <li><strong>WPA additive cells:</strong> In some wind cases, green patches mark coded wind-priority/encouraged areas (WPA overrides) from the regulation data.</li>
             <li><strong>Map styles:</strong> Land availability (green/grey) and Exclusion zones (red) use the same baked cells with different colours.</li>
             <li><strong>World view:</strong> Choropleth of eligible share by country. <strong>Country detail:</strong> stacked regional PNG overlays — pre-baked rasters, not live OSM; 250&nbsp;m cells show patterns, not individual buildings.</li>
         </ul>
@@ -694,11 +695,12 @@ function buildLegendHTML(): string {
     if (activeStyle === 'exclusions') {
         return `
             <span><span class="bl-legend-swatch" style="background: ${C_BRICK};"></span>Exclusion zone</span>
+            <span><span class="bl-legend-swatch" style="background: ${C_AVAIL_GREEN};"></span>WPA/priority-area additive</span>
             <span><span class="bl-legend-swatch" style="background: ${C_NO_DATA};"></span>No data</span>
             <span style="font-style:italic;opacity:0.8;">Click a country for overlay</span>`;
     }
     return `
-        <span><span class="bl-legend-swatch" style="background: ${C_AVAIL_GREEN};"></span>Higher eligible share</span>
+        <span><span class="bl-legend-swatch" style="background: ${C_AVAIL_GREEN};"></span>Eligible land (+ WPA additive where present)</span>
         <span><span class="bl-legend-swatch" style="background: ${C_NO_DATA};"></span>No data</span>
         <span style="font-style:italic;opacity:0.8;">Click a country for overlay</span>`;
 }

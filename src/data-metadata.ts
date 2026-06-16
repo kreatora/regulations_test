@@ -109,9 +109,9 @@ const DATASETS: Record<DatasetKey, DatasetMetadata> = {
         about:
             'Sub-national renewable-energy and EV charging regulations coded from legal sources ' +
             'for surveyed NUTS regions. Rules are classified as constraining or promoting and ' +
-            'filtered by active status for the map metric (net policy pressure).',
+            'filtered by active status for the map metric (regulation balance: constraining minus promoting).',
         notes: [
-            'Map colours show net pressure (constraining minus promoting) among active rules.',
+            'Map colours show regulation balance (constraining minus promoting) among active rules.',
             'Demo visualisations — values are taken verbatim from the dataset.',
             'Inactive and overwritten rules are excluded from the map metric.',
         ],
