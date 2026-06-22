@@ -151,6 +151,87 @@ const C_AVAIL_GREY   = 'rgb(229, 229, 224)';
 type LandModel = 'policy' | 'technical';
 type OverlayStyle = 'availability' | 'exclusions';
 
+/** ISO2 codes with coded wind promoted / priority areas (from build_regulations wind_priority_areas). */
+let promotedAreaIso2 = new Set<string>();
+let promotedAreaLoadDone = false;
+
+function iso2ForRegulationCountry(country: string): string | null {
+    const trimmed = country.trim();
+    const meta = Object.values(DATA_COUNTRIES).find(
+        c => c.name === trimmed || c.geojsonName === trimmed,
+    );
+    return meta?.iso2 ?? null;
+}
+
+async function loadPromotedAreaCountries(baseUrl: string): Promise<void> {
+    if (promotedAreaLoadDone) return;
+    try {
+        const data = await fetch(`${baseUrl}data/build_regulations.json`).then(r => r.ok ? r.json() : null);
+        const wpa: Array<{ country?: string }> = data?.wind_priority_areas ?? [];
+        const iso2s = new Set<string>();
+        for (const row of wpa) {
+            const iso2 = iso2ForRegulationCountry(String(row.country ?? ''));
+            if (iso2) iso2s.add(iso2);
+        }
+        promotedAreaIso2 = iso2s;
+    } catch {
+        promotedAreaIso2 = new Set(['EL']);
+    }
+    promotedAreaLoadDone = true;
+}
+
+function selectedCountryIso2(): string | undefined {
+    if (!selectedCountry) return undefined;
+    return Object.values(DATA_COUNTRIES).find(
+        c => c.geojsonName === selectedCountry || c.name === selectedCountry,
+    )?.iso2;
+}
+
+/** Wind-only: true when the country (or any surveyed country) has coded promoted areas. */
+function hasPromotedAreas(ctx: { iso2?: string; tech?: Tech } = {}): boolean {
+    const tech = ctx.tech ?? activeTech;
+    if (tech !== 'wind') return false;
+    if (ctx.iso2) return promotedAreaIso2.has(ctx.iso2.toUpperCase());
+    return promotedAreaIso2.size > 0;
+}
+
+function promotedAreaCountryNames(iso2?: string): string[] {
+    if (iso2) {
+        const meta = Object.values(DATA_COUNTRIES).find(c => c.iso2 === iso2);
+        return meta && promotedAreaIso2.has(iso2) ? [meta.name] : [];
+    }
+    return Object.values(DATA_COUNTRIES)
+        .filter(c => promotedAreaIso2.has(c.iso2))
+        .map(c => c.name)
+        .sort();
+}
+
+function promotedAreaCountryLabel(iso2?: string): string {
+    const names = promotedAreaCountryNames(iso2);
+    if (names.length === 0) return 'countries with promoted areas';
+    if (names.length === 1) return names[0];
+    if (names.length === 2) return `${names[0]} and ${names[1]}`;
+    return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;
+}
+
+function promotedAreaLegendLabel(iso2?: string): string {
+    return `Promoted areas (${promotedAreaCountryLabel(iso2)})`;
+}
+
+function buildStyleHint(style: OverlayStyle, iso2?: string): string {
+    const showPromoted = hasPromotedAreas({ iso2, tech: activeTech });
+    if (style === 'availability') {
+        if (showPromoted) {
+            return `Green = eligible land; in ${promotedAreaCountryLabel(iso2)}, brighter green marks wind promoted areas that add buildable land. Grey = excluded setbacks.`;
+        }
+        return 'Green = eligible land; grey = excluded setbacks on the country map.';
+    }
+    if (showPromoted) {
+        return `Red = where setback buffers or geographic bans forbid building; green = wind promoted areas in ${promotedAreaCountryLabel(iso2)}.`;
+    }
+    return 'Red = where setback buffers or geographic bans forbid building.';
+}
+
 /** Map-style labels and short definitions (shown in the panel below the map, not the filter bar). */
 export const BUILDABLE_STYLE_OPTIONS: ReadonlyArray<{
     id: OverlayStyle;
@@ -160,24 +241,29 @@ export const BUILDABLE_STYLE_OPTIONS: ReadonlyArray<{
     {
         id: 'availability',
         label: 'Land availability',
-        hint: 'Green = eligible land plus WPA/priority-area additive cells; grey = excluded setbacks on the country map.',
+        hint: 'Green = eligible land; grey = excluded setbacks on the country map.',
     },
     {
         id: 'exclusions',
         label: 'Exclusion zones',
-        hint: 'Red = where setback buffers or geographic bans forbid building; green = WPA/priority-area additive cells.',
+        hint: 'Red = where setback buffers or geographic bans forbid building.',
     },
 ];
 
 const MODEL_LABEL: Record<LandModel, string> = {
-    policy: 'Policy setbacks only',
-    technical: 'Policy + geography',
+    policy: 'Policy Only',
+    technical: 'Full Screening',
 };
 
 const MODEL_SHORT: Record<LandModel, string> = {
-    policy: 'Policy-only',
-    technical: 'With geography',
+    policy: 'Policy Only',
+    technical: 'Full Screening',
 };
+
+export const BUILDABLE_MODEL_OPTIONS: ReadonlyArray<{ id: LandModel; label: string }> = [
+    { id: 'technical', label: MODEL_LABEL.technical },
+    { id: 'policy', label: MODEL_LABEL.policy },
+];
 
 // ---------------------------------------------------------------------------
 // State
@@ -187,7 +273,7 @@ let manifest: Manifest | null = null;
 let nuts0: any = null;
 let activeTech: Tech = 'wind';
 let activeMode: Mode = 'strictest';
-let activeModel: LandModel = 'policy';
+let activeModel: LandModel = 'technical';
 let activeStyle: OverlayStyle = 'availability';
 let selectedCountry: string | null = null;
 let initialised = false;
@@ -266,6 +352,7 @@ export async function ensureBuildableLandDataLoaded(): Promise<void> {
             fetch('https://gisco-services.ec.europa.eu/distribution/v2/nuts/geojson/NUTS_RG_01M_2021_4326_LEVL_0.geojson')
                 .then(r => r.ok ? r.json() : null)
                 .catch(() => null),
+            loadPromotedAreaCountries(baseUrl),
         ]);
         manifest = manifestResp;
         nuts0 = nuts0Resp;
@@ -368,16 +455,20 @@ function renderAboutNote() {
     const el = document.getElementById('bl-about');
     if (!el) return;
     const styleOpt = BUILDABLE_STYLE_OPTIONS.find(o => o.id === activeStyle);
+    const countryIso2 = selectedCountryIso2();
+    const promotedBullet = hasPromotedAreas({ tech: activeTech })
+        ? `<li><strong>Promoted areas:</strong> For wind in ${escapeHtml(promotedAreaCountryLabel(countryIso2))}, brighter green cells mark coded wind-priority areas that can add buildable land beyond standard setback screening.</li>`
+        : '';
     el.innerHTML = `
         <strong>What the map shows</strong>
         <ul>
-            <li><strong>Policy-only:</strong> Coded setbacks on residential landuse plus rule layers (motorway, airport, military, etc.) on a 250&nbsp;m grid.</li>
-            <li><strong>Policy + geography:</strong> All of the above, plus OSM buildings and settlements, water, forest, and slopes &gt; 20° where elevation data exists. Green = eligible; grey = excluded.</li>
-            <li><strong>WPA additive cells:</strong> In some wind cases, green patches mark coded wind-priority/encouraged areas (WPA overrides) from the regulation data.</li>
+            <li><strong>Policy Only:</strong> Coded setbacks on residential landuse plus rule layers (motorway, airport, military, etc.) on a 250&nbsp;m grid.</li>
+            <li><strong>Full Screening:</strong> All of the above, plus OpenStreetMap buildings and settlements, water, forest, and slopes &gt; 20° where elevation data exists. Green = eligible; grey = excluded.</li>
+            ${promotedBullet}
             <li><strong>Map styles:</strong> Land availability (green/grey) and Exclusion zones (red) use the same baked cells with different colours.</li>
             <li><strong>World view:</strong> Choropleth of eligible share by country. <strong>Country detail:</strong> stacked regional PNG overlays — pre-baked rasters, not live OSM; 250&nbsp;m cells show patterns, not individual buildings.</li>
         </ul>
-        ${styleOpt ? `<strong>${escapeHtml(styleOpt.label)}:</strong> ${escapeHtml(styleOpt.hint)}` : ''}
+        ${styleOpt ? `<strong>${escapeHtml(styleOpt.label)}:</strong> ${escapeHtml(buildStyleHint(activeStyle, countryIso2))}` : ''}
     `;
 }
 
@@ -457,14 +548,14 @@ function renderStats() {
             if (techRegion > 0) {
                 items.push({
                     value: `${((techKm2 / techRegion) * 100).toFixed(1)}%`,
-                    label: 'With geography (same regions)',
+                    label: 'Full Screening (Same Regions)',
                 });
             }
         }
     } else if (matching.length > 0 && activeModel === 'technical') {
         items.push({
             value: `${(policyFraction * 100).toFixed(1)}%`,
-            label: 'Policy-only (same regions)',
+            label: 'Policy Only (Same Regions)',
         });
     }
     items.push({
@@ -619,7 +710,7 @@ function renderEligibleShareLegend(
     legend.append('text').attr('x', 125).attr('y', -6)
         .attr('text-anchor', 'middle')
         .style('font-size', '10px').style('fill', '#475569').style('font-weight', '600')
-        .text(`${TECH_LABEL[activeTech]} — ${MODEL_SHORT[activeModel].toLowerCase()}`);
+        .text(`${TECH_LABEL[activeTech]} — ${MODEL_SHORT[activeModel]}`);
 }
 
 function polylabelCentroid(d: any, projection: d3.GeoProjection): [number, number] | null {
@@ -691,16 +782,26 @@ export async function renderBuildableLandOnMap(host: MapHost, filters: Buildable
     renderBuildableLandLegend();
 }
 
-function buildLegendHTML(): string {
+function buildLegendHTML(iso2?: string): string {
+    const showPromoted = hasPromotedAreas({ iso2, tech: activeTech });
     if (activeStyle === 'exclusions') {
-        return `
-            <span><span class="bl-legend-swatch" style="background: ${C_BRICK};"></span>Exclusion zone</span>
-            <span><span class="bl-legend-swatch" style="background: ${C_AVAIL_GREEN};"></span>WPA/priority-area additive</span>
-            <span><span class="bl-legend-swatch" style="background: ${C_NO_DATA};"></span>No data</span>
-            <span style="font-style:italic;opacity:0.8;">Click a country for overlay</span>`;
+        const parts = [
+            `<span><span class="bl-legend-swatch" style="background: ${C_BRICK};"></span>Exclusion zone</span>`,
+        ];
+        if (showPromoted) {
+            parts.push(`<span><span class="bl-legend-swatch" style="background: ${C_AVAIL_GREEN};"></span>${escapeHtml(promotedAreaLegendLabel(iso2))}</span>`);
+        }
+        parts.push(
+            `<span><span class="bl-legend-swatch" style="background: ${C_NO_DATA};"></span>No data</span>`,
+            `<span style="font-style:italic;opacity:0.8;">Click a country for overlay</span>`,
+        );
+        return parts.join('');
     }
+    const eligibleLabel = showPromoted
+        ? `Eligible land (promoted areas in ${escapeHtml(promotedAreaCountryLabel(iso2))})`
+        : 'Eligible land';
     return `
-        <span><span class="bl-legend-swatch" style="background: ${C_AVAIL_GREEN};"></span>Eligible land (+ WPA additive where present)</span>
+        <span><span class="bl-legend-swatch" style="background: ${C_AVAIL_GREEN};"></span>${eligibleLabel}</span>
         <span><span class="bl-legend-swatch" style="background: ${C_NO_DATA};"></span>No data</span>
         <span style="font-style:italic;opacity:0.8;">Click a country for overlay</span>`;
 }
@@ -729,7 +830,7 @@ function buildCountryTooltip(name: string | undefined): string {
         return `<strong>${escapeHtml(name)}</strong><br>Rules available; <em>${TECH_LABEL[activeTech]}</em> land map not ready yet.<br><em style="opacity:0.85;">Click for rule list</em>`;
     }
     return `<strong>${escapeHtml(name)}</strong><br>
-            ${TECH_LABEL[activeTech]} ${MODEL_SHORT[activeModel].toLowerCase()}: <strong>${(agg.eligibleShare * 100).toFixed(1)}%</strong><br>
+            ${TECH_LABEL[activeTech]} ${MODEL_SHORT[activeModel]}: <strong>${(agg.eligibleShare * 100).toFixed(1)}%</strong><br>
             ${Math.round(agg.buildableKm2).toLocaleString()} km² of ${Math.round(agg.regionKm2).toLocaleString()} km² (${agg.bakeCount} region${agg.bakeCount > 1 ? 's' : ''})<br>
             <em style="opacity:0.85;">Click for details</em>`;
 }
@@ -758,7 +859,7 @@ async function renderCountryDetail(name: string) {
             <div>
                 <h3 style="margin:0;font-size:18px;font-weight:700;color:${C_FOREST};">${escapeHtml(meta.name)}</h3>
                 <p style="margin:2px 0 0 0;font-size:12px;color:${C_PRIMARY};">
-                    ${TECH_LABEL[activeTech]} · ${MODE_LABEL[activeMode]} · primary region <strong>${meta.nutsPrimary}</strong>
+                    ${TECH_LABEL[activeTech]} · ${MODE_LABEL[activeMode]} · ${MODEL_SHORT[activeModel]}
                 </p>
             </div>
             <button class="bl-back-btn" id="bl-back-btn">← Back to world</button>
@@ -920,7 +1021,51 @@ function drawCountryMap(feature: any, meta: { iso2: string; nutsPrimary: string;
     svg.call(zoom as any);
 
     // Asynchronously fetch the sidecar and overlay the baked PNG if available.
-    void overlayRasterIfBaked(mapLayer as any, projection as any, meta, h);
+    void overlayRasterIfBaked(mapLayer as any, projection as any, meta, h, w);
+}
+
+function appendCountryMapColorLegend(
+    mapLayer: d3.Selection<SVGGElement, unknown, null, undefined>,
+    mapWidth: number,
+    iso2?: string,
+) {
+    const showPromoted = hasPromotedAreas({ iso2, tech: activeTech });
+    const items = activeStyle === 'exclusions'
+        ? [
+            { color: C_BRICK, label: 'Excluded' },
+            ...(showPromoted ? [{ color: C_AVAIL_GREEN, label: promotedAreaLegendLabel(iso2) }] : []),
+        ]
+        : [
+            { color: C_AVAIL_GREEN, label: 'Eligible' },
+            { color: C_AVAIL_GREY, label: 'Excluded' },
+        ];
+    const legendW = showPromoted ? 148 : 108;
+    const rowH = 16;
+    const legendH = 10 + items.length * rowH;
+    const g = mapLayer.append('g')
+        .attr('class', 'bl-country-map-legend')
+        .attr('transform', `translate(${mapWidth - legendW - 10}, 10)`);
+    g.append('rect')
+        .attr('width', legendW)
+        .attr('height', legendH)
+        .attr('rx', 6)
+        .attr('fill', 'rgba(255, 255, 255, 0.94)')
+        .attr('stroke', C_BORDER);
+    items.forEach((item, i) => {
+        const row = g.append('g').attr('transform', `translate(8, ${10 + i * rowH})`);
+        row.append('rect')
+            .attr('width', 10)
+            .attr('height', 10)
+            .attr('rx', 2)
+            .attr('fill', item.color)
+            .attr('stroke', C_BORDER);
+        row.append('text')
+            .attr('x', 16)
+            .attr('y', 9)
+            .style('font-size', '10px')
+            .style('fill', C_PRIMARY)
+            .text(item.label);
+    });
 }
 
 async function overlayRasterIfBaked(
@@ -928,6 +1073,7 @@ async function overlayRasterIfBaked(
     projection: d3.GeoProjection,
     meta: { iso2: string; nutsPrimary: string; name: string },
     mapHeight: number,
+    mapWidth: number,
 ) {
     const baseUrl = (import.meta as any).env.BASE_URL || '/';
     const bakes = findCountryBakes(meta);
@@ -1001,27 +1147,28 @@ async function overlayRasterIfBaked(
 
     if (totalRegionKm2 === 0) return;
     const fraction = totalBuildableKm2 / totalRegionKm2;
-    const regionList = ordered.map(b => b.region).join(', ');
+    const regionCount = ordered.length;
     const badgeH = usedPolicyFallback ? 58 : 44;
     const badge = mapLayer.append('g').attr('transform', `translate(12, ${mapHeight - badgeH - 12})`);
     badge.append('rect')
-        .attr('width', 268).attr('height', badgeH)
+        .attr('width', 248).attr('height', badgeH)
         .attr('rx', 8)
         .attr('fill', '#ffffff').attr('stroke', C_BORDER);
     badge.append('text')
         .attr('x', 10).attr('y', 18)
         .style('font-size', '12px').style('font-weight', '700').style('fill', C_FOREST)
-        .text(`${(fraction * 100).toFixed(1)}% ${MODEL_SHORT[activeModel].toLowerCase()}`);
+        .text(`${(fraction * 100).toFixed(1)}% ${MODEL_SHORT[activeModel]}`);
     badge.append('text')
         .attr('x', 10).attr('y', 34)
         .style('font-size', '10.5px').style('fill', C_PRIMARY)
-        .text(`${Math.round(totalBuildableKm2).toLocaleString()} km² of ${Math.round(totalRegionKm2).toLocaleString()} km² · ${regionList}`);
+        .text(`${Math.round(totalBuildableKm2).toLocaleString()} km² of ${Math.round(totalRegionKm2).toLocaleString()} km² · ${regionCount} region${regionCount === 1 ? '' : 's'}`);
     if (usedPolicyFallback) {
         badge.append('text')
             .attr('x', 10).attr('y', 50)
             .style('font-size', '10px').style('fill', C_BRICK).style('font-weight', '600')
-            .text('Some regions: policy-only overlay (technical bake pending)');
+            .text('Some overlays use Policy Only (Full Screening pending)');
     }
+    appendCountryMapColorLegend(mapLayer, mapWidth, meta.iso2);
 }
 
 function findCountryBakes(meta: { iso2: string; nutsPrimary: string }): ManifestEntry[] {
@@ -1070,8 +1217,8 @@ async function loadAndRenderRules(meta: { iso2: string; nutsPrimary: string; nam
     panel.innerHTML = `
         <h4>${escapeHtml(meta.name)} — ${TECH_LABEL[activeTech]} rules (${applied.length})</h4>
         <p class="bl-sub">
-            ${MODEL_LABEL[activeModel]} · ${MODE_LABEL[activeMode]} · primary region <strong>${escapeHtml(sidecar.region)}</strong>
-            · ${MODEL_SHORT[activeModel].toLowerCase()} <strong>${(eligibleShare * 100).toFixed(1)}%</strong>
+            ${MODEL_LABEL[activeModel]} · ${MODE_LABEL[activeMode]}
+            · ${MODEL_SHORT[activeModel]} <strong>${(eligibleShare * 100).toFixed(1)}%</strong>
             (${Math.round(stats.buildable_km2).toLocaleString()} km²)
             · turbine H=${sidecar.turbine_geometry.tip_height_m}m / blade=${sidecar.turbine_geometry.blade_length_m}m
             ${technicalPending ? `<br><span style="color:${C_BRICK};">Technical layer still baking — showing policy data where needed.</span>` : ''}

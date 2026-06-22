@@ -129,12 +129,12 @@ const DATASETS: Record<DatasetKey, DatasetMetadata> = {
         licenseUrl: 'https://creativecommons.org/licenses/by/4.0/',
         pageSlug: 'world-map#regulations-buildable-land',
         about:
-            'Two land models on a 250 m grid. Policy-only applies coded setbacks to coarse OSM residential landuse. ' +
-            'Policy + geography uses all OSM buildings/settlements, water, forest, nature reserves, ' +
+            'Two land models on a 250 m grid. Policy Only applies coded setbacks to coarse OpenStreetMap residential landuse. ' +
+            'Full Screening uses all OpenStreetMap buildings and settlements, water, forest, nature reserves, ' +
             'slopes steeper than 20°, plus the same setback rules.',
         notes: [
-            'Policy-only: setback rules on landuse=residential (regulatory view).',
-            'Policy + geography: building footprints + settlement areas + water/forest/nature/slope + rules.',
+            'Policy Only: setback rules on landuse=residential (regulatory view).',
+            'Full Screening: building footprints, settlement areas, water, forest, nature, slope, plus rules.',
             'Neither model matches Tröndle et al. (2.5 m settlements, CORINE land cover) — compare as benchmark only.',
             'Re-bake rasters after pipeline updates: python scripts/build_buildable_rasters.py --overwrite',
         ],

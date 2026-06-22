@@ -13,6 +13,7 @@ import {
     applyBuildableLandFilters,
     clearBuildableLandSelection,
     isBuildableLandCountryDetailActive,
+    BUILDABLE_MODEL_OPTIONS,
     type BuildableLandFilters,
 } from './buildable-land';
 
@@ -26,6 +27,22 @@ function removeSvgLogoWatermarks(root: ParentNode) {
             img.remove();
         }
     });
+}
+
+/** Fixed x-axis range for policy support dashboard timeline charts. */
+const POLICY_DASHBOARD_YEAR_MIN = 2000;
+const POLICY_DASHBOARD_YEAR_MAX = 2024;
+
+function policyDashboardDisplayYears(): number[] {
+    const years: number[] = [];
+    for (let y = POLICY_DASHBOARD_YEAR_MIN; y <= POLICY_DASHBOARD_YEAR_MAX; y++) {
+        years.push(y);
+    }
+    return years;
+}
+
+function isPolicyDashboardDisplayYear(year: number): boolean {
+    return year >= POLICY_DASHBOARD_YEAR_MIN && year <= POLICY_DASHBOARD_YEAR_MAX;
 }
 
 type TargetProgressionLabelOptions = {
@@ -260,13 +277,11 @@ function createFullScreenTimeSeriesChart(timeSeriesChartData: any[], countryName
 
         // Collect measures and years; build presence matrix
         const measures = new Set<string>();
-        const years = new Set<number>();
         timeSeriesChartData.forEach(measureData => {
             measures.add(measureData.measure);
-            measureData.values.forEach((v: any) => years.add(Number(v.year)));
         });
 
-        const sortedYears = Array.from(years).sort((a, b) => a - b);
+        const sortedYears = policyDashboardDisplayYears();
         const allPolicyTypes = Array.from(measures);
         const yearlyData: { [year: number]: { [measure: string]: number } } = {};
         sortedYears.forEach(year => { yearlyData[year] = {}; });
@@ -529,7 +544,7 @@ let currentMapType: MapType = 'policies';
 let currentRegulationsSection: 'buildCodes' | 'buildableLand' = 'buildCodes';
 let bcTechFilter: 'wind' | 'solar' | 'ev' = 'wind';
 let bcBindFilter = 'all';
-let blFilters: BuildableLandFilters = { tech: 'wind', mode: 'strictest', model: 'policy', style: 'availability' };
+let blFilters: BuildableLandFilters = { tech: 'wind', mode: 'strictest', model: 'technical', style: 'availability' };
  // Year-group filter for targets view (default to 'latest')
  let currentTargetYearGroup: '2020' | '2030' | '2050' | 'latest' = 'latest';
  // Filter mode: always use year-group filtering (no UI toggle)
@@ -834,7 +849,10 @@ function renderRegulationsFilters() {
 
     if (currentRegulationsSection === 'buildCodes') {
         if (panelLegendEl) panelLegendEl.style.display = 'none';
-        if (mapPanelLegendEl) mapPanelLegendEl.style.display = 'block';
+        if (mapPanelLegendEl) {
+            mapPanelLegendEl.style.display = 'none';
+            mapPanelLegendEl.innerHTML = '';
+        }
         filtersEl.innerHTML = `
             <div class="regulations-filter-group">
                 <span class="regulations-filter-label">Technology</span>
@@ -899,12 +917,9 @@ function renderRegulationsFilters() {
             </div>
         </div>
         <div class="regulations-filter-group">
-            <span class="regulations-filter-label">Land model</span>
+            <span class="regulations-filter-label">Land Model</span>
             <div class="regulations-filter-options">
-                ${([
-                    { id: 'policy', label: 'Policy only' },
-                    { id: 'technical', label: 'Policy + geography' },
-                ] as const).map((opt) => `
+                ${BUILDABLE_MODEL_OPTIONS.map((opt) => `
                     <button type="button" class="regulations-filter-option${blFilters.model === opt.id ? ' active' : ''}" data-bl-model="${opt.id}">
                         ${opt.label}
                     </button>
@@ -935,7 +950,7 @@ function renderRegulationsFilters() {
     });
     filtersEl.querySelectorAll<HTMLButtonElement>('[data-bl-model]').forEach((btn) => {
         btn.addEventListener('click', () => {
-            blFilters = { ...blFilters, model: (btn.dataset.blModel as BuildableLandFilters['model']) || 'policy' };
+            blFilters = { ...blFilters, model: (btn.dataset.blModel as BuildableLandFilters['model']) || 'technical' };
             renderRegulationsFilters();
             void refreshRegulationsMap(true);
         });
@@ -1944,69 +1959,78 @@ Promise.all([
 
     // Function to update legend colors based on map type
     function updateLegendColors(mapType: string) {
-        const linearGradient = svg.select("#gradient-color");
-        let interpolateFunction;
-        let minValue, maxValue;
+        const legendEl = document.getElementById('map-choropleth-legend');
+        if (!legendEl) return;
+
+        let interpolateFunction: (t: number) => string;
+        let minValue: number;
+        let maxValue: number;
 
         switch (mapType) {
             case 'policies':
                 interpolateFunction = d3.interpolateGreens;
-                minValue = minPolicies;
-                maxValue = maxPolicies;
+                minValue = minPolicies as number;
+                maxValue = maxPolicies as number;
                 break;
             case 'targets':
                 interpolateFunction = d3.interpolateBlues;
-                // Use same min/max for all target types for consistency
-                minValue = minTargets;
-                maxValue = maxTargets;
+                minValue = minTargets as number;
+                maxValue = maxTargets as number;
                 break;
             case 'climateTargets':
                 interpolateFunction = d3.interpolatePurples;
-                // REVERSED: Display max (less reduction) on left, min (more reduction) on right
-                minValue = maxClimateTarget;
-                maxValue = minClimateTarget;
+                minValue = maxClimateTarget as number;
+                maxValue = minClimateTarget as number;
                 break;
             case 'ev':
-                // Custom lighter orange: from very light peach to medium orange
                 interpolateFunction = (t: number) => d3.interpolateRgb('#fff5eb', '#f97316')(t);
-                minValue = minEv;
-                maxValue = maxEv;
+                minValue = minEv as number;
+                maxValue = maxEv as number;
                 break;
             default:
                 interpolateFunction = d3.interpolateGreens;
-                minValue = minPolicies;
-                maxValue = maxPolicies;
+                minValue = minPolicies as number;
+                maxValue = maxPolicies as number;
         }
 
-        const stops = d3.range(0, 1.01, 0.25).map(t => ({
-            offset: `${t * 100}%`,
-            color: interpolateFunction(t)
-        }));
+        const legendTitles: Record<string, string> = {
+            policies: 'Renewable Electricity Support — Policy Count',
+            ev: 'Electric Vehicle Support — Policy Count',
+            targets: `${getTargetTypeDisplayName(currentTargetType)} (Percent)`,
+            climateTargets: 'Emissions Reduction Target (Percent Versus 1990)',
+        };
 
-        linearGradient.selectAll("stop")
-            .data(stops)
-            .transition()
-            .duration(MAP_COLOR_TRANSITION_MS)
-            .ease(d3.easeCubicInOut)
-            .attr("stop-color", d => d.color);
+        const gradientStops = d3.range(0, 1.01, 0.12)
+            .map((t) => `${interpolateFunction(t)} ${Math.round(t * 100)}%`)
+            .join(', ');
 
-        // Update legend text
-        svg.select(".legend").selectAll("text").remove();
-        
-        svg.select(".legend").append("text")
-            .attr("x", 0)
-            .attr("y", 40)
-            .style("font-size", "12px")
-            .text(Math.round(minValue as number));
-
-        svg.select(".legend").append("text")
-            .attr("x", 300)
-            .attr("y", 40)
-            .style("font-size", "12px")
-            .text(Math.round(maxValue as number));
+        legendEl.innerHTML = `
+            <p class="map-choropleth-legend-title">${legendTitles[mapType] || legendTitles.policies}</p>
+            <div class="map-choropleth-legend-scale">
+                <span class="map-choropleth-legend-end">${Math.round(minValue)}</span>
+                <div class="map-choropleth-legend-bar" style="background: linear-gradient(to right, ${gradientStops});"></div>
+                <span class="map-choropleth-legend-end">${Math.round(maxValue)}</span>
+            </div>`;
+        legendEl.classList.add('is-visible');
+        legendEl.removeAttribute('aria-hidden');
     }
 
-    // Function to update map zoom based on map type
+    function hideChoroplethLegend(): void {
+        const legendEl = document.getElementById('map-choropleth-legend');
+        if (!legendEl) return;
+        legendEl.classList.remove('is-visible');
+        legendEl.setAttribute('aria-hidden', 'true');
+    }
+
+    function showChoroplethLegend(): void {
+        if (currentMapType === 'regulations') {
+            hideChoroplethLegend();
+            return;
+        }
+        updateLegendColors(currentMapType);
+    }
+
+        // Function to update map zoom based on map type
     function updateMapZoom(mapType: string) {
         const europeCenter: [number, number] = [5, 48]; // lon, lat for center of Western Europe
 
@@ -2118,46 +2142,7 @@ Promise.all([
                 }
             });
         };
-        const supportShiftFromDetail = (detailRaw: any): number => {
-            const detail = String(detailRaw || '').trim().toLowerCase();
-            if (!detail) return 0;
-            if (/(increase|increased|raise|raised|expand|expanded|higher|more generous)/.test(detail)) return 1;
-            if (/(decrease|decreased|reduc|lower|lowered|cut|cuts|phase.?down|less generous)/.test(detail)) return -1;
-            return 0;
-        };
-        const computeSupportToneByYear = (
-            code3: string,
-            measure: string,
-            yearsSeq: number[]
-        ): Record<number, number> => {
-            const perYearShift = new Map<number, number>();
-            policyCsv.forEach((row: any) => {
-                const cName = normalizePolicyCountryName(row[countryColumnName]);
-                const rowCode3 = countryNameMap[cName || ''];
-                if (rowCode3 !== code3) return;
-                const rowMeasure = String(row[measureColumnName] || 'Unknown');
-                if (rowMeasure !== measure) return;
-                const rowYear = Number(row[yearColumnName]);
-                if (!Number.isFinite(rowYear)) return;
-                const shift = supportShiftFromDetail(row[policyChangedDetailColumnName]);
-                if (!shift) return;
-                perYearShift.set(rowYear, (perYearShift.get(rowYear) || 0) + shift);
-            });
-            let running = 0;
-            const toneByYear: Record<number, number> = {};
-            yearsSeq.forEach((y) => {
-                running += perYearShift.get(y) || 0;
-                toneByYear[y] = Math.max(-4, Math.min(4, running));
-            });
-            return toneByYear;
-        };
-        const toneAdjustedColor = (baseColor: string, tone: number): string => {
-            const hsl = d3.hsl(baseColor);
-            hsl.l = Math.max(0.15, Math.min(0.92, hsl.l - (tone * 0.055)));
-            return hsl.formatHex();
-        };
-
-        const fmt1 = (v: any) => {
+const fmt1 = (v: any) => {
             const n = Number(v);
             if (!Number.isFinite(n)) return String(v ?? '');
             const rounded = Math.round(n * 10) / 10;
@@ -3324,7 +3309,9 @@ Promise.all([
                         Object.entries(yd).forEach(([m, c]) => { if ((c as number) > 0) { yearly[y][m] = 1; types.add(m); } });
                     }
                 });
-                const yearsWith = allYears.filter(y => Object.values(yearly[y] || {}).some(v => (v as number) > 0));
+                const yearsWith = allYears.filter(
+                    y => isPolicyDashboardDisplayYear(y) && Object.values(yearly[y] || {}).some(v => (v as number) > 0)
+                );
                 if (yearsWith.length === 0) {
                     tsContainer.innerHTML = `
                         <div style="display:flex;align-items:center;justify-content:center;height:100%;">
@@ -3333,11 +3320,11 @@ Promise.all([
                                 <div style="font-size:12px;">${noDataSubtitle}</div>
                             </div>
                         </div>`;
-                    return;
-                }
-                const startY = yearsWith[0];
-                const endY = yearsWith[yearsWith.length - 1];
-                const years = allYears.filter(y => y >= startY && y <= endY);
+                } else {
+                const years = policyDashboardDisplayYears();
+                years.forEach(y => {
+                    if (!yearly[y]) yearly[y] = {};
+                });
 
                 const rect = tsContainer.getBoundingClientRect();
                 const citationHeight = 60; // Reserve space for citation
@@ -3372,7 +3359,7 @@ Promise.all([
                 const policyFreq: Record<string, number> = {};
                 Array.from(types).forEach(t => { policyFreq[t] = 0; });
                 years.forEach(y => {
-                    Array.from(types).forEach(t => { if (yearly[y][t]) policyFreq[t] += 1; });
+                    Array.from(types).forEach(t => { if (yearly[y]?.[t]) policyFreq[t] += 1; });
                 });
                 // Sort types by ascending frequency so the most frequent ends up at the bottom
                 const sortedPolicyTypes = Array.from(types).sort((a, b) => policyFreq[a] - policyFreq[b]);
@@ -3396,7 +3383,7 @@ Promise.all([
                 // Cells data: one per active measure-year
                 const cells: { year: number; measure: string }[] = [];
                 years.forEach(y => {
-                    sortedPolicyTypes.forEach(m => { if (yearly[y][m]) cells.push({ year: y, measure: m }); });
+                    sortedPolicyTypes.forEach(m => { if (yearly[y]?.[m]) cells.push({ year: y, measure: m }); });
                 });
 
                 // Track the currently open popup to enable toggle-close behavior
@@ -3602,21 +3589,9 @@ Promise.all([
                     parent.appendChild(box);
                 }
 
-                const supportToneByMeasureYear: Record<string, Record<number, number>> = {};
-                if (!isEvMode) {
-                    sortedPolicyTypes.forEach((measure) => {
-                        supportToneByMeasureYear[measure] = computeSupportToneByYear(countryCode3, measure, years);
-                    });
-                }
-                // Cells (non-stacked) - in policy mode, intensity reflects support shifts:
-                // darker after increases, lighter after decreases.
                 const cellColorFn = isEvMode
                     ? (measure: string, _year: number) => timeSeriesColorScale(measure) as string
-                    : (measure: string, year: number) => {
-                        const base = getMeasureColor(measure);
-                        const tone = supportToneByMeasureYear[measure]?.[year] || 0;
-                        return toneAdjustedColor(base, tone);
-                    };
+                    : (measure: string, _year: number) => getMeasureColor(measure);
                 
                 g.selectAll('.policy-cell')
                     .data(cells)
@@ -3747,16 +3722,6 @@ Promise.all([
                     .style('line-height', '1.4')
                     .style('max-width', '100%')
                     .html(`<strong>Suggested Citation:</strong> ${getDatasetMetadata(isEvMode ? 'evSupport' : 'reSupport').suggestedCitation}`);
-                if (!isEvMode) {
-                    d3.select(tsContainer).append('div')
-                        .style('margin-top', '-12px')
-                        .style('padding', '0 20px 14px 20px')
-                        .style('font-size', '9px')
-                        .style('color', '#64748b')
-                        .style('font-family', 'Inter, -apple-system, BlinkMacSystemFont, sans-serif')
-                        .style('line-height', '1.35')
-                        .style('max-width', '100%')
-                        .html(`<strong>Color intensity:</strong> Darker shades indicate support increases over time; lighter shades indicate support decreases.`);
                 }
 
             } else if (tsContainer) {
@@ -3852,8 +3817,8 @@ Promise.all([
              }
         });
 
-        // Determine active window: from first year with any active measure to last
         const yearsWithActivity = allYears.filter(y => {
+            if (!isPolicyDashboardDisplayYear(y)) return false;
             const yd = yearlyData[y] || {};
             return Object.values(yd).some(v => (v as number) > 0);
         });
@@ -3863,15 +3828,16 @@ Promise.all([
             return;
         }
 
-        const earliestActiveYear = yearsWithActivity[0];
-        const latestActiveYear = yearsWithActivity[yearsWithActivity.length - 1];
-        const years = allYears.filter(y => y >= earliestActiveYear && y <= latestActiveYear);
+        const years = policyDashboardDisplayYears();
+        years.forEach(year => {
+            if (!yearlyData[year]) yearlyData[year] = {};
+        });
 
         // Compute frequency per policy type across the active window
         const policyFreq: Record<string, number> = {};
         Array.from(allPolicyTypes).forEach(t => { policyFreq[t] = 0; });
         years.forEach(year => {
-            Array.from(allPolicyTypes).forEach(t => { if (yearlyData[year][t]) policyFreq[t] += 1; });
+            Array.from(allPolicyTypes).forEach(t => { if (yearlyData[year]?.[t]) policyFreq[t] += 1; });
         });
         // Sort ascending by frequency so the most frequent appears at the bottom row
         const sortedPolicyTypes = Array.from(allPolicyTypes).sort((a, b) => policyFreq[a] - policyFreq[b]);
@@ -3880,7 +3846,7 @@ Promise.all([
         const cells: { year: number; measure: string }[] = [];
         years.forEach(year => {
             sortedPolicyTypes.forEach(measure => {
-                if (yearlyData[year][measure]) cells.push({ year, measure });
+                if (yearlyData[year]?.[measure]) cells.push({ year, measure });
             });
         });
 
@@ -4124,46 +4090,6 @@ Promise.all([
 
     regulationsG = g.append("g").attr("class", "regulations-layer").style("display", "none");
 
-    // Add a legend
-    const legendWidth = 300;
-    const legendHeight = 20;
-    const legend = svg.append("g")
-        .attr("class", "legend")
-        .attr("transform", `translate(20, ${height - 50})`);
-
-    const defs = svg.append("defs");
-    const linearGradient = defs.append("linearGradient")
-        .attr("id", "gradient-color");
-
-    const stops = d3.range(0, 1.01, 0.25).map(t => ({
-        offset: `${t * 100}%`,
-        color: d3.interpolateGreens(t)
-    }));
-
-    linearGradient.selectAll("stop")
-        .data(stops)
-        .enter().append("stop")
-        .attr("offset", d => d.offset)
-        .attr("stop-color", d => d.color);
-
-    legend.append("rect")
-        .attr("width", legendWidth)
-        .attr("height", legendHeight)
-        .style("fill", "url(#gradient-color)");
-
-    legend.append("text")
-        .attr("x", 0)
-        .attr("y", legendHeight + 20)
-        .style("font-size", "12px")
-        .text(minPolicies as number);
-
-    legend.append("text")
-        .attr("x", legendWidth)
-        .attr("y", legendHeight + 20)
-        .style("text-anchor", "end")
-        .style("font-size", "12px")
-        .text(maxPolicies as number);
-    
     const europeCenter: [number, number] = [5, 48]; // lon, lat for center of Western Europe
     const initialScale = 5;
     const initialTranslate = projection(europeCenter)!;
@@ -4202,10 +4128,10 @@ Promise.all([
             g.selectAll('.country-label').style('display', null);
         },
         hideDefaultLegend: () => {
-            svg.select('.legend').style('display', 'none');
+            hideChoroplethLegend();
         },
         showDefaultLegend: () => {
-            svg.select('.legend').style('display', null);
+            showChoroplethLegend();
         },
         clearRegulationsLayer: () => {
             regulationsG.selectAll('*').remove();
@@ -4345,9 +4271,9 @@ Promise.all([
                 };
             }
             return {
-                title: 'Build Codes — Regulation Balance',
-                subtitle: 'Regulations · Surveyed NUTS regions (Germany, Greece, Ireland)',
-                legend: 'Colour scale: promoting (green) ↔ constraining (red) balance by region (not policy quality)',
+                title: 'Build Codes — Surveyed Regions',
+                subtitle: 'Regulations · NUTS regions with coded build regulations',
+                legend: 'Green = surveyed region with rules · grey = no rules for current filters (click for details)',
             };
         }
 

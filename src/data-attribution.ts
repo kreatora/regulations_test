@@ -33,8 +33,9 @@ function ensureStyles(): void {
             pointer-events: auto;
         }
         #map-data-attribution.is-visible { display: block; }
-        #world-map-container.has-data-attribution .regulations-map-panel-legend {
-            bottom: 54px;
+        #world-map-container.has-data-attribution .regulations-map-panel-legend,
+        #world-map-container.has-data-attribution .map-choropleth-legend {
+            bottom: 58px;
         }
         #world-map-container.has-data-attribution .cpa-download-menu {
             bottom: 58px;

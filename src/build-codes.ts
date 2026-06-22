@@ -215,17 +215,33 @@ function renderBuildCodesAux() {
     `;
 }
 
-function renderPanelPressureLegend(maxAbs: number) {
+const BC_REGION_FILL_BY_TECH: Record<'wind' | 'solar' | 'ev', string> = {
+    wind: '#b8d0b2',
+    solar: '#d4cfa0',
+    ev: '#b5cfe0',
+};
+const BC_REGION_FILL_NO_DATA = '#e2e8f0';
+const BC_REGION_STROKE = '#ffffff';
+const BC_REGION_STROKE_HOVER = '#4a6244';
+
+const BC_TECH_LABEL: Record<'wind' | 'solar' | 'ev', string> = {
+    wind: 'Wind',
+    solar: 'Solar',
+    ev: 'Electric Vehicles',
+};
+
+function renderPanelBuildCodesLegend(tech: 'wind' | 'solar' | 'ev') {
     const legend = document.getElementById('regulations-map-panel-legend');
     if (!legend) return;
+    const regionFill = BC_REGION_FILL_BY_TECH[tech];
     legend.style.display = 'block';
     legend.innerHTML = `
-        <div class="regulations-map-panel-legend-title">Regulation balance</div>
-        <div class="regulations-map-panel-legend-bar"></div>
-        <div class="regulations-map-panel-legend-labels">
-            <span>Promoting</span>
-            <span>Constraining</span>
+        <div class="regulations-map-panel-legend-title">Build-Code Coverage (${BC_TECH_LABEL[tech]})</div>
+        <div class="regulations-map-panel-legend-items">
+            <span><span class="regulations-map-panel-legend-swatch" style="background:${regionFill};"></span>Surveyed Region</span>
+            <span><span class="regulations-map-panel-legend-swatch" style="background:${BC_REGION_FILL_NO_DATA};"></span>No Rules For Current Filters</span>
         </div>
+        <div class="regulations-map-panel-legend-note">Click a region for regulation details.</div>
     `;
 }
 
@@ -470,28 +486,34 @@ export async function renderBuildCodesOnMap(host: MapHost, filters: BuildCodesFi
         metricsByCode.set(code, { ...regulationMetrics(rs), rules: rs });
     }
 
-    const allScores = Array.from(metricsByCode.values()).map(s => s.netScore);
-    const maxAbs = Math.max(1, d3.max(allScores.map(v => Math.abs(v))) || 1);
-    const colorScale = d3.scaleDiverging(d3.interpolateRdYlGn).domain([maxAbs, 0, -maxAbs]);
     const path = host.path;
+
+    const regionFill = (d: any): string => {
+        const info = metricsByCode.get(d.properties.NUTS_ID);
+        if (!info || info.rules.length === 0) return BC_REGION_FILL_NO_DATA;
+        return BC_REGION_FILL_BY_TECH[filters.tech];
+    };
 
     const regions = layer.append('g').attr('class', 'bc-regions');
     regions.selectAll('.bc-region').data(features).enter().append('path')
         .attr('class', 'bc-region')
         .attr('d', path as any)
-        .attr('fill', (d: any) => {
-            const score = metricsByCode.get(d.properties.NUTS_ID)?.netScore ?? 0;
-            return score !== 0 ? colorScale(score) : '#e2e8f0';
-        })
-        .attr('stroke', '#fff').attr('stroke-width', 0.6)
+        .attr('fill', regionFill)
+        .attr('stroke', BC_REGION_STROKE).attr('stroke-width', 0.6)
         .style('cursor', 'pointer')
+        .on('mouseenter', function() {
+            d3.select(this).attr('stroke', BC_REGION_STROKE_HOVER).attr('stroke-width', 1.2);
+        })
         .on('mousemove', (e: any, d: any) => {
             const code = d.properties.NUTS_ID;
             const info = metricsByCode.get(code);
             const label = nutsDisplayName(d.properties);
             tooltipShow(`<strong>${label}</strong> (${code})<br/>Constraining: <strong>${info?.constrainingCount ?? 0}</strong><br/>Promoting: <strong>${info?.promotingCount ?? 0}</strong><br/>Balance (constraining - promoting): <strong>${info?.netScore ?? 0}</strong><br/>Policy count: <strong>${info?.policyCount ?? 0}</strong><br/>Binding regulations: <strong>${info?.bindingCount ?? 0}</strong>`, e);
         })
-        .on('mouseleave', tooltipHide)
+        .on('mouseleave', function() {
+            d3.select(this).attr('stroke', BC_REGION_STROKE).attr('stroke-width', 0.6);
+            tooltipHide();
+        })
         .on('click', (_e: any, d: any) => {
             const code = d.properties.NUTS_ID;
             const info = metricsByCode.get(code);
@@ -517,7 +539,7 @@ export async function renderBuildCodesOnMap(host: MapHost, filters: BuildCodesFi
         .style('pointer-events', 'none')
         .text((d: any) => code3to2[d.id] || '');
 
-    renderPanelPressureLegend(maxAbs);
+    renderPanelBuildCodesLegend(filters.tech);
 
     svgWatermark(layer as any, host.width);
 }
