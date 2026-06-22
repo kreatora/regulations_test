@@ -1979,8 +1979,8 @@ Promise.all([
                 break;
             case 'climateTargets':
                 interpolateFunction = d3.interpolatePurples;
-                minValue = maxClimateTarget as number;
-                maxValue = minClimateTarget as number;
+                minValue = minClimateTarget as number;
+                maxValue = maxClimateTarget as number;
                 break;
             case 'ev':
                 interpolateFunction = (t: number) => d3.interpolateRgb('#fff5eb', '#f97316')(t);
