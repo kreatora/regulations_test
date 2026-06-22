@@ -208,6 +208,35 @@ function renderBuildCodesAux() {
             @media (max-width: 768px) { .bc-bilingual { grid-template-columns: 1fr; } }
             .bc-tooltip { position: fixed; background: rgba(15, 23, 42, 0.95); color: #fff; padding: 8px 12px; border-radius: 6px; font-size: 12px; pointer-events: none; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.2); max-width: 280px; line-height: 1.5; }
             .bc-tooltip strong { color: #93c5fd; }
+            .bc-rules-table-wrap { overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 10px; }
+            .bc-rules-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+            .bc-rules-table thead { position: sticky; top: 0; z-index: 1; }
+            .bc-rules-table th { text-align: left; padding: 10px 12px; font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #64748b; background: #f8fafc; border-bottom: 1px solid #e2e8f0; white-space: nowrap; }
+            .bc-rules-table td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: top; color: #334155; }
+            .bc-rule-row { cursor: pointer; transition: background 0.12s ease; }
+            .bc-rule-row:hover, .bc-rule-row:focus { background: #f1f5f9; outline: none; }
+            .bc-rule-row:nth-child(even) { background: #fcfcfd; }
+            .bc-rule-row:nth-child(even):hover, .bc-rule-row:nth-child(even):focus { background: #eef2f7; }
+            .bc-rule-table-name { font-weight: 600; color: #1e293b; display: block; }
+            .bc-rule-table-value { font-weight: 700; color: #0f172a; white-space: nowrap; }
+            .bc-rule-table-year { font-variant-numeric: tabular-nums; color: #475569; }
+            .bc-rule-table-source { font-size: 11.5px; color: #64748b; max-width: 200px; line-height: 1.4; }
+            .bc-rule-table-cond { font-size: 11px; color: #64748b; margin-top: 3px; line-height: 1.35; }
+            .bc-rule-pill { display: inline-block; font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 999px; letter-spacing: 0.02em; white-space: nowrap; }
+            .bc-rule-pill-tech.wind { background: rgba(13, 148, 136, 0.12); color: #0f766e; }
+            .bc-rule-pill-tech.solar { background: rgba(245, 158, 11, 0.15); color: #b45309; }
+            .bc-rule-pill-tech.ev { background: rgba(124, 58, 237, 0.12); color: #6d28d9; }
+            .bc-rule-pill.is-constraining { background: rgba(15, 118, 110, 0.12); color: #0f766e; }
+            .bc-rule-pill.is-promoting { background: rgba(217, 119, 6, 0.15); color: #b45309; }
+            .bc-rule-pill.is-binding { background: rgba(15, 118, 110, 0.12); color: #0f766e; }
+            .bc-rule-pill.is-guideline { background: rgba(148, 163, 184, 0.2); color: #475569; }
+            .bc-rules-table-note { margin: 12px 0 0; font-size: 11px; color: #64748b; font-style: italic; }
+            .bc-rules-toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+            .bc-rules-search { flex: 1; min-width: 200px; max-width: 340px; padding: 8px 12px; font-size: 12.5px; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; color: #1e293b; font-family: inherit; }
+            .bc-rules-search::placeholder { color: #94a3b8; }
+            .bc-rules-search:focus { outline: none; border-color: #94a3b8; box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.22); }
+            .bc-rules-search-count { font-size: 11px; color: #64748b; white-space: nowrap; }
+            .bc-rules-table-empty { text-align: center; padding: 24px 12px !important; color: #64748b; font-style: italic; }
         </style>
         <div class="bc-shell">
             <p class="bc-no-data" style="display:none" aria-hidden="true"></p>
@@ -274,7 +303,6 @@ function regulationMetrics(rules: Rule[]) {
         bindingCount,
         constrainingCount,
         promotingCount,
-        netScore: constrainingCount - promotingCount,
     };
 }
 
@@ -322,19 +350,108 @@ function tooltipHide() {
     if (tip) tip.style.display = 'none';
 }
 
+function formatTitleCase(value: string | null | undefined): string {
+    if (!value) return '—';
+    return value
+        .trim()
+        .toLowerCase()
+        .replace(/\b[a-z]/g, (c) => c.toUpperCase());
+}
+
+function formatVariableLabel(variable: string): string {
+    if (VARIABLE_LABELS[variable]) return VARIABLE_LABELS[variable];
+    return formatTitleCase(variable.replace(/^\d+_/, '').replace(/_/g, ' '));
+}
+
+function formatTechnology(kind: Rule['kind']): string {
+    return ({ wind: 'Wind', solar: 'Solar', ev: 'Electric Vehicles' })[kind] || formatTitleCase(kind);
+}
+
+function formatPolicyEffect(effect: string | null | undefined): string {
+    return (effect || '').toLowerCase() === 'promoting' ? 'Promoting' : 'Constraining';
+}
+
+function formatBindingStatus(binding: string | null | undefined): string {
+    return (binding || '').toLowerCase().startsWith('y') ? 'Binding' : 'Guideline';
+}
+
+function formatRuleValue(r: Rule): string {
+    const v = r.values[0];
+    if (!v) return '—';
+    const parts: string[] = [];
+    if (r.min_or_max) parts.push(formatTitleCase(r.min_or_max));
+    if (v.value != null) parts.push(String(v.value));
+    if (v.unit) parts.push(v.unit);
+    return parts.join(' ') || '—';
+}
+
+function rulesTableHTML(rules: Rule[]): string {
+    const sorted = [...rules].sort((a, b) => {
+        const byVar = formatVariableLabel(a.variable).localeCompare(formatVariableLabel(b.variable));
+        if (byVar !== 0) return byVar;
+        return (b.year_decision ?? 0) - (a.year_decision ?? 0);
+    });
+
+    const rows = sorted.map((r) => {
+        const isPromoting = (r.policy_effect || '').toLowerCase() === 'promoting';
+        const isBind = (r.legally_binding || '').toLowerCase().startsWith('y');
+        const v = r.values[0];
+        const cond = v?.condition
+            ? `<div class="bc-rule-table-cond">${escapeHtml(formatTitleCase(v.condition))}</div>`
+            : '';
+        const sourceRaw = r.source_name?.split('\n')[0]?.trim() || '';
+        const source = sourceRaw
+            ? escapeHtml(sourceRaw.length > 52 ? `${sourceRaw.slice(0, 49)}…` : sourceRaw)
+            : '—';
+
+        return `<tr class="bc-rule-row ${r.kind}" data-rule="${ruleKey(r)}" tabindex="0" role="button" aria-label="Open regulation details">
+            <td class="bc-rule-table-rule">
+                <span class="bc-rule-table-name">${escapeHtml(formatVariableLabel(r.variable))}</span>
+                ${cond}
+            </td>
+            <td><span class="bc-rule-pill bc-rule-pill-tech ${r.kind}">${escapeHtml(formatTechnology(r.kind))}</span></td>
+            <td><span class="bc-rule-pill ${isPromoting ? 'is-promoting' : 'is-constraining'}">${formatPolicyEffect(r.policy_effect)}</span></td>
+            <td class="bc-rule-table-value">${escapeHtml(formatRuleValue(r))}</td>
+            <td class="bc-rule-table-year">${r.year_decision ?? '—'}</td>
+            <td><span class="bc-rule-pill ${isBind ? 'is-binding' : 'is-guideline'}">${formatBindingStatus(r.legally_binding)}</span></td>
+            <td class="bc-rule-table-source">${source}</td>
+        </tr>`;
+    }).join('');
+
+    return `
+        <div class="bc-rules-table-wrap">
+            <table class="bc-rules-table">
+                <thead>
+                    <tr>
+                        <th>Rule</th>
+                        <th>Technology</th>
+                        <th>Effect</th>
+                        <th>Value</th>
+                        <th>Year</th>
+                        <th>Status</th>
+                        <th>Source</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>
+        <p class="bc-rules-table-note">Click a row for full source text and translations.</p>
+    `;
+}
+
 function ruleCardHTML(r: Rule): string {
     const isPromoting = (r.policy_effect || '').toLowerCase() === 'promoting';
     const v = r.values[0];
     const isBind = (r.legally_binding || '').toLowerCase().startsWith('y');
-    const valStr = v ? `${r.min_or_max ? r.min_or_max + ' ' : ''}${v.value ?? '—'}${v.unit ? ' ' + v.unit : ''}` : '—';
-    const cond = v?.condition ? `<div class="bc-rule-cond">${escapeHtml(v.condition)}</div>` : '';
+    const valStr = formatRuleValue(r);
+    const cond = v?.condition ? `<div class="bc-rule-cond">${escapeHtml(formatTitleCase(v.condition))}</div>` : '';
     const src = r.source_name ? `<div class="bc-rule-source">${escapeHtml(r.source_name.split('\n')[0])}${r.year_decision ? ' · ' + r.year_decision : ''}</div>` : '';
     return `<div class="bc-rule-card ${r.kind}" data-rule="${ruleKey(r)}">
         <div class="bc-rule-card-row1">
-            <span class="bc-rule-tag">${VARIABLE_LABELS[r.variable] || r.variable}</span>
-            <span class="bc-rule-tag">${r.kind.toUpperCase()}</span>
-            <span class="bc-rule-tag ${isPromoting ? 'guide' : 'bind'}">${isPromoting ? 'promoting' : 'constraining'}</span>
-            <span class="bc-rule-tag ${isBind ? 'bind' : 'guide'}">${isBind ? 'binding' : 'guideline'}</span>
+            <span class="bc-rule-tag">${escapeHtml(formatVariableLabel(r.variable))}</span>
+            <span class="bc-rule-tag">${escapeHtml(formatTechnology(r.kind))}</span>
+            <span class="bc-rule-tag ${isPromoting ? 'guide' : 'bind'}">${formatPolicyEffect(r.policy_effect)}</span>
+            <span class="bc-rule-tag ${isBind ? 'bind' : 'guide'}">${formatBindingStatus(r.legally_binding)}</span>
             <span class="bc-rule-tag">${r.nuts}</span>
         </div>
         <div class="bc-rule-value">${escapeHtml(valStr)}</div>
@@ -345,13 +462,22 @@ function ruleCardHTML(r: Rule): string {
 function ruleKey(r: Rule): string { return `${r.policy_id || ''}|${r.kind}|${r.nuts}|${r.variable}|${r.year_decision}|${r.source_id || r.source_name || ''}|${r.values[0]?.value ?? ''}`; }
 function escapeHtml(s: string): string { return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!)); }
 
-function attachRuleCardHandlers(container: HTMLElement) {
-    container.querySelectorAll<HTMLDivElement>('.bc-rule-card').forEach(card => {
-        card.addEventListener('click', () => {
-            const key = card.dataset.rule;
-            const r = data?.rules.find(rr => ruleKey(rr) === key);
-            if (r) showSourceModal(r);
-        });
+function attachRuleDetailHandlers(container: HTMLElement) {
+    const openRule = (key: string | undefined) => {
+        if (!key) return;
+        const r = data?.rules.find(rr => ruleKey(rr) === key);
+        if (r) showSourceModal(r);
+    };
+    container.querySelectorAll<HTMLElement>('.bc-rule-card, .bc-rule-row').forEach((el) => {
+        el.addEventListener('click', () => openRule(el.dataset.rule));
+        if (el.classList.contains('bc-rule-row')) {
+            el.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    openRule(el.dataset.rule);
+                }
+            });
+        }
     });
 }
 
@@ -373,27 +499,27 @@ function showSourceModal(r: Rule) {
     const isBind = (r.legally_binding || '').toLowerCase().startsWith('y');
     const isPromoting = (r.policy_effect || '').toLowerCase() === 'promoting';
     const tagBind = isBind
-        ? `<span class="bc-rule-tag bind">Legally binding</span>`
-        : `<span class="bc-rule-tag guide">Guideline only</span>`;
+        ? `<span class="bc-rule-tag bind">Binding</span>`
+        : `<span class="bc-rule-tag guide">Guideline</span>`;
 
     const html = `
         <div class="bc-modal-bd" id="bc-modal-bd">
             <div class="bc-modal" onclick="event.stopPropagation()">
                 <div class="bc-modal-h">
-                    <h3>${escapeHtml(VARIABLE_LABELS[r.variable] || r.variable)} — ${escapeHtml(r.nuts_name || r.nuts)}</h3>
+                    <h3>${escapeHtml(formatVariableLabel(r.variable))} — ${escapeHtml(r.nuts_name || r.nuts)}</h3>
                     <button class="bc-modal-x" id="bc-modal-x">&times;</button>
                 </div>
                 <div class="bc-modal-body">
                     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">
-                        <span class="bc-rule-tag" style="background:${TECH_COLORS[r.kind]}33;color:${TECH_COLORS[r.kind]};">${r.kind.toUpperCase()}</span>
+                        <span class="bc-rule-tag" style="background:${TECH_COLORS[r.kind]}33;color:${TECH_COLORS[r.kind]};">${escapeHtml(formatTechnology(r.kind))}</span>
                         ${tagBind}
-                        <span class="bc-rule-tag ${isPromoting ? 'guide' : 'bind'}">${isPromoting ? 'Promoting policy' : 'Constraining policy'}</span>
+                        <span class="bc-rule-tag ${isPromoting ? 'guide' : 'bind'}">${formatPolicyEffect(r.policy_effect)}</span>
                         <span class="bc-rule-tag">NUTS ${r.nuts}</span>
-                        <span class="bc-rule-tag">${r.country}</span>
+                        <span class="bc-rule-tag">${escapeHtml(formatTitleCase(r.country))}</span>
                         ${r.year_decision ? `<span class="bc-rule-tag">${r.year_decision}</span>` : ''}
-                        ${r.installation_type ? `<span class="bc-rule-tag">${escapeHtml(r.installation_type)}</span>` : ''}
-                        ${r.installation_scale ? `<span class="bc-rule-tag">scale: ${escapeHtml(r.installation_scale)}</span>` : ''}
-                        ${r.multiple_conditions ? `<span class="bc-rule-tag">${escapeHtml(r.multiple_conditions)}</span>` : ''}
+                        ${r.installation_type ? `<span class="bc-rule-tag">${escapeHtml(formatTitleCase(r.installation_type))}</span>` : ''}
+                        ${r.installation_scale ? `<span class="bc-rule-tag">Scale: ${escapeHtml(formatTitleCase(r.installation_scale))}</span>` : ''}
+                        ${r.multiple_conditions ? `<span class="bc-rule-tag">${escapeHtml(formatTitleCase(r.multiple_conditions))}</span>` : ''}
                         ${(r.validated || '').toLowerCase().startsWith('y') ? `<span class="bc-rule-tag bind">Validated</span>` : ''}
                     </div>
                     <div style="margin-bottom:14px;">${valuesHtml || '<em style="color:rgb(100,116,139);">No quantitative value (textual rule)</em>'}</div>
@@ -477,7 +603,7 @@ export async function renderBuildCodesOnMap(host: MapHost, filters: BuildCodesFi
         if (cc === 'EL' || cc === 'IE') features.push(f);
     }
 
-    const metricsByCode = new Map<string, { regulationCount: number; policyCount: number; bindingCount: number; constrainingCount: number; promotingCount: number; netScore: number; rules: Rule[] }>();
+    const metricsByCode = new Map<string, { regulationCount: number; policyCount: number; bindingCount: number; constrainingCount: number; promotingCount: number; rules: Rule[] }>();
     for (const f of features) {
         const code = f.properties.NUTS_ID;
         let rs = rulesForRegion(code);
@@ -508,7 +634,7 @@ export async function renderBuildCodesOnMap(host: MapHost, filters: BuildCodesFi
             const code = d.properties.NUTS_ID;
             const info = metricsByCode.get(code);
             const label = nutsDisplayName(d.properties);
-            tooltipShow(`<strong>${label}</strong> (${code})<br/>Constraining: <strong>${info?.constrainingCount ?? 0}</strong><br/>Promoting: <strong>${info?.promotingCount ?? 0}</strong><br/>Balance (constraining - promoting): <strong>${info?.netScore ?? 0}</strong><br/>Policy count: <strong>${info?.policyCount ?? 0}</strong><br/>Binding regulations: <strong>${info?.bindingCount ?? 0}</strong>`, e);
+            tooltipShow(`<strong>${label}</strong> (${code})<br/>Constraining: <strong>${info?.constrainingCount ?? 0}</strong><br/>Promoting: <strong>${info?.promotingCount ?? 0}</strong><br/>Policy count: <strong>${info?.policyCount ?? 0}</strong><br/>Binding regulations: <strong>${info?.bindingCount ?? 0}</strong>`, e);
         })
         .on('mouseleave', function() {
             d3.select(this).attr('stroke', BC_REGION_STROKE).attr('stroke-width', 0.6);
@@ -544,16 +670,56 @@ export async function renderBuildCodesOnMap(host: MapHost, filters: BuildCodesFi
     svgWatermark(layer as any, host.width);
 }
 
+function attachRulesTableSearch(container: HTMLElement, total: number) {
+    const input = container.querySelector<HTMLInputElement>('.bc-rules-search');
+    const tbody = container.querySelector<HTMLTableSectionElement>('.bc-rules-table tbody');
+    const countEl = container.querySelector<HTMLElement>('.bc-rules-search-count');
+    if (!input || !tbody) return;
+
+    const rows = Array.from(tbody.querySelectorAll<HTMLTableRowElement>('.bc-rule-row'));
+    let emptyRow: HTMLTableRowElement | null = null;
+
+    const update = () => {
+        const q = input.value.trim().toLowerCase();
+        let visible = 0;
+        for (const row of rows) {
+            const match = !q || (row.textContent || '').toLowerCase().includes(q);
+            row.style.display = match ? '' : 'none';
+            if (match) visible += 1;
+        }
+        if (countEl) {
+            countEl.textContent = q ? `${visible} of ${total} shown` : '';
+        }
+        if (q && visible === 0) {
+            if (!emptyRow) {
+                emptyRow = document.createElement('tr');
+                emptyRow.className = 'bc-rule-row-empty';
+                emptyRow.innerHTML = '<td colspan="7" class="bc-rules-table-empty">No rules match your search.</td>';
+            }
+            if (!emptyRow.parentElement) tbody.appendChild(emptyRow);
+        } else if (emptyRow?.parentElement) {
+            emptyRow.remove();
+        }
+    };
+
+    input.addEventListener('input', update);
+    requestAnimationFrame(() => input.focus());
+}
+
 function showRegionDetail(name: string, code: string, rules: Rule[]) {
     const html = `
         <div class="bc-modal-bd" id="bc-modal-bd">
-            <div class="bc-modal" onclick="event.stopPropagation()" style="max-width:780px;">
+            <div class="bc-modal" onclick="event.stopPropagation()" style="max-width:1040px;">
                 <div class="bc-modal-h">
-                    <h3>${escapeHtml(name)} — ${escapeHtml(code)} (${rules.length} applicable rules)</h3>
+                    <h3>${escapeHtml(name)} — ${escapeHtml(code)} · ${rules.length} Applicable Rules</h3>
                     <button class="bc-modal-x" id="bc-modal-x">&times;</button>
                 </div>
                 <div class="bc-modal-body">
-                    ${rules.map(r => ruleCardHTML(r)).join('')}
+                    <div class="bc-rules-toolbar">
+                        <input type="search" class="bc-rules-search" placeholder="Search rules, values, sources…" aria-label="Search regulations in this region" autocomplete="off" />
+                        <span class="bc-rules-search-count" aria-live="polite"></span>
+                    </div>
+                    ${rulesTableHTML(rules)}
                 </div>
             </div>
         </div>
@@ -564,7 +730,8 @@ function showRegionDetail(name: string, code: string, rules: Rule[]) {
     const close = () => wrap.remove();
     wrap.querySelector('#bc-modal-x')?.addEventListener('click', close);
     wrap.querySelector('#bc-modal-bd')?.addEventListener('click', close);
-    attachRuleCardHandlers(wrap as unknown as HTMLElement);
+    attachRuleDetailHandlers(wrap as unknown as HTMLElement);
+    attachRulesTableSearch(wrap as unknown as HTMLElement, rules.length);
 }
 
 // ---------------------------------------------------------------------------
@@ -1282,7 +1449,7 @@ function renderSimulator(host: HTMLElement) {
         `;
         const out = document.getElementById('bc-sim-results')!;
         out.innerHTML = rendered;
-        attachRuleCardHandlers(out);
+        attachRuleDetailHandlers(out);
         out.querySelectorAll<HTMLButtonElement>('[data-vfilter]').forEach(b => b.addEventListener('click', () => {
             out.querySelectorAll('[data-vfilter]').forEach(x => x.classList.remove('bc-pill-active'));
             b.classList.add('bc-pill-active');
@@ -1492,7 +1659,7 @@ function renderSourceInspector(host: HTMLElement) {
             return true;
         });
         list.innerHTML = filtered.length === 0 ? `<div class="bc-no-data" style="grid-column:1/-1;">No matching rules.</div>` : filtered.map(r => ruleCardHTML(r)).join('');
-        attachRuleCardHandlers(list);
+        attachRuleDetailHandlers(list);
     };
 
     host.querySelectorAll<HTMLButtonElement>('[data-stech]').forEach(b => b.addEventListener('click', () => {
