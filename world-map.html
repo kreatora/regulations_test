@@ -267,22 +267,22 @@
                header row above the map / regulations surface. */
             width: clamp(360px, 86vw, 760px);
             height: 52px;
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.85) 0%, rgba(241, 245, 249, 0.85) 100%);
+            background: linear-gradient(135deg, rgb(255, 255, 255) 0%, rgb(241, 245, 249) 100%);
             border-radius: 24px;
             border: 2px solid rgba(148, 163, 184, 0.75);
             cursor: pointer;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             box-shadow: 0 4px 20px rgba(0,0,0,0.15), inset 0 2px 6px rgba(0,0,0,0.065);
             backdrop-filter: blur(10px);
-            opacity: 0.75;
+            opacity: 1;
         }
         
         .toggle-switch:hover {
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.97) 0%, rgba(241, 245, 249, 0.97) 100%);
+            background: linear-gradient(135deg, rgb(255, 255, 255) 0%, rgb(241, 245, 249) 100%);
             border-color: rgba(148, 163, 184, 0.88);
             box-shadow: 0 6px 25px rgba(0,0,0,0.11), inset 0 2px 4px rgba(0,0,0,0.08);
             transform: translateY(-1px);
-            opacity: 0.98;
+            opacity: 1;
         }
         
         /* Toggle Switch Slider */
@@ -467,10 +467,10 @@
             top: 60px;
             left: 0;
             width: 380px;
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.85) 0%, rgba(241, 245, 249, 0.85) 100%);
-            border: 2px solid rgba(148, 163, 184, 0.75);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.58) 0%, rgba(241, 245, 249, 0.58) 100%);
+            border: 2px solid rgba(148, 163, 184, 0.45);
             border-radius: 16px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.16), 0 6px 20px rgba(0,0,0,0.115);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1), 0 6px 20px rgba(0,0,0,0.07);
             backdrop-filter: blur(14px);
             opacity: 0;
             visibility: hidden;
@@ -484,7 +484,7 @@
         .targets-submenu.visible,
         .climate-targets-submenu.visible,
         .regulations-submenu.visible {
-            opacity: 0.80;
+            opacity: 0.55;
             visibility: visible;
             transform: translateY(0) scale(1);
         }
@@ -584,14 +584,18 @@
             font-weight: 700;
             color: rgb(30, 41, 59);
             margin-bottom: 6px;
+            text-align: center;
         }
         .year-group-options {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            display: flex;
+            justify-content: center;
+            align-items: center;
             gap: 6px;
         }
         .year-option {
-            padding: 8px 6px;
+            flex: 0 0 auto;
+            min-width: 64px;
+            padding: 8px 14px;
             background: rgba(255, 255, 255, 0.6);
             border: 1.5px solid rgba(71, 85, 105, 0.5);
             border-radius: 8px;
@@ -621,10 +625,10 @@
             top: 60px;
             left: 0;
             width: 380px;
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.85) 0%, rgba(241, 245, 249, 0.85) 100%);
-            border: 2px solid rgba(148, 163, 184, 0.75);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.58) 0%, rgba(241, 245, 249, 0.58) 100%);
+            border: 2px solid rgba(148, 163, 184, 0.45);
             border-radius: 16px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.16), 0 6px 20px rgba(0,0,0,0.115);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1), 0 6px 20px rgba(0,0,0,0.07);
             backdrop-filter: blur(14px);
             opacity: 0;
             visibility: hidden;
@@ -636,7 +640,7 @@
         }
         
         .climate-targets-submenu.visible {
-            opacity: 0.80;
+            opacity: 0.55;
             visibility: visible;
             transform: translateY(0) scale(1);
         }
@@ -929,7 +933,7 @@
                                 <button class="submenu-close" id="submenuClose">&times;</button>
                             </div>
                             <div class="year-group-wrapper" id="yearGroupWrapper">
-                                <div class="year-group-title">Targeted Year</div>
+                                <div class="year-group-title">Targeted Year (latest)</div>
                                 <div class="year-group-options" id="yearGroupOptions"></div>
                             </div>
                             <div class="submenu-options" id="submenuOptions">
@@ -944,7 +948,7 @@
                                 <button class="submenu-close" id="climateSubmenuClose">&times;</button>
                             </div>
                             <div class="year-group-wrapper" id="climateYearGroupWrapper">
-                                <div class="year-group-title">Targeted Year</div>
+                                <div class="year-group-title">Targeted Year (latest)</div>
                                 <div class="year-group-options" id="climateYearGroupOptions"></div>
                             </div>
                         </div>

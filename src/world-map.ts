@@ -460,7 +460,7 @@ const countryCodeMapping: { [key: string]: string } = {
     "BLZ": "BZ", "BOL": "BO", "BRA": "BR", "BRN": "BN", "BTN": "BT",
     "BWA": "BW", "CAF": "CF", "CAN": "CA", "CHE": "CH", "CHL": "CL",
     "CHN": "CN", "CIV": "CI", "CMR": "CM", "COD": "CD", "COG": "CG",
-    "COL": "CO", "CRI": "CR", "CUB": "CU", /* N. Cyprus */ "-99": "CY",
+    "COL": "CO", "CRI": "CR", "CUB": "CU",
     "CYP": "CY", "CZE": "CZ", "DEU": "DE", "DJI": "DJ", "DNK": "DK",
     "DOM": "DO", "DZA": "DZ", "ECU": "EC", "EGY": "EG", "ERI": "ER",
     "ESP": "ES", "EST": "EE", "ETH": "ET", "FIN": "FI", "FJI": "FJ",
@@ -545,15 +545,17 @@ let currentRegulationsSection: 'buildCodes' | 'buildableLand' = 'buildCodes';
 let bcTechFilter: 'wind' | 'solar' | 'ev' = 'wind';
 let bcBindFilter = 'all';
 let blFilters: BuildableLandFilters = { tech: 'wind', mode: 'strictest', model: 'technical', style: 'availability' };
- // Year-group filter for targets view (default to 'latest')
- let currentTargetYearGroup: '2020' | '2030' | '2050' | 'latest' = 'latest';
+ type TargetYearGroup = '2020' | '2030' | '2050';
+ const TARGET_YEAR_GROUP_ORDER: TargetYearGroup[] = ['2020', '2030', '2050'];
+ // Year-group filter for targets view
+ let currentTargetYearGroup: TargetYearGroup = '2030';
  // Filter mode: always use year-group filtering (no UI toggle)
  let currentTargetFilterMode: 'all' | 'group' = 'group';
- // Year-group filter for climate targets view (default to 'latest')
- let currentClimateTargetYearGroup: '2020' | '2030' | '2050' | 'latest' = 'latest';
- 
+ // Year-group filter for climate targets view
+ let currentClimateTargetYearGroup: TargetYearGroup = '2030';
+
  // Helper to map a target year to a year group
- function getYearGroup(year: number): '2020' | '2030' | '2050' | null {
+ function getYearGroup(year: number): TargetYearGroup | null {
      if (!Number.isFinite(year)) return null;
      // Groups as described: 
      // 2020: targets until 2020 plus 5 years => <= 2025
@@ -564,6 +566,67 @@ let blFilters: BuildableLandFilters = { tech: 'wind', mode: 'strictest', model: 
     if (year >= 2035) return '2050'; // Changed: now includes all years >= 2035
      return null;
  }
+
+ /** Latest target (by decision year) for the selected year group, falling back to earlier groups when missing. */
+ function selectTargetForYearGroup<T extends Record<string, unknown>>(
+     targets: T[],
+     selectedGroup: TargetYearGroup,
+     options: { yearField: keyof T; decisionField: keyof T }
+ ): T | null {
+     if (!targets.length) return null;
+
+     const { yearField, decisionField } = options;
+     const selectedIdx = TARGET_YEAR_GROUP_ORDER.indexOf(selectedGroup);
+
+     for (let i = selectedIdx; i >= 0; i--) {
+         const group = TARGET_YEAR_GROUP_ORDER[i];
+         const matching = targets.filter((target) => getYearGroup(Number(target[yearField])) === group);
+         if (matching.length > 0) {
+             return matching.sort(
+                 (a, b) => Number(b[decisionField]) - Number(a[decisionField])
+             )[0];
+         }
+     }
+
+     return null;
+ }
+
+ function syncTargetYearGroupUI(scope: 'renewable' | 'climate' | 'both' = 'both') {
+     if (scope === 'renewable' || scope === 'both') {
+         document.querySelectorAll('#yearGroupOptions .year-option').forEach((button) => {
+             button.classList.toggle(
+                 'active',
+                 (button as HTMLElement).dataset.year === currentTargetYearGroup
+             );
+         });
+     }
+     if (scope === 'climate' || scope === 'both') {
+         document.querySelectorAll('#climateYearGroupOptions .year-option').forEach((button) => {
+             button.classList.toggle(
+                 'active',
+                 (button as HTMLElement).dataset.year === currentClimateTargetYearGroup
+             );
+         });
+     }
+ }
+
+ function setTargetYearGroup(
+     group: TargetYearGroup,
+     scope: 'renewable' | 'climate' | 'both' = 'both',
+     refreshMap = false
+ ) {
+     if (scope === 'renewable' || scope === 'both') {
+         currentTargetYearGroup = group;
+     }
+     if (scope === 'climate' || scope === 'both') {
+         currentClimateTargetYearGroup = group;
+     }
+     syncTargetYearGroupUI(scope);
+     if (refreshMap && updateMapFunction) {
+         updateMapFunction();
+     }
+ }
+
 let allData: any = {};
 
 // Flag to track if submenu has been initialized
@@ -642,24 +705,20 @@ function initializeTargetsSubmenu() {
         
         // Initialize year-group options once
         if (yearGroupOptions && yearGroupOptions.children.length === 0) {
-            const groups: Array<'2020' | '2030' | '2050' | 'latest'> = ['latest', '2020', '2030', '2050'];
+            const groups: TargetYearGroup[] = ['2020', '2030', '2050'];
             groups.forEach(group => {
                 const btn = document.createElement('button');
                 btn.className = 'year-option';
-                btn.textContent = group === 'latest' ? 'Latest Target' : group;
-                if (group === currentTargetYearGroup) btn.classList.add('active');
+                btn.textContent = group;
+                btn.dataset.year = group;
                 btn.addEventListener('click', (e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    currentTargetYearGroup = group;
-                    // Update active state
-                    yearGroupOptions.querySelectorAll('.year-option').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    // Refresh map
-                    if (updateMapFunction) updateMapFunction();
+                    setTargetYearGroup(group, 'renewable', true);
                 });
                 yearGroupOptions.appendChild(btn);
             });
+            syncTargetYearGroupUI('renewable');
         }
         
         // Create submenu options for each target type
@@ -776,24 +835,20 @@ function initializeClimateTargetsSubmenu() {
         
         // Initialize year-group options
         if (climateYearGroupOptions && climateYearGroupOptions.children.length === 0) {
-            const groups: Array<'2020' | '2030' | '2050' | 'latest'> = ['latest', '2020', '2030', '2050'];
+            const groups: TargetYearGroup[] = ['2020', '2030', '2050'];
             groups.forEach(group => {
                 const btn = document.createElement('button');
                 btn.className = 'year-option';
-                btn.textContent = group === 'latest' ? 'Latest Target' : group;
-                if (group === currentClimateTargetYearGroup) btn.classList.add('active');
+                btn.textContent = group;
+                btn.dataset.year = group;
                 btn.addEventListener('click', (e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    currentClimateTargetYearGroup = group;
-                    // Update active state
-                    climateYearGroupOptions.querySelectorAll('.year-option').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    // Refresh map
-                    if (updateMapFunction) updateMapFunction();
+                    setTargetYearGroup(group, 'climate', true);
                 });
                 climateYearGroupOptions.appendChild(btn);
             });
+            syncTargetYearGroupUI('climate');
         }
         
         // Add close button event listener (only once)
@@ -1819,69 +1874,36 @@ Promise.all([
         if (currentMapType === 'policies') {
             return countryCode && policyData[countryCode] ? policyColorScale(policyData[countryCode]) : '#b0b0b0';
         } else if (currentMapType === 'targets') {
-            // Use current target type data with the appropriate color scale
-            const currentTargetData = allData.targets.dataByType[currentTargetType] || {};
             const currentColorScale = allData.targets.colorScales[currentTargetType];
-            
-            // Debug logging for first few countries
-            if (countryCode === 'USA' || countryCode === 'DEU' || countryCode === 'CHN') {
-                console.log(`getCountryColor for ${countryCode}:`, {
-                    currentTargetType,
-                    currentTargetData: currentTargetData[countryCode],
-                    currentColorScale: !!currentColorScale,
-                    allTargetTypes: allData.targets.allTargetTypes,
-                    dataByTypeKeys: Object.keys(allData.targets.dataByType || {}),
-                    colorScalesKeys: Object.keys(allData.targets.colorScales || {})
+            const countryTargets = (allData.targets.allTargetsByCountry?.[countryCode] || [])
+                .filter((target: any) => target.targetType === currentTargetType);
+
+            if (countryCode && countryTargets.length > 0 && currentColorScale) {
+                const selectedTarget = selectTargetForYearGroup(countryTargets, currentTargetYearGroup, {
+                    yearField: 'targetYear',
+                    decisionField: 'decisionYear',
                 });
-            }
-            
-            if (countryCode && currentTargetData[countryCode] && currentColorScale) {
-                const info = currentTargetData[countryCode];
-                const targetValue = info.targetValue;
-                if (currentTargetFilterMode === 'group') {
-                    // 'latest' mode: show latest announced target regardless of year group
-                    if (currentTargetYearGroup === 'latest') {
-                        return currentColorScale(targetValue);
-                    }
-                    // Year group filtering (2020, 2030, 2050)
-                    const group = getYearGroup(Number(info.targetYear));
-                    if (group && group === currentTargetYearGroup) {
-                        return currentColorScale(targetValue);
-                    }
-                    return '#d4d4d4';
+                if (selectedTarget) {
+                    return currentColorScale(selectedTarget.targetValue);
                 }
-                // Fallback: show latest announced target
-                return currentColorScale(targetValue);
-            } else {
-                return '#b0b0b0';
+                return '#d4d4d4';
             }
+            return '#b0b0b0';
         } else if (currentMapType === 'climateTargets') {
-            // Climate targets data with year group filtering
             const allClimateTargets = allData.climateTargets.allData || {};
             const currentColorScale = allData.climateTargets.colorScale;
             
             if (countryCode && allClimateTargets[countryCode] && currentColorScale) {
                 const targets = allClimateTargets[countryCode];
-                
-                if (currentClimateTargetYearGroup === 'latest') {
-                    // Show the most recent target (by decision year)
-                    const latestTarget = targets.sort((a: any, b: any) => b.yearDecision - a.yearDecision)[0];
-                    return currentColorScale(latestTarget.targetValue);
-                }
-                
-                // Year group filtering (2020, 2030, 2050)
-                // Find targets that match the selected year group
-                const matchingTargets = targets.filter((t: any) => {
-                    const group = getYearGroup(Number(t.yearTarget));
-                    return group === currentClimateTargetYearGroup;
+                const selectedTarget = selectTargetForYearGroup(targets, currentClimateTargetYearGroup, {
+                    yearField: 'yearTarget',
+                    decisionField: 'yearDecision',
                 });
-                
-                if (matchingTargets.length > 0) {
-                    // Use the most recent target (by decision year) within the matching group
-                    const latestMatchingTarget = matchingTargets.sort((a: any, b: any) => b.yearDecision - a.yearDecision)[0];
-                    return currentColorScale(latestMatchingTarget.targetValue);
+
+                if (selectedTarget) {
+                    return currentColorScale(selectedTarget.targetValue);
                 }
-                
+
                 return '#d4d4d4';
             } else {
                 return '#b0b0b0';
@@ -1910,12 +1932,18 @@ Promise.all([
             const policyCount = policyData[countryCode] || 'No data';
             return `<strong>${countryName}</strong><br/>Renewable electricity support policies: ${policyCount}`;
         } else if (currentMapType === 'targets') {
-            const currentTargetData = allData.targets.dataByType[currentTargetType] || {};
-            const targetInfo = currentTargetData[countryCode];
+            const countryTargets = (allData.targets.allTargetsByCountry?.[countryCode] || [])
+                .filter((target: any) => target.targetType === currentTargetType);
             const displayName = getTargetTypeDisplayName(currentTargetType);
+            const targetInfo = selectTargetForYearGroup(countryTargets, currentTargetYearGroup, {
+                yearField: 'targetYear',
+                decisionField: 'decisionYear',
+            });
             if (targetInfo) {
                 const decisionLabel = (targetInfo as any).decisionYear ?? (targetInfo as any).decisionDate ?? '—';
                 return `<strong>${countryName}</strong><br/>Target Type: ${displayName}<br/>Target: ${targetInfo.targetValue}% by ${targetInfo.targetYear}<br/>Decision: ${decisionLabel}`;
+            } else if (countryTargets.length > 0) {
+                return `<strong>${countryName}</strong><br/>No ${displayName} target data for ${currentTargetYearGroup}`;
             } else {
                 return `<strong>${countryName}</strong><br/>No ${displayName} target data`;
             }
@@ -1923,25 +1951,16 @@ Promise.all([
             const allClimateTargets = allData.climateTargets.allData || {};
             if (allClimateTargets[countryCode]) {
                 const targets = allClimateTargets[countryCode];
-                
-                if (currentClimateTargetYearGroup === 'latest') {
-                    // Show the most recent target (by decision year)
-                    const latestTarget = targets.sort((a: any, b: any) => b.yearDecision - a.yearDecision)[0];
-                    return `<strong>${countryName}</strong><br/>Emissions reduction target: ${fmt1(latestTarget.targetValue)}% by ${latestTarget.yearTarget}<br/>Decision Year: ${latestTarget.yearDecision}`;
-                }
-                
-                // Year group filtering - show target matching the selected year group
-                const matchingTargets = targets.filter((t: any) => {
-                    const group = getYearGroup(Number(t.yearTarget));
-                    return group === currentClimateTargetYearGroup;
+                const selectedTarget = selectTargetForYearGroup(targets, currentClimateTargetYearGroup, {
+                    yearField: 'yearTarget',
+                    decisionField: 'yearDecision',
                 });
-                
-                if (matchingTargets.length > 0) {
-                    const latestMatchingTarget = matchingTargets.sort((a: any, b: any) => b.yearDecision - a.yearDecision)[0];
-                    return `<strong>${countryName}</strong><br/>Emissions reduction target: ${fmt1(latestMatchingTarget.targetValue)}% by ${latestMatchingTarget.yearTarget}<br/>Decision Year: ${latestMatchingTarget.yearDecision}`;
-                } else {
-                    return `<strong>${countryName}</strong><br/>No emission target data for ${currentClimateTargetYearGroup}`;
+
+                if (selectedTarget) {
+                    return `<strong>${countryName}</strong><br/>Emissions reduction target: ${fmt1(selectedTarget.targetValue)}% by ${selectedTarget.yearTarget}<br/>Decision Year: ${selectedTarget.yearDecision}`;
                 }
+
+                return `<strong>${countryName}</strong><br/>No emission target data for ${currentClimateTargetYearGroup}`;
             } else {
                 return `<strong>${countryName}</strong><br/>No emission target data`;
             }
@@ -4086,7 +4105,7 @@ const fmt1 = (v: any) => {
         .attr("font-size", "2px")
         .attr("fill", "black")
         .style("pointer-events", "none")
-        .text((d: any) => countryCodeMapping[d.id] || "");
+        .text((d: any) => (d.id === '-99' ? '' : countryCodeMapping[d.id] || ""));
 
     regulationsG = g.append("g").attr("class", "regulations-layer").style("display", "none");
 
@@ -4178,6 +4197,7 @@ const fmt1 = (v: any) => {
                 if (selectedValue === 'targets') {
                     // Set map type to targets and show submenu
                     currentMapType = 'targets';
+                    setTargetYearGroup('2030', 'renewable');
                     
                     // Update toggle switch appearance
                     toggleSwitch.setAttribute('data-active', selectedValue);
@@ -4192,6 +4212,7 @@ const fmt1 = (v: any) => {
                 } else if (selectedValue === 'climateTargets') {
                     // Set map type to climate targets and show submenu
                     currentMapType = 'climateTargets';
+                    setTargetYearGroup('2030', 'climate');
                     
                     // Update toggle switch appearance
                     toggleSwitch.setAttribute('data-active', selectedValue);
@@ -4253,8 +4274,8 @@ const fmt1 = (v: any) => {
     // Initial map update to load the correct data based on currentMapType
     updateMap();
 
-    function formatYearGroupLabel(group: '2020' | '2030' | '2050' | 'latest'): string {
-        return group === 'latest' ? 'Latest target year' : `Target year ${group}`;
+    function formatYearGroupLabel(group: TargetYearGroup): string {
+        return `Target year ${group} (latest)`;
     }
 
     function getMapExportCaption() {
