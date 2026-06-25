@@ -537,6 +537,28 @@ const targetsDataUrl = `${baseUrl}data/targets_data.csv`;
 const climateTargetsDataUrl = `${baseUrl}data/climate_targets_data.csv`;
 const evDataUrl = `${baseUrl}data/ev_data.xlsx`;
 
+/** Parse a workbook (.xlsx) or plain CSV from the same fetch path. */
+function parseSpreadsheetOrCsv(ab: ArrayBuffer, label: string): any[] {
+    try {
+        const bytes = new Uint8Array(ab);
+        const isZip = bytes.length >= 2 && bytes[0] === 0x50 && bytes[1] === 0x4b;
+        if (isZip) {
+            console.log(`Parsing ${label} as XLSX...`);
+            const wb = XLSX.read(ab, { type: 'array' });
+            const sheetName =
+                wb.SheetNames.find((name) => name.toLowerCase().includes('target')) ||
+                wb.SheetNames[0];
+            const csvText = XLSX.utils.sheet_to_csv(wb.Sheets[sheetName]);
+            return d3.csvParse(csvText);
+        }
+        const text = new TextDecoder('utf-8').decode(ab);
+        return d3.csvParse(text);
+    } catch (e) {
+        console.error(`Error parsing ${label}:`, e);
+        return [];
+    }
+}
+
 // Global variables to store all data
 type MapType = 'policies' | 'ev' | 'targets' | 'climateTargets' | 'regulations';
 let currentMapType: MapType = 'policies';
@@ -1156,7 +1178,16 @@ Promise.all([
                 return []; // Return empty array on failure to avoid crashing Promise.all
             }
         }),
-    d3.csv(targetsDataUrl),
+    fetch(targetsDataUrl)
+        .then((r) => {
+            if (!r.ok) throw new Error(`Failed to fetch targets data: ${r.statusText}`);
+            return r.arrayBuffer();
+        })
+        .then((ab) => parseSpreadsheetOrCsv(ab, 'targets data'))
+        .catch((e) => {
+            console.error('Error fetching targets data:', e);
+            return [];
+        }),
     d3.csv(climateTargetsDataUrl),
     fetch(evDataUrl)
         .then(r => {
