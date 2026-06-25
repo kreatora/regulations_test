@@ -537,6 +537,9 @@ const targetsDataUrl = `${baseUrl}data/targets_data.csv`;
 const climateTargetsDataUrl = `${baseUrl}data/climate_targets_data.csv`;
 const evDataUrl = `${baseUrl}data/ev_data.xlsx`;
 
+/** Buildable Land subsection — set true when the layer is ready to ship. */
+const BUILDABLE_LAND_ENABLED = false;
+
 /** Parse a workbook (.xlsx) or plain CSV from the same fetch path. */
 function parseSpreadsheetOrCsv(ab: ArrayBuffer, label: string): any[] {
     try {
@@ -918,6 +921,15 @@ function hideRegulationsSubmenu() {
     }
 }
 
+function buildableLandInDevelopmentHtml(): string {
+    return `
+        <div class="regulations-dev-notice">
+            <strong>Buildable Land</strong>
+            <p>This section is in development and will be available soon.</p>
+        </div>
+    `;
+}
+
 function renderRegulationsFilters() {
     const filtersEl = document.getElementById('regulationsFilters');
     const panelLegendEl = document.getElementById('regulations-panel-legend');
@@ -970,6 +982,19 @@ function renderRegulationsFilters() {
                 void refreshRegulationsMap(true);
             });
         });
+        return;
+    }
+
+    if (!BUILDABLE_LAND_ENABLED) {
+        if (panelLegendEl) {
+            panelLegendEl.style.display = 'none';
+            panelLegendEl.innerHTML = '';
+        }
+        if (mapPanelLegendEl) {
+            mapPanelLegendEl.style.display = 'none';
+            mapPanelLegendEl.innerHTML = '';
+        }
+        filtersEl.innerHTML = buildableLandInDevelopmentHtml();
         return;
     }
 
@@ -1049,6 +1074,11 @@ async function refreshRegulationsMap(skipZoom = false): Promise<void> {
         if (currentRegulationsSection === 'buildCodes') {
             clearBuildableLandSelection();
             await renderBuildCodesOnMap(host, { tech: bcTechFilter, bind: bcBindFilter });
+        } else if (!BUILDABLE_LAND_ENABLED) {
+            clearBuildableLandSelection();
+            host.clearRegulationsLayer();
+            host.showRegulationBasemap();
+            host.hideDefaultLegend();
         } else {
             await renderBuildableLandOnMap(host, blFilters);
             if (isBuildableLandCountryDetailActive()) {
@@ -1093,8 +1123,20 @@ function setRegulationsSection(section: 'buildCodes' | 'buildableLand') {
     if (section === 'buildCodes') {
         clearBuildableLandSelection();
         document.dispatchEvent(new CustomEvent('build-codes:show'));
-    } else {
+    } else if (BUILDABLE_LAND_ENABLED) {
         document.dispatchEvent(new CustomEvent('buildable-land:show'));
+    } else {
+        const buildableView = document.getElementById('buildable-land-view');
+        if (buildableView) {
+            buildableView.innerHTML = buildableLandInDevelopmentHtml();
+        }
+        if (buildableHelp) {
+            buildableHelp.innerHTML = `
+                <p class="text-left italic" style="font-size: 0.85rem; color: #334155;">
+                    Buildable Land is in development and will be available soon.
+                </p>
+            `;
+        }
     }
 
     void refreshRegulationsMap();

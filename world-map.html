@@ -363,6 +363,33 @@
             transform: translate(-50%, -50%);
             color: rgb(30, 41, 59);
         }
+
+        .regulations-dev-notice {
+            padding: 16px 14px 18px;
+            text-align: center;
+            color: #475569;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .regulations-dev-notice strong {
+            display: block;
+            color: #1e293b;
+            font-size: 14px;
+            margin-bottom: 6px;
+        }
+
+        .regulations-dev-notice p {
+            margin: 0;
+        }
+
+        .submenu-option .submenu-option-note {
+            display: block;
+            font-size: 0.68em;
+            font-weight: 500;
+            opacity: 0.8;
+            margin-top: 2px;
+        }
         
         /* Active states */
         .toggle-switch[data-active="policies"] .toggle-slider {
@@ -965,6 +992,7 @@
                                 </button>
                                 <button class="submenu-option" id="showBuildableLandRegulations" type="button" style="flex:1;">
                                     Buildable Land
+                                    <span class="submenu-option-note">In development</span>
                                 </button>
                             </div>
                             <div class="regulations-filters" id="regulationsFilters"></div>
