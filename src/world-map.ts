@@ -4502,8 +4502,8 @@ const fmt1 = (v: any) => {
     type DatasetSheet = { name: string; rows: any[]; headers: string[] };
 
     function resolveSheetHeaders(rows: any[], columns?: string[]): string[] {
-        if (columns && columns.length > 0) return columns;
-        return Array.from(new Set(rows.flatMap((row: any) => Object.keys(row))));
+        if (columns && columns.length > 0) return columns.filter((c) => c && c.trim() !== '');
+        return Array.from(new Set(rows.flatMap((row: any) => Object.keys(row).filter((k) => k !== ''))));
     }
 
     function rowsToCsv(rows: any[], headers: string[]): string {
