@@ -70,7 +70,7 @@ export async function fetchDatasetSources(baseUrl?: string): Promise<DatasetSour
     const root = resolveBaseUrl(baseUrl);
     const policyDataUrl = `${root}data/policy_data.xlsx`;
     const targetsDataUrl = `${root}data/targets_data.csv`;
-    const climateTargetsDataUrl = `${root}data/climate_targets_data.csv`;
+    const climateTargetsDataUrl = `${root}data/climate_targets_data.xlsx`;
     const evDataUrl = `${root}data/ev_data.xlsx`;
 
     const [policyCsv, targetsCsv, climateTargetsCsv, evCsv] = await Promise.all([
@@ -83,9 +83,14 @@ export async function fetchDatasetSources(baseUrl?: string): Promise<DatasetSour
         fetchArrayBuffer(targetsDataUrl, 'targets data').then((ab) =>
             parseSpreadsheetOrCsv(ab, 'targets data')
         ),
-        fetchText(climateTargetsDataUrl, 'climate targets data').then(
-            (text) => d3.csvParse(text) as Record<string, unknown>[]
-        ),
+        fetchArrayBuffer(climateTargetsDataUrl, 'climate targets data').then((ab) => {
+            const wb = XLSX.read(ab, { type: 'array' });
+            const sheetName =
+                wb.SheetNames.find((name) => name.toLowerCase().includes('target')) ||
+                wb.SheetNames[0];
+            const csvText = XLSX.utils.sheet_to_csv(wb.Sheets[sheetName]);
+            return d3.csvParse(csvText) as Record<string, unknown>[];
+        }),
         fetchArrayBuffer(evDataUrl, 'EV data').then((ab) => {
             const wb = XLSX.read(ab, { type: 'array' });
             const dataSheetName = wb.SheetNames.length > 1 ? wb.SheetNames[1] : wb.SheetNames[0];

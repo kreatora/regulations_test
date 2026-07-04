@@ -535,7 +535,7 @@ const baseUrl = (import.meta as any).env.BASE_URL || '/';
 
 const policyDataUrl = `${baseUrl}data/policy_data.xlsx`;
 const targetsDataUrl = `${baseUrl}data/targets_data.csv`;
-const climateTargetsDataUrl = `${baseUrl}data/climate_targets_data.csv`;
+const climateTargetsDataUrl = `${baseUrl}data/climate_targets_data.xlsx`;
 const evDataUrl = `${baseUrl}data/ev_data.xlsx`;
 
 /** Buildable Land subsection — set true when the layer is ready to ship. */
@@ -688,14 +688,6 @@ function canonicalRenewableTargetType(raw: any): RenewableTargetType | null {
     if (lower === 'final energy') return 'Final energy';
     return null;
 }
-
-// ---- EU-only guard for climate targets ----
-// Climate targets remain EU-only. Renewable targets are global.
-const EU_COUNTRY_CODES_3 = new Set([
-    'AUT', 'BEL', 'BGR', 'HRV', 'CYP', 'CZE', 'DNK', 'EST', 'FIN', 'FRA',
-    'DEU', 'GRC', 'HUN', 'IRL', 'ITA', 'LVA', 'LTU', 'LUX', 'MLT', 'NLD',
-    'POL', 'PRT', 'ROU', 'SVK', 'SVN', 'ESP', 'SWE'
-]);
 
 // Function to map target type names to user-friendly display names
 function getTargetTypeDisplayName(targetType: string): string {
@@ -1237,7 +1229,16 @@ Promise.all([
             console.error('Error fetching targets data:', e);
             return [];
         }),
-    d3.csv(climateTargetsDataUrl),
+    fetch(climateTargetsDataUrl)
+        .then((r) => {
+            if (!r.ok) throw new Error(`Failed to fetch climate targets data: ${r.statusText}`);
+            return r.arrayBuffer();
+        })
+        .then((ab) => parseSpreadsheetOrCsv(ab, 'climate targets data'))
+        .catch((e) => {
+            console.error('Error fetching climate targets data:', e);
+            return [];
+        }),
     fetch(evDataUrl)
         .then(r => {
             if (!r.ok) throw new Error(`Failed to fetch EV data: ${r.statusText}`);
@@ -1749,27 +1750,29 @@ Promise.all([
     console.log(`${currentTargetType} targets:`, Object.keys(targetsData).length, "countries");
     console.log("Sample targets data:", Object.entries(targetsData).slice(0, 3));
 
-    // Process climate targets data (EU only)
-    console.log("Climate Targets CSV columns:", climateTargetsCsv.columns);
+    // Process climate targets data (global, from climate_targets_data.xlsx)
+    console.log("Climate Targets columns:", climateTargetsCsv.columns);
 
     // Dynamic column detection for Climate Targets
     const ctColumns = climateTargetsCsv.columns || [];
     const ctCountryCodeCol = ctColumns.find((c: string) => c && ['country_code', 'iso_code', 'code'].includes(c.trim().toLowerCase())) || 'Country_code';
     const ctYearDecisionCol = ctColumns.find((c: string) => c && ['year_decision', 'decision_year'].includes(c.trim().toLowerCase())) || 'Year_decision';
     const ctYearTargetCol = ctColumns.find((c: string) => c && ['year_target', 'target_year'].includes(c.trim().toLowerCase())) || 'Year_target';
-    
-    // Explicitly prioritize Target_consistent_all over Target_consistent
-    const ctTargetConsistentCol = ctColumns.find((c: string) => c && c.trim().toLowerCase() === 'target_consistent_all') 
-        || ctColumns.find((c: string) => c && ['target_consistent', 'target_value'].includes(c.trim().toLowerCase())) 
-        || 'Target_consistent_all';
-        
+    const ctTargetAverageCol = ctColumns.find((c: string) => c && c.trim().toLowerCase() === 'target_average') || 'Target_average';
     const ctTargetUnitCol = ctColumns.find((c: string) => c && ['target_unit', 'unit', 'target_unit'].includes(c.trim().toLowerCase())) || 'Target_unit';
+
+    function readClimateTargetAverage(row: Record<string, unknown>): number | null {
+        const raw = row[ctTargetAverageCol];
+        if (raw == null || raw === '') return null;
+        const parsed = parseFloat(String(raw));
+        return Number.isNaN(parsed) ? null : parsed;
+    }
 
     console.log('Climate Targets - using columns:', { 
         ctCountryCodeCol, 
         ctYearDecisionCol, 
         ctYearTargetCol, 
-        ctTargetConsistentCol, 
+        ctTargetAverageCol, 
         ctTargetUnitCol 
     });
     
@@ -1782,23 +1785,18 @@ Promise.all([
         const countryCode3 = String(countryCode3Raw ?? '').trim().toUpperCase();
         const yearDecision = row[ctYearDecisionCol];
         const yearTarget = row[ctYearTargetCol];
-        const targetConsistentAll = row[ctTargetConsistentCol] ?? row[ctTargetConsistentCol]?.toString?.();
+        const parsedTargetAverage = readClimateTargetAverage(row);
         const targetUnit = row[ctTargetUnitCol];
         
-        // Process climate targets:
-        // - EU countries only
-        // - ONLY include rows where Target_unit is "Percent"
-        // - Target value comes from Target_consistent_all (column R)
-        if (countryCode3 && EU_COUNTRY_CODES_3.has(countryCode3) && yearDecision && yearTarget && targetConsistentAll != null && targetUnit) {
+        // Include all countries with percent-based Target_average values.
+        if (countryCode3 && yearDecision && yearTarget && parsedTargetAverage != null && targetUnit) {
             const normalizedUnit = String(targetUnit).trim().toLowerCase();
             
-            // Only process if Target_unit is "Percent"
             if (normalizedUnit === 'percent') {
                 const parsedYearDecision = parseInt(yearDecision);
                 const parsedYearTarget = parseInt(yearTarget);
-                const parsedTargetAverage = parseFloat(targetConsistentAll);
                 
-                if (!isNaN(parsedYearDecision) && !isNaN(parsedYearTarget) && !isNaN(parsedTargetAverage)) {
+                if (!isNaN(parsedYearDecision) && !isNaN(parsedYearTarget)) {
                     if (!climateTargetsData[countryCode3]) {
                         climateTargetsData[countryCode3] = [];
                     }
@@ -2133,7 +2131,7 @@ Promise.all([
     function updateMapZoom(mapType: string) {
         const europeCenter: [number, number] = [5, 48]; // lon, lat for center of Western Europe
 
-        if (mapType === 'targets') {
+        if (mapType === 'targets' || mapType === 'climateTargets') {
             const worldScale = 1.25;
             svg.transition()
                 .duration(750)
@@ -2273,10 +2271,8 @@ const fmt1 = (v: any) => {
 		
 		// Check if there are any climate targets for this country
 		const allClimateTargets = allData.climateTargets.allData || {};
-		const hasClimateTargetsData = allClimateTargets[countryCode3] && 
-			Object.values(allClimateTargets[countryCode3]).some((targets: any) => 
-				Array.isArray(targets) && targets.length > 0
-			);
+		const hasClimateTargetsData = Array.isArray(allClimateTargets[countryCode3]) &&
+			allClimateTargets[countryCode3].length > 0;
 		
 		// Determine if we have any data to show based on mode
         const isPoliciesMode = currentMapType === 'policies';
@@ -4400,8 +4396,8 @@ const fmt1 = (v: any) => {
             case 'climateTargets':
                 return {
                     title: 'Climate Emissions Reduction Targets',
-                    subtitle: `EU countries · ${climateYearLabel}`,
-                    legend: 'Color scale: emissions reduction target (% vs 1990 baseline)',
+                    subtitle: `World map · ${climateYearLabel}`,
+                    legend: 'Color scale: emissions reduction target (% vs 1990 baseline, Target_average)',
                 };
             default:
                 return { title: 'Climate Policy Atlas Map', subtitle: 'World map' };
