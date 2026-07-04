@@ -8,6 +8,7 @@ import { updateMapDataAttribution, enrichExportCaption } from './data-attributio
 import { resolveDatasetKey, getDatasetMetadata } from './data-metadata';
 import { registerMapHost, getMapHost } from './map-host';
 import { renderBuildCodesOnMap, type BuildCodesFilters } from './build-codes';
+import { downloadFullDataset, downloadFullDatasetCsv } from './dataset-download';
 import {
     renderBuildableLandOnMap,
     applyBuildableLandFilters,
@@ -567,6 +568,12 @@ type MapType = 'policies' | 'ev' | 'targets' | 'climateTargets' | 'regulations';
 let currentMapType: MapType = 'policies';
  let currentTargetType: RenewableTargetType = 'Electricity'; // Default target type
 let currentRegulationsSection: 'buildCodes' | 'buildableLand' = 'buildCodes';
+const BC_TECH_FILTER_LABEL: Record<'wind' | 'solar' | 'ev', string> = {
+    wind: 'Wind',
+    solar: 'Solar',
+    ev: 'EV',
+};
+
 let bcTechFilter: 'wind' | 'solar' | 'ev' = 'wind';
 let bcBindFilter = 'all';
 let blFilters: BuildableLandFilters = { tech: 'wind', mode: 'strictest', model: 'technical', style: 'availability' };
@@ -946,9 +953,9 @@ function renderRegulationsFilters() {
             <div class="regulations-filter-group">
                 <span class="regulations-filter-label">Technology</span>
                 <div class="regulations-filter-options">
-                    ${['wind', 'solar', 'ev'].map((tech) => `
+                    ${(['wind', 'solar', 'ev'] as const).map((tech) => `
                         <button type="button" class="regulations-filter-option${bcTechFilter === tech ? ' active' : ''}" data-bc-tech="${tech}">
-                            ${tech.charAt(0).toUpperCase() + tech.slice(1)}
+                            ${BC_TECH_FILTER_LABEL[tech]}
                         </button>
                     `).join('')}
                 </div>
@@ -3865,8 +3872,8 @@ const fmt1 = (v: any) => {
                     countryDataLabel: `Data for ${countryName}`,
                     onDownloadCountryData: () => downloadCountryData(countryCode3, countryName),
                     onDownloadCountryDataCsv: () => downloadCountryDataCsv(countryCode3, countryName),
-                    onDownloadDataset: downloadFullDataset,
-                    onDownloadDatasetCsv: downloadFullDatasetCsv,
+                    onDownloadDataset: downloadFullDatasetFromMap,
+                    onDownloadDatasetCsv: downloadFullDatasetCsvFromMap,
                 });
             }
         });
@@ -4571,36 +4578,6 @@ const fmt1 = (v: any) => {
         ];
     }
 
-    function buildFullDatasetSheets(): DatasetSheet[] {
-        const sources = allData?.rawSources;
-        if (!sources) {
-            throw new Error('Dataset is not loaded yet.');
-        }
-
-        return [
-            {
-                name: 'Policies',
-                rows: sources.policyCsv as any[],
-                headers: resolveSheetHeaders(sources.policyCsv as any[], (sources.policyCsv as any).columns),
-            },
-            {
-                name: 'Targets',
-                rows: sources.targetsCsv as any[],
-                headers: resolveSheetHeaders(sources.targetsCsv as any[], (sources.targetsCsv as any).columns),
-            },
-            {
-                name: 'ClimateTargets',
-                rows: sources.climateTargetsCsv as any[],
-                headers: resolveSheetHeaders(sources.climateTargetsCsv as any[], (sources.climateTargetsCsv as any).columns),
-            },
-            {
-                name: 'EV_Support',
-                rows: sources.evCsv as any[],
-                headers: resolveSheetHeaders(sources.evCsv as any[], (sources.evCsv as any).columns),
-            },
-        ];
-    }
-
     function appendSheetsToWorkbook(wb: XLSX_.WorkBook, sheets: DatasetSheet[]): void {
         sheets.forEach(({ name, rows, headers }) => {
             XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows, { header: headers }), name);
@@ -4646,22 +4623,20 @@ const fmt1 = (v: any) => {
         await downloadSheetsAsCsvZip(`${safeName}_data.zip`, buildCountrySheets(countryCode3));
     }
 
-    async function downloadFullDataset(): Promise<void> {
-        const wb = XLSX.utils.book_new();
-        const infoSheet = await loadInfoSheetRows();
-        if (infoSheet) {
-            XLSX.utils.book_append_sheet(
-                wb,
-                XLSX.utils.json_to_sheet(infoSheet.rows, { header: infoSheet.headers }),
-                infoSheet.name
-            );
+    async function downloadFullDatasetFromMap(): Promise<void> {
+        const sources = allData?.rawSources;
+        if (!sources) {
+            throw new Error('Dataset is not loaded yet.');
         }
-        appendSheetsToWorkbook(wb, buildFullDatasetSheets());
-        XLSX.writeFile(wb, 'Climate_Policy_Atlas_1.0.xlsx', { compression: true });
+        await downloadFullDataset(sources, baseUrl);
     }
 
-    async function downloadFullDatasetCsv(): Promise<void> {
-        await downloadSheetsAsCsvZip('Climate_Policy_Atlas_1.0_csv.zip', buildFullDatasetSheets());
+    async function downloadFullDatasetCsvFromMap(): Promise<void> {
+        const sources = allData?.rawSources;
+        if (!sources) {
+            throw new Error('Dataset is not loaded yet.');
+        }
+        await downloadFullDatasetCsv(sources, baseUrl);
     }
 
     const mapContainer = document.getElementById('world-map-container');
@@ -4676,8 +4651,8 @@ const fmt1 = (v: any) => {
                     getMapExportCaption(),
                     resolveDatasetKey(currentMapType, currentRegulationsSection)
                 ),
-            onDownloadDataset: downloadFullDataset,
-            onDownloadDatasetCsv: downloadFullDatasetCsv,
+            onDownloadDataset: downloadFullDatasetFromMap,
+            onDownloadDatasetCsv: downloadFullDatasetCsvFromMap,
         });
     }
     

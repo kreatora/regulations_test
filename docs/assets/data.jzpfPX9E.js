@@ -1,1 +1,0 @@
-import"./input.2CfZVAVj.js";/* empty css               */import{R as o,j as t,a as r}from"./client.DK97sMh2.js";import"./_commonjsHelpers.Cpj98o6Y.js";const e=document.getElementById("root");e&&o.createRoot(e).render(t.jsx(r.StrictMode,{children:t.jsx(t.Fragment,{})}));
