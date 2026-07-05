@@ -18,7 +18,53 @@ export type DatasetSources = {
     targetsCsv: Record<string, unknown>[];
     climateTargetsCsv: Record<string, unknown>[];
     evCsv: Record<string, unknown>[];
+    buildRegulationsRules?: Record<string, unknown>[];
+    windPriorityAreas?: Record<string, unknown>[];
 };
+
+function flattenBuildRegulationRule(rule: Record<string, unknown>): Record<string, unknown> {
+    const { values, ...rest } = rule;
+    const flat: Record<string, unknown> = { ...rest };
+    if (Array.isArray(values)) {
+        values.forEach((entry, index) => {
+            if (!entry || typeof entry !== 'object') return;
+            const valueEntry = entry as Record<string, unknown>;
+            const slot = index + 1;
+            flat[`value_${slot}`] = valueEntry.value ?? null;
+            flat[`unit_${slot}`] = valueEntry.unit ?? null;
+            flat[`condition_${slot}`] = valueEntry.condition ?? null;
+        });
+    }
+    return flat;
+}
+
+async function fetchBuildRegulations(baseUrl?: string): Promise<{
+    buildRegulationsRules: Record<string, unknown>[];
+    windPriorityAreas: Record<string, unknown>[];
+}> {
+    const root = resolveBaseUrl(baseUrl);
+    const text = await fetchText(`${root}data/build_regulations.json`, 'build regulations');
+    const data = JSON.parse(text) as {
+        rules?: Record<string, unknown>[];
+        wind_priority_areas?: Record<string, unknown>[];
+    };
+    return {
+        buildRegulationsRules: (data.rules || []).map(flattenBuildRegulationRule),
+        windPriorityAreas: data.wind_priority_areas || [],
+    };
+}
+
+async function ensureFullDatasetSources(
+    sources?: DatasetSources,
+    baseUrl?: string
+): Promise<DatasetSources> {
+    const base = sources ?? (await fetchDatasetSources(baseUrl));
+    if (base.buildRegulationsRules && base.windPriorityAreas) {
+        return base;
+    }
+    const regulations = await fetchBuildRegulations(baseUrl);
+    return { ...base, ...regulations };
+}
 
 function resolveBaseUrl(baseUrl?: string): string {
     return baseUrl ?? (import.meta as ImportMeta & { env: { BASE_URL?: string } }).env.BASE_URL ?? '/';
@@ -73,7 +119,7 @@ export async function fetchDatasetSources(baseUrl?: string): Promise<DatasetSour
     const climateTargetsDataUrl = `${root}data/climate_targets_data.xlsx`;
     const evDataUrl = `${root}data/ev_data.xlsx`;
 
-    const [policyCsv, targetsCsv, climateTargetsCsv, evCsv] = await Promise.all([
+    const [policyCsv, targetsCsv, climateTargetsCsv, evCsv, regulations] = await Promise.all([
         fetchArrayBuffer(policyDataUrl, 'policy data').then((ab) => {
             const wb = XLSX.read(ab, { type: 'array' });
             const firstSheetName = wb.SheetNames[0];
@@ -97,9 +143,17 @@ export async function fetchDatasetSources(baseUrl?: string): Promise<DatasetSour
             const csvText = XLSX.utils.sheet_to_csv(wb.Sheets[dataSheetName]);
             return d3.csvParse(csvText) as Record<string, unknown>[];
         }),
+        fetchBuildRegulations(baseUrl),
     ]);
 
-    return { policyCsv, targetsCsv, climateTargetsCsv, evCsv };
+    return {
+        policyCsv,
+        targetsCsv,
+        climateTargetsCsv,
+        evCsv,
+        buildRegulationsRules: regulations.buildRegulationsRules,
+        windPriorityAreas: regulations.windPriorityAreas,
+    };
 }
 
 export function buildFullDatasetSheets(sources: DatasetSources): DatasetSheet[] {
@@ -108,7 +162,7 @@ export function buildFullDatasetSheets(sources: DatasetSources): DatasetSheet[] 
     const climateTargetsCsv = sources.climateTargetsCsv as Record<string, unknown>[] & { columns?: string[] };
     const evCsv = sources.evCsv as Record<string, unknown>[] & { columns?: string[] };
 
-    return [
+    const sheets: DatasetSheet[] = [
         {
             name: 'Policies',
             rows: policyCsv,
@@ -130,6 +184,26 @@ export function buildFullDatasetSheets(sources: DatasetSources): DatasetSheet[] 
             headers: resolveSheetHeaders(evCsv, evCsv.columns),
         },
     ];
+
+    const buildRegulationsRules = sources.buildRegulationsRules || [];
+    if (buildRegulationsRules.length > 0) {
+        sheets.push({
+            name: 'Build_Regulations',
+            rows: buildRegulationsRules,
+            headers: resolveSheetHeaders(buildRegulationsRules),
+        });
+    }
+
+    const windPriorityAreas = sources.windPriorityAreas || [];
+    if (windPriorityAreas.length > 0) {
+        sheets.push({
+            name: 'Wind_Priority_Areas',
+            rows: windPriorityAreas,
+            headers: resolveSheetHeaders(windPriorityAreas),
+        });
+    }
+
+    return sheets;
 }
 
 async function loadInfoSheetRows(baseUrl?: string): Promise<DatasetSheet | null> {
@@ -184,7 +258,7 @@ export async function downloadFullDataset(
     sources?: DatasetSources,
     baseUrl?: string
 ): Promise<void> {
-    const dataset = sources ?? (await fetchDatasetSources(baseUrl));
+    const dataset = await ensureFullDatasetSources(sources, baseUrl);
     const wb = XLSX.utils.book_new();
     const infoSheet = await loadInfoSheetRows(baseUrl);
     if (infoSheet) {
@@ -202,6 +276,6 @@ export async function downloadFullDatasetCsv(
     sources?: DatasetSources,
     baseUrl?: string
 ): Promise<void> {
-    const dataset = sources ?? (await fetchDatasetSources(baseUrl));
+    const dataset = await ensureFullDatasetSources(sources, baseUrl);
     await downloadSheetsAsCsvZip(FULL_DATASET_CSV_ZIP_FILENAME, buildFullDatasetSheets(dataset), baseUrl);
 }

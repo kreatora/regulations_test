@@ -109,7 +109,7 @@ def parse_sheet(df: pd.DataFrame, kind: str):
         nuts = normalize_nuts(get(row, "NUTS"))
         if not nuts:
             continue
-        status_raw = clean_str(get(row, "status", "active_inactive", "Active_inactive"))
+        status_raw = clean_str(get(row, "status", "active_inactive", "active/inactive", "Active_inactive"))
         status = status_raw.lower() if status_raw else None
         policy_type_raw = clean_str(get(
             row,
@@ -185,6 +185,8 @@ def parse_sheet(df: pd.DataFrame, kind: str):
                 "replaced_by_row",
                 "replacing_policy_row",
             )),
+            "last_update": clean_str(get(row, "last_update", "last update")),
+            "notes_updated_laws": clean_str(get(row, "notes_updated_laws", "notes - updated laws")),
             "validated": clean_str(get(row, "Validated_by_experts", "validated_by_experts")),
         }
         for i in (1, 2, 3, 4):

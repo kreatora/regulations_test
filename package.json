@@ -8,6 +8,7 @@
     "postbuild": "node -e \"require('fs').writeFileSync('docs/.nojekyll','')\"",
     "build:docs": "cross-env BUILD_OUT_DIR=docs vite build",
     "build:dist": "cross-env BUILD_OUT_DIR=dist vite build",
+    "extract:regulations": "node scripts/extract_build_regulations.mjs",
     "preview": "vite preview",
     "preview:docs": "vite preview --outDir docs --port 4173",
     "preview:dist": "vite preview --outDir dist --port 4174",

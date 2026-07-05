@@ -119,6 +119,61 @@ function resolveTargetProgressionLabelLayout(opts: {
     return { x, y, textAnchor };
 }
 
+type TargetLineStyleLegendOptions = {
+    x: number;
+    y: number;
+    lineColor?: string;
+};
+
+function appendTargetLineStyleLegend(
+    parent: d3.Selection<SVGSVGElement | SVGGElement, unknown, null, undefined>,
+    opts: TargetLineStyleLegendOptions
+) {
+    const color = opts.lineColor ?? '#64748b';
+    const items = [
+        { label: 'Active target', strokeWidth: 3, dasharray: null as string | null },
+        { label: 'Superseded or expired', strokeWidth: 3, dasharray: '4,3', opacity: 0.5 },
+    ];
+
+    const rowHeight = 14;
+    const boxWidth = 168;
+    const boxHeight = items.length * rowHeight + 8;
+
+    const legendG = parent.append('g')
+        .attr('class', 'target-line-style-legend')
+        .attr('transform', `translate(${opts.x}, ${opts.y})`);
+
+    legendG.append('rect')
+        .attr('width', boxWidth)
+        .attr('height', boxHeight)
+        .attr('rx', 4)
+        .style('fill', 'rgba(248, 250, 252, 0.92)')
+        .style('stroke', '#e2e8f0')
+        .style('stroke-width', 1);
+
+    items.forEach((item, i) => {
+        const rowY = 6 + i * rowHeight;
+        const row = legendG.append('g').attr('transform', `translate(8, ${rowY})`);
+        row.append('line')
+            .attr('x1', 0)
+            .attr('x2', 18)
+            .attr('y1', 0)
+            .attr('y2', 0)
+            .style('stroke', color)
+            .style('stroke-width', item.strokeWidth)
+            .style('stroke-dasharray', item.dasharray)
+            .style('opacity', item.opacity ?? 1);
+        row.append('text')
+            .attr('x', 24)
+            .attr('y', 0)
+            .attr('dy', '0.35em')
+            .style('font-size', '9px')
+            .style('font-family', 'Inter, -apple-system, BlinkMacSystemFont, sans-serif')
+            .style('fill', '#64748b')
+            .text(item.label);
+    });
+}
+
 function appendTargetProgressionLabel(
     parent: d3.Selection<SVGGElement, unknown, null, undefined>,
     opts: TargetProgressionLabelOptions
@@ -2731,6 +2786,12 @@ const fmt1 = (v: any) => {
 
                     const climateLabelsG = g.append('g').attr('class', 'target-labels-layer');
                     climateLabelSpecs.forEach((spec) => appendTargetProgressionLabel(climateLabelsG, spec));
+
+                    appendTargetLineStyleLegend(svg, {
+                        x: margin.left + width - 168,
+                        y: margin.top + height - 34,
+                        lineColor: '#7c3aed',
+                    });
                 } else {
                     leftContainer.innerHTML = `
                         <div style="display:flex;align-items:center;justify-content:center;height:100%;">
@@ -3354,6 +3415,11 @@ const fmt1 = (v: any) => {
                     .style('font-family', 'Inter, -apple-system, BlinkMacSystemFont, sans-serif')
                     .style('fill', '#94a3b8')
                     .text('Click to show/hide target types');
+
+                appendTargetLineStyleLegend(svg, {
+                    x: margin.left + width - 168,
+                    y: margin.top + height - 34,
+                });
 
                 // Add Citation
                 d3.select(targetsContainer).append('div')
