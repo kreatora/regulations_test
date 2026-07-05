@@ -19,13 +19,17 @@ interface RuleValue {
     condition: string | null;
 }
 interface Rule {
-    kind: 'wind' | 'solar' | 'ev';
+    kind: 'wind' | 'solar' | 'ev' | 'wind_priority_area';
+    serial_number?: string | null;
+    added_in_version?: string | null;
+    status_changed_in_version?: string | null;
     policy_id?: string | null;
     policy_effect?: 'constraining' | 'promoting' | string | null;
     nuts: string;
     nuts_name: string | null;
     country: string;
     year_decision: number | null;
+    year_ended?: number | null;
     location_or_characteristics: string | null;
     variable: string;
     installation_type: string | null;
@@ -45,6 +49,7 @@ interface Rule {
     miscellaneous: string | null;
     status?: string | null;
     active: string | null;
+    supersedes_policy?: string | null;
     validated: string | null;
 }
 interface BuildData {
@@ -405,6 +410,7 @@ function rulesTableHTML(rules: Rule[]): string {
             : '—';
 
         return `<tr class="bc-rule-row ${r.kind}" data-rule="${ruleKey(r)}" tabindex="0" role="button" aria-label="Open regulation details">
+            <td class="bc-rule-table-serial">${escapeHtml(r.serial_number || '—')}</td>
             <td class="bc-rule-table-rule">
                 <span class="bc-rule-table-name">${escapeHtml(formatVariableLabel(r.variable))}</span>
                 ${cond}
@@ -423,6 +429,7 @@ function rulesTableHTML(rules: Rule[]): string {
             <table class="bc-rules-table">
                 <thead>
                     <tr>
+                        <th>Serial</th>
                         <th>Rule</th>
                         <th>Technology</th>
                         <th>Effect</th>
@@ -459,7 +466,9 @@ function ruleCardHTML(r: Rule): string {
         ${src}
     </div>`;
 }
-function ruleKey(r: Rule): string { return `${r.policy_id || ''}|${r.kind}|${r.nuts}|${r.variable}|${r.year_decision}|${r.source_id || r.source_name || ''}|${r.values[0]?.value ?? ''}`; }
+function ruleKey(r: Rule): string {
+    return `${r.serial_number || r.policy_id || ''}|${r.kind}|${r.nuts}|${r.variable}|${r.year_decision}|${r.source_id || r.source_name || ''}|${r.values[0]?.value ?? ''}`;
+}
 function escapeHtml(s: string): string { return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!)); }
 
 function attachRuleDetailHandlers(container: HTMLElement) {
@@ -516,7 +525,13 @@ function showSourceModal(r: Rule) {
                         <span class="bc-rule-tag ${isPromoting ? 'guide' : 'bind'}">${formatPolicyEffect(r.policy_effect)}</span>
                         <span class="bc-rule-tag">NUTS ${r.nuts}</span>
                         <span class="bc-rule-tag">${escapeHtml(formatTitleCase(r.country))}</span>
+                        ${r.serial_number ? `<span class="bc-rule-tag">${escapeHtml(r.serial_number)}</span>` : ''}
                         ${r.year_decision ? `<span class="bc-rule-tag">${r.year_decision}</span>` : ''}
+                        ${r.year_ended ? `<span class="bc-rule-tag">Ended ${r.year_ended}</span>` : ''}
+                        ${r.added_in_version ? `<span class="bc-rule-tag">Added ${escapeHtml(r.added_in_version)}</span>` : ''}
+                        ${r.status_changed_in_version && r.status_changed_in_version !== r.added_in_version
+                            ? `<span class="bc-rule-tag">Status ${escapeHtml(r.status_changed_in_version)}</span>` : ''}
+                        ${r.supersedes_policy ? `<span class="bc-rule-tag">Supersedes ${escapeHtml(r.supersedes_policy)}</span>` : ''}
                         ${r.installation_type ? `<span class="bc-rule-tag">${escapeHtml(formatTitleCase(r.installation_type))}</span>` : ''}
                         ${r.installation_scale ? `<span class="bc-rule-tag">Scale: ${escapeHtml(formatTitleCase(r.installation_scale))}</span>` : ''}
                         ${r.multiple_conditions ? `<span class="bc-rule-tag">${escapeHtml(formatTitleCase(r.multiple_conditions))}</span>` : ''}

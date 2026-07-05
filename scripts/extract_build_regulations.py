@@ -110,6 +110,9 @@ def parse_sheet(df: pd.DataFrame, kind: str):
         if not nuts:
             continue
         status_raw = clean_str(get(row, "status", "active_inactive", "active/inactive", "Active_inactive"))
+        added_in_version = clean_str(get(row, "added_in_version")) or "V1.0"
+        status_changed_in_version = clean_str(get(row, "status_changed_in_version")) or added_in_version
+        serial_number = clean_str(get(row, "serial_number", "serial number"))
         status = status_raw.lower() if status_raw else None
         policy_type_raw = clean_str(get(
             row,
@@ -131,7 +134,12 @@ def parse_sheet(df: pd.DataFrame, kind: str):
         source_name = clean_str(get(row, "Source_name", "source_name"))
         variable = clean_str(get(row, "Variable", "variable"))
         year_decision = int(clean_num(get(row, "Year_decision", "year_decision")) or 0) or None
-        policy_id = source_id
+        year_ended_raw = clean_str(get(row, "Year_ended", "year_ended"))
+        year_ended = None
+        if year_ended_raw and not re.match(r"^n/?a$", year_ended_raw, re.I):
+            year_ended_val = clean_num(year_ended_raw)
+            year_ended = int(year_ended_val) if year_ended_val is not None else None
+        policy_id = serial_number or source_id
         if not policy_id:
             id_payload = "|".join([
                 kind,
@@ -147,6 +155,9 @@ def parse_sheet(df: pd.DataFrame, kind: str):
         rule = {
             "kind": kind,
             "row_index": int(idx) + 2,  # +2 for spreadsheet row index with header
+            "serial_number": serial_number,
+            "added_in_version": added_in_version,
+            "status_changed_in_version": status_changed_in_version,
             "policy_id": policy_id,
             "policy_effect": policy_effect,
             "policy_type_raw": policy_type_raw,
@@ -154,6 +165,7 @@ def parse_sheet(df: pd.DataFrame, kind: str):
             "nuts_name": clean_str(get(row, "NUTS_Name", "NUTS_NAME", "nuts_name")),
             "country": country,
             "year_decision": year_decision,
+            "year_ended": year_ended,
             "location_or_characteristics": clean_str(get(row, "Location_or_characteristics", "location_or_characteristics")),
             "variable": variable,
             "installation_type": clean_str(get(row, "Installation_type", "installation_type")),
@@ -178,6 +190,7 @@ def parse_sheet(df: pd.DataFrame, kind: str):
             "status": status_raw,
             "active": status_raw,  # backward compatibility for existing clients
             "inactive_detail": clean_str(get(row, "inactive_policy_status", "inactive_detail", "inactive_reason")),
+            "supersedes_policy": clean_str(get(row, "supersedes_policy", "Supersedes_policy")),
             "overwritten_by_row": clean_num(get(
                 row,
                 "overwritten_by_row",
@@ -203,11 +216,18 @@ def parse_sheet(df: pd.DataFrame, kind: str):
 
 def parse_wpa(df: pd.DataFrame):
     out = []
-    for _, row in df.iterrows():
-        nuts = normalize_nuts(row.get("NUTS"))
+    for idx, row in df.iterrows():
+        nuts = normalize_nuts(row.get("NUTS")) or normalize_nuts(row.get("NUTS_NAME"))
         if not nuts:
             continue
+        added_in_version = clean_str(row.get("added_in_version")) or "V1.0"
+        status_changed_in_version = clean_str(row.get("status_changed_in_version")) or added_in_version
         out.append({
+            "kind": "wind_priority_area",
+            "row_index": int(idx) + 2,
+            "serial_number": clean_str(row.get("serial_number")),
+            "added_in_version": added_in_version,
+            "status_changed_in_version": status_changed_in_version,
             "nuts": nuts,
             "nuts_name": clean_str(row.get("NUTS_NAME")),
             "country": normalize_country(row.get("COUNTRY")),
@@ -215,6 +235,8 @@ def parse_wpa(df: pd.DataFrame):
             "source_link": clean_str(row.get("SOURCE_LINK")),
             "text_original": clean_str(row.get("TEXT_ORIGINAL")),
             "text_translation": clean_str(row.get("TEXT_TRANSLATION")),
+            "status": "active",
+            "active": "active",
         })
     return out
 

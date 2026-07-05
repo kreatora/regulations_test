@@ -1318,13 +1318,31 @@ Promise.all([
         .catch(e => {
             console.error("Error fetching EV data:", e);
             return [];
+        }),
+    fetch(`${baseUrl}data/build_regulations.json`)
+        .then((r) => {
+            if (!r.ok) throw new Error(`Failed to fetch build regulations: ${r.statusText}`);
+            return r.json();
         })
-]).then(([geoData, policyCsv, targetsCsv, climateTargetsCsv, evCsv]: [any, any, any, any, any]) => {
+        .then((data) => ({
+            rules: data?.rules || [],
+            wind_priority_areas: data?.wind_priority_areas || [],
+        }))
+        .catch((e) => {
+            console.error('Error fetching build regulations:', e);
+            return { rules: [], wind_priority_areas: [] };
+        }),
+]).then(([geoData, policyCsv, targetsCsv, climateTargetsCsv, evCsv, buildRegulationsData]: [any, any, any, any, any, any]) => {
     console.log('Data loaded successfully:');
     console.log('Policy CSV rows:', policyCsv.length);
     console.log('Targets CSV rows:', targetsCsv.length);
     console.log('Climate Targets CSV rows:', climateTargetsCsv.length);
     console.log('EV CSV rows:', evCsv.length);
+    const buildRegulationsRows = [
+        ...(buildRegulationsData?.rules || []),
+        ...(buildRegulationsData?.wind_priority_areas || []),
+    ];
+    console.log('Build regulations rows:', buildRegulationsRows.length);
     console.log('First few targets rows:', targetsCsv.slice(0, 3));
     console.log('First few climate targets rows:', climateTargetsCsv.slice(0, 3));
     console.log('First few EV rows:', evCsv.slice(0, 3));
@@ -1918,6 +1936,7 @@ Promise.all([
             targetsCsv,
             climateTargetsCsv,
             evCsv,
+            buildRegulationsRows,
         }
     };
 
@@ -2477,7 +2496,7 @@ const fmt1 = (v: any) => {
                     const targetsContainer = leftContainer as HTMLElement;
                     const rect = targetsContainer.getBoundingClientRect();
                     const citationHeight = 60; // Reserve space for citation
-                    const margin = { top: 40, right: 60, bottom: 20, left: 60 };
+                    const margin = { top: 40, right: 60, bottom: 55, left: 60 };
                     const width = rect.width - margin.left - margin.right;
                     const height = rect.height - margin.top - margin.bottom - citationHeight;
                     
@@ -2789,7 +2808,7 @@ const fmt1 = (v: any) => {
 
                     appendTargetLineStyleLegend(svg, {
                         x: margin.left + width - 168,
-                        y: margin.top + height - 34,
+                        y: margin.top + height - 48,
                         lineColor: '#7c3aed',
                     });
                 } else {
@@ -2805,7 +2824,7 @@ const fmt1 = (v: any) => {
                 const targetsContainer = leftContainer as HTMLElement;
                 const rect = targetsContainer.getBoundingClientRect();
                 const citationHeight = 60; // Reserve space for citation
-                const margin = { top: 40, right: 60, bottom: 20, left: 60 };
+                const margin = { top: 40, right: 60, bottom: 55, left: 60 };
                 const width = rect.width - margin.left - margin.right;
                 const height = rect.height - margin.top - margin.bottom - citationHeight;
                 
@@ -3418,7 +3437,7 @@ const fmt1 = (v: any) => {
 
                 appendTargetLineStyleLegend(svg, {
                     x: margin.left + width - 168,
-                    y: margin.top + height - 34,
+                    y: margin.top + height - 48,
                 });
 
                 // Add Citation

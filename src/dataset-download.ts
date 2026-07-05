@@ -18,13 +18,146 @@ export type DatasetSources = {
     targetsCsv: Record<string, unknown>[];
     climateTargetsCsv: Record<string, unknown>[];
     evCsv: Record<string, unknown>[];
-    buildRegulationsRules?: Record<string, unknown>[];
-    windPriorityAreas?: Record<string, unknown>[];
+    buildRegulationsRows?: Record<string, unknown>[];
 };
+
+const BUILD_REGULATIONS_EXPORT_HEADERS = [
+    'technology',
+    'country',
+    'nuts',
+    'nuts_name',
+    'variable',
+    'year_decision',
+    'year_ended',
+    'status',
+    'supersedes_policy',
+    'policy_effect',
+    'installation_type',
+    'installation_scale',
+    'location_or_characteristics',
+    'min_or_max',
+    'multiple_conditions',
+    'legally_binding',
+    'explicitly_mentioned',
+    'value_1',
+    'unit_1',
+    'condition_1',
+    'value_2',
+    'unit_2',
+    'condition_2',
+    'value_3',
+    'unit_3',
+    'condition_3',
+    'value_4',
+    'unit_4',
+    'condition_4',
+    'source_name',
+    'source_id',
+    'source_section',
+    'source_link',
+    'source_alternative',
+    'text_original',
+    'text_translation',
+    'miscellaneous',
+    'inactive_detail',
+    'notes_updated_laws',
+    'validated',
+    'last_update',
+    'record_type',
+    'serial_number',
+    'added_in_version',
+    'status_changed_in_version',
+] as const;
+
+type BuildRegulationExportKey = (typeof BUILD_REGULATIONS_EXPORT_HEADERS)[number];
+
+const BUILD_REGULATIONS_PRESENTATION_HEADERS = BUILD_REGULATIONS_EXPORT_HEADERS.map((header) =>
+    header
+        .split('_')
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' ')
+);
+
+const BUILD_REGULATIONS_TITLE_CASE_FIELDS = new Set<BuildRegulationExportKey>([
+    'technology',
+    'country',
+    'nuts_name',
+    'variable',
+    'status',
+    'policy_effect',
+    'installation_type',
+    'installation_scale',
+    'location_or_characteristics',
+    'min_or_max',
+    'multiple_conditions',
+    'legally_binding',
+    'explicitly_mentioned',
+    'condition_1',
+    'condition_2',
+    'condition_3',
+    'condition_4',
+    'inactive_detail',
+    'notes_updated_laws',
+    'validated',
+    'record_type',
+]);
+
+function capitalizeWords(value: string): string {
+    return value
+        .trim()
+        .toLowerCase()
+        .replace(/\b[a-z]/g, (char) => char.toUpperCase());
+}
+
+function formatTechnologyLabel(value: string): string {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'wind') return 'Wind';
+    if (normalized === 'solar') return 'Solar';
+    if (normalized === 'ev') return 'Electric Vehicles';
+    if (normalized === 'wind_priority_area') return 'Wind Priority Area';
+    return capitalizeWords(value);
+}
+
+function formatVariableLabel(value: string): string {
+    return capitalizeWords(value.replace(/^\d+_/, '').replace(/_/g, ' '));
+}
+
+function formatBuildRegulationCell(key: BuildRegulationExportKey, value: unknown): unknown {
+    if (value == null || value === '') return null;
+    if (!BUILD_REGULATIONS_TITLE_CASE_FIELDS.has(key)) return value;
+    if (typeof value !== 'string') return value;
+    if (key === 'technology') return formatTechnologyLabel(value);
+    if (key === 'variable') return formatVariableLabel(value);
+    return capitalizeWords(value);
+}
+
+function presentBuildRegulationExportRow(row: Record<string, unknown>): Record<string, unknown> {
+    const presented: Record<string, unknown> = {};
+    BUILD_REGULATIONS_EXPORT_HEADERS.forEach((key, index) => {
+        presented[BUILD_REGULATIONS_PRESENTATION_HEADERS[index]] = formatBuildRegulationCell(key, row[key]);
+    });
+    return presented;
+}
+
+function formatBuildRegulationExportRow(source: Record<string, unknown>): Record<string, unknown> {
+    const technology = source.technology ?? source.kind ?? null;
+    const row: Record<string, unknown> = {};
+    BUILD_REGULATIONS_EXPORT_HEADERS.forEach((header) => {
+        if (header === 'technology') {
+            row.technology = technology;
+            return;
+        }
+        row[header] = source[header] ?? null;
+    });
+    return row;
+}
 
 function flattenBuildRegulationRule(rule: Record<string, unknown>): Record<string, unknown> {
     const { values, ...rest } = rule;
-    const flat: Record<string, unknown> = { ...rest };
+    const flat: Record<string, unknown> = {
+        record_type: 'regulation',
+        ...rest,
+    };
     if (Array.isArray(values)) {
         values.forEach((entry, index) => {
             if (!entry || typeof entry !== 'object') return;
@@ -35,23 +168,78 @@ function flattenBuildRegulationRule(rule: Record<string, unknown>): Record<strin
             flat[`condition_${slot}`] = valueEntry.condition ?? null;
         });
     }
-    return flat;
+    return formatBuildRegulationExportRow(flat);
+}
+
+function flattenWindPriorityArea(area: Record<string, unknown>): Record<string, unknown> {
+    return formatBuildRegulationExportRow({
+        record_type: 'wind_priority_area',
+        kind: 'wind_priority_area',
+        country: area.country ?? null,
+        nuts: area.nuts ?? null,
+        nuts_name: area.nuts_name ?? null,
+        variable: area.indicator ?? null,
+        status: area.status ?? area.active ?? 'active',
+        source_link: area.source_link ?? null,
+        text_original: area.text_original ?? null,
+        text_translation: area.text_translation ?? null,
+        serial_number: area.serial_number ?? null,
+        added_in_version: area.added_in_version ?? 'V1.0',
+        status_changed_in_version: area.status_changed_in_version ?? area.added_in_version ?? 'V1.0',
+    });
+}
+
+function buildRegulationsExportRows(sources: DatasetSources): Record<string, unknown>[] {
+    const rules = (sources.buildRegulationsRows || []).filter((row) => row.kind !== 'wind_priority_area');
+    const windPriorityAreas = (sources.buildRegulationsRows || []).filter((row) => row.kind === 'wind_priority_area');
+    return [
+        ...rules.map(flattenBuildRegulationRule),
+        ...windPriorityAreas.map(flattenWindPriorityArea),
+    ].map(presentBuildRegulationExportRow);
+}
+
+function resolveBuildRegulationsHeaders(_rows: Record<string, unknown>[]): string[] {
+    return [...BUILD_REGULATIONS_PRESENTATION_HEADERS];
+}
+
+function resolveBaseUrl(baseUrl?: string): string {
+    return baseUrl ?? (import.meta as ImportMeta & { env: { BASE_URL?: string } }).env.BASE_URL ?? '/';
+}
+
+function resolveDataUrl(relativePath: string, baseUrl?: string): string {
+    const normalizedPath = relativePath.replace(/^\//, '');
+    if (typeof window !== 'undefined' && window.location?.href) {
+        return new URL(normalizedPath, window.location.href).toString();
+    }
+    const root = resolveBaseUrl(baseUrl);
+    const normalizedRoot = root.endsWith('/') ? root : `${root}/`;
+    return `${normalizedRoot}${normalizedPath}`;
+}
+
+function parseBuildRegulationsPayload(data: {
+    rules?: Record<string, unknown>[];
+    wind_priority_areas?: Record<string, unknown>[];
+}): Record<string, unknown>[] {
+    return [
+        ...(data.rules || []),
+        ...(data.wind_priority_areas || []),
+    ];
 }
 
 async function fetchBuildRegulations(baseUrl?: string): Promise<{
-    buildRegulationsRules: Record<string, unknown>[];
-    windPriorityAreas: Record<string, unknown>[];
+    buildRegulationsRows: Record<string, unknown>[];
 }> {
-    const root = resolveBaseUrl(baseUrl);
-    const text = await fetchText(`${root}data/build_regulations.json`, 'build regulations');
+    const url = resolveDataUrl('data/build_regulations.json', baseUrl);
+    const text = await fetchText(url, 'build regulations');
     const data = JSON.parse(text) as {
         rules?: Record<string, unknown>[];
         wind_priority_areas?: Record<string, unknown>[];
     };
-    return {
-        buildRegulationsRules: (data.rules || []).map(flattenBuildRegulationRule),
-        windPriorityAreas: data.wind_priority_areas || [],
-    };
+    const buildRegulationsRows = parseBuildRegulationsPayload(data);
+    if (buildRegulationsRows.length === 0) {
+        throw new Error('Build regulations file loaded but contained no rows.');
+    }
+    return { buildRegulationsRows };
 }
 
 async function ensureFullDatasetSources(
@@ -59,15 +247,18 @@ async function ensureFullDatasetSources(
     baseUrl?: string
 ): Promise<DatasetSources> {
     const base = sources ?? (await fetchDatasetSources(baseUrl));
-    if (base.buildRegulationsRules && base.windPriorityAreas) {
+    if (base.buildRegulationsRows && base.buildRegulationsRows.length > 0) {
         return base;
     }
-    const regulations = await fetchBuildRegulations(baseUrl);
-    return { ...base, ...regulations };
-}
-
-function resolveBaseUrl(baseUrl?: string): string {
-    return baseUrl ?? (import.meta as ImportMeta & { env: { BASE_URL?: string } }).env.BASE_URL ?? '/';
+    try {
+        const regulations = await fetchBuildRegulations(baseUrl);
+        return { ...base, ...regulations };
+    } catch (error) {
+        console.error('Failed to load build regulations for export:', error);
+        throw new Error(
+            'Building regulations could not be loaded. Ensure data/build_regulations.json is deployed, then try again.'
+        );
+    }
 }
 
 function resolveSheetHeaders(rows: Record<string, unknown>[], columns?: string[]): string[] {
@@ -113,13 +304,12 @@ async function fetchText(url: string, label: string): Promise<string> {
 
 /** Load and parse all atlas tabular sources (same paths/parsers as the world map). */
 export async function fetchDatasetSources(baseUrl?: string): Promise<DatasetSources> {
-    const root = resolveBaseUrl(baseUrl);
-    const policyDataUrl = `${root}data/policy_data.xlsx`;
-    const targetsDataUrl = `${root}data/targets_data.csv`;
-    const climateTargetsDataUrl = `${root}data/climate_targets_data.xlsx`;
-    const evDataUrl = `${root}data/ev_data.xlsx`;
+    const policyDataUrl = resolveDataUrl('data/policy_data.xlsx', baseUrl);
+    const targetsDataUrl = resolveDataUrl('data/targets_data.csv', baseUrl);
+    const climateTargetsDataUrl = resolveDataUrl('data/climate_targets_data.xlsx', baseUrl);
+    const evDataUrl = resolveDataUrl('data/ev_data.xlsx', baseUrl);
 
-    const [policyCsv, targetsCsv, climateTargetsCsv, evCsv, regulations] = await Promise.all([
+    const [policyCsv, targetsCsv, climateTargetsCsv, evCsv] = await Promise.all([
         fetchArrayBuffer(policyDataUrl, 'policy data').then((ab) => {
             const wb = XLSX.read(ab, { type: 'array' });
             const firstSheetName = wb.SheetNames[0];
@@ -143,16 +333,16 @@ export async function fetchDatasetSources(baseUrl?: string): Promise<DatasetSour
             const csvText = XLSX.utils.sheet_to_csv(wb.Sheets[dataSheetName]);
             return d3.csvParse(csvText) as Record<string, unknown>[];
         }),
-        fetchBuildRegulations(baseUrl),
     ]);
+
+    const { buildRegulationsRows } = await fetchBuildRegulations(baseUrl);
 
     return {
         policyCsv,
         targetsCsv,
         climateTargetsCsv,
         evCsv,
-        buildRegulationsRules: regulations.buildRegulationsRules,
-        windPriorityAreas: regulations.windPriorityAreas,
+        buildRegulationsRows,
     };
 }
 
@@ -185,31 +375,22 @@ export function buildFullDatasetSheets(sources: DatasetSources): DatasetSheet[] 
         },
     ];
 
-    const buildRegulationsRules = sources.buildRegulationsRules || [];
-    if (buildRegulationsRules.length > 0) {
-        sheets.push({
-            name: 'Build_Regulations',
-            rows: buildRegulationsRules,
-            headers: resolveSheetHeaders(buildRegulationsRules),
-        });
+    const buildRegulationsRows = buildRegulationsExportRows(sources);
+    if (buildRegulationsRows.length === 0) {
+        throw new Error('Building regulations export is empty.');
     }
-
-    const windPriorityAreas = sources.windPriorityAreas || [];
-    if (windPriorityAreas.length > 0) {
-        sheets.push({
-            name: 'Wind_Priority_Areas',
-            rows: windPriorityAreas,
-            headers: resolveSheetHeaders(windPriorityAreas),
-        });
-    }
+    sheets.push({
+        name: 'Building_Regulations',
+        rows: buildRegulationsRows,
+        headers: resolveBuildRegulationsHeaders(buildRegulationsRows),
+    });
 
     return sheets;
 }
 
 async function loadInfoSheetRows(baseUrl?: string): Promise<DatasetSheet | null> {
     try {
-        const root = resolveBaseUrl(baseUrl);
-        const infoBuffer = await fetchArrayBuffer(`${root}data/info_data.xlsx`, 'info sheet');
+        const infoBuffer = await fetchArrayBuffer(resolveDataUrl('data/info_data.xlsx', baseUrl), 'info sheet');
         const infoWb = XLSX.read(infoBuffer, { type: 'array' });
         if (infoWb.SheetNames.length === 0) return null;
         const sheetName = infoWb.SheetNames[0];

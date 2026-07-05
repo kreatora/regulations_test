@@ -85,6 +85,9 @@ function parseSheet(rows, kind) {
         if (!nuts) return;
 
         const statusRaw = cleanStr(getCell(row, colmap, 'status', 'active_inactive', 'active/inactive'));
+        const addedInVersion = cleanStr(getCell(row, colmap, 'added_in_version')) || 'V1.0';
+        const statusChangedInVersion = cleanStr(getCell(row, colmap, 'status_changed_in_version')) || addedInVersion;
+        const serialNumber = cleanStr(getCell(row, colmap, 'serial_number', 'serial number'));
         const policyTypeRaw = cleanStr(getCell(row, colmap,
             'policy_type',
             'policy type',
@@ -102,7 +105,11 @@ function parseSheet(rows, kind) {
         const sourceName = cleanStr(getCell(row, colmap, 'Source_name', 'source_name'));
         const variable = cleanStr(getCell(row, colmap, 'Variable', 'variable'));
         const yearDecision = cleanNum(getCell(row, colmap, 'Year_decision', 'year_decision'));
-        let policyId = sourceId;
+        const yearEndedRaw = cleanStr(getCell(row, colmap, 'Year_ended', 'year_ended'));
+        const yearEnded = yearEndedRaw && !/^n\/?a$/i.test(yearEndedRaw)
+            ? cleanNum(yearEndedRaw)
+            : null;
+        let policyId = serialNumber || sourceId;
         if (!policyId) {
             const payload = [
                 kind,
@@ -119,6 +126,9 @@ function parseSheet(rows, kind) {
         const rule = {
             kind,
             row_index: index + 2,
+            serial_number: serialNumber,
+            added_in_version: addedInVersion,
+            status_changed_in_version: statusChangedInVersion,
             policy_id: policyId,
             policy_effect: policyEffect,
             policy_type_raw: policyTypeRaw,
@@ -126,6 +136,7 @@ function parseSheet(rows, kind) {
             nuts_name: cleanStr(getCell(row, colmap, 'NUTS_Name', 'NUTS_NAME', 'nuts_name')),
             country,
             year_decision: yearDecision == null ? null : Math.trunc(yearDecision),
+            year_ended: yearEnded == null ? null : Math.trunc(yearEnded),
             location_or_characteristics: cleanStr(getCell(row, colmap, 'Location_or_characteristics', 'location_or_characteristics')),
             variable,
             installation_type: cleanStr(getCell(row, colmap, 'Installation_type', 'installation_type')),
@@ -150,6 +161,10 @@ function parseSheet(rows, kind) {
             status: statusRaw,
             active: statusRaw,
             inactive_detail: cleanStr(getCell(row, colmap, 'inactive_policy_status', 'inactive_detail', 'inactive_reason')),
+            supersedes_policy: cleanStr(getCell(row, colmap,
+                'supersedes_policy',
+                'Supersedes_policy',
+            )),
             overwritten_by_row: cleanNum(getCell(row, colmap,
                 'overwritten_by_row',
                 'overwritten_policy_replacement',
@@ -181,10 +196,18 @@ function parseWpa(rows) {
     if (!rows.length) return [];
     const colmap = buildColmap(Object.keys(rows[0] || {}));
     const out = [];
-    rows.forEach((row) => {
-        const nuts = normalizeNuts(getCell(row, colmap, 'NUTS'));
+    rows.forEach((row, index) => {
+        const nuts = normalizeNuts(getCell(row, colmap, 'NUTS'))
+            || normalizeNuts(getCell(row, colmap, 'NUTS_NAME', 'NUTS_Name', 'nuts_name'));
         if (!nuts) return;
+        const addedInVersion = cleanStr(getCell(row, colmap, 'added_in_version')) || 'V1.0';
+        const statusChangedInVersion = cleanStr(getCell(row, colmap, 'status_changed_in_version')) || addedInVersion;
         out.push({
+            kind: 'wind_priority_area',
+            row_index: index + 2,
+            serial_number: cleanStr(getCell(row, colmap, 'serial_number', 'serial number')),
+            added_in_version: addedInVersion,
+            status_changed_in_version: statusChangedInVersion,
             nuts,
             nuts_name: cleanStr(getCell(row, colmap, 'NUTS_NAME', 'NUTS_Name', 'nuts_name')),
             country: normalizeCountry(getCell(row, colmap, 'COUNTRY', 'Country')),
@@ -192,6 +215,8 @@ function parseWpa(rows) {
             source_link: cleanStr(getCell(row, colmap, 'SOURCE_LINK', 'source_link')),
             text_original: cleanStr(getCell(row, colmap, 'TEXT_ORIGINAL', 'text_original')),
             text_translation: cleanStr(getCell(row, colmap, 'TEXT_TRANSLATION', 'text_translation')),
+            status: 'active',
+            active: 'active',
         });
     });
     return out;
