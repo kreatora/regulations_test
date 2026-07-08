@@ -590,13 +590,21 @@ const baseUrl = (import.meta as any).env.BASE_URL || '/';
 
 const policyDataUrl = `${baseUrl}data/policy_data.xlsx`;
 const targetsDataUrl = `${baseUrl}data/targets_data.csv`;
-const climateTargetsDataUrl = `${baseUrl}data/climate_targets_data.xlsx`;
+const climateTargetsDataUrl = `${baseUrl}data/climate_targets_data.csv`;
 const evDataUrl = `${baseUrl}data/ev_data.xlsx`;
 
 /** Buildable Land subsection — set true when the layer is ready to ship. */
 const BUILDABLE_LAND_ENABLED = false;
 
-/** Parse a workbook (.xlsx) or plain CSV from the same fetch path. */
+/** Sniff the field delimiter (comma or semicolon) from a CSV/DSV text's header line. */
+function detectDsvDelimiter(text: string): string {
+    const firstLine = text.split(/\r?\n/, 1)[0] || '';
+    const commaCount = (firstLine.match(/,/g) || []).length;
+    const semicolonCount = (firstLine.match(/;/g) || []).length;
+    return semicolonCount > commaCount ? ';' : ',';
+}
+
+/** Parse a workbook (.xlsx) or plain CSV/semicolon-DSV from the same fetch path. */
 function parseSpreadsheetOrCsv(ab: ArrayBuffer, label: string): any[] {
     try {
         const bytes = new Uint8Array(ab);
@@ -611,7 +619,9 @@ function parseSpreadsheetOrCsv(ab: ArrayBuffer, label: string): any[] {
             return d3.csvParse(csvText);
         }
         const text = new TextDecoder('utf-8').decode(ab);
-        return d3.csvParse(text);
+        const delimiter = detectDsvDelimiter(text);
+        console.log(`Parsing ${label} as plain text, detected delimiter: ${JSON.stringify(delimiter)}`);
+        return delimiter === ',' ? d3.csvParse(text) : d3.dsvFormat(delimiter).parse(text);
     } catch (e) {
         console.error(`Error parsing ${label}:`, e);
         return [];

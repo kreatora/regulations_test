@@ -266,6 +266,14 @@ function resolveSheetHeaders(rows: Record<string, unknown>[], columns?: string[]
     return Array.from(new Set(rows.flatMap((row) => Object.keys(row).filter((k) => k !== ''))));
 }
 
+/** Sniff the field delimiter (comma or semicolon) from a CSV/DSV text's header line. */
+function detectDsvDelimiter(text: string): string {
+    const firstLine = text.split(/\r?\n/, 1)[0] || '';
+    const commaCount = (firstLine.match(/,/g) || []).length;
+    const semicolonCount = (firstLine.match(/;/g) || []).length;
+    return semicolonCount > commaCount ? ';' : ',';
+}
+
 function parseSpreadsheetOrCsv(ab: ArrayBuffer, label: string): Record<string, unknown>[] {
     try {
         const bytes = new Uint8Array(ab);
@@ -279,7 +287,8 @@ function parseSpreadsheetOrCsv(ab: ArrayBuffer, label: string): Record<string, u
             return d3.csvParse(csvText) as Record<string, unknown>[];
         }
         const text = new TextDecoder('utf-8').decode(ab);
-        return d3.csvParse(text) as Record<string, unknown>[];
+        const delimiter = detectDsvDelimiter(text);
+        return (delimiter === ',' ? d3.csvParse(text) : d3.dsvFormat(delimiter).parse(text)) as Record<string, unknown>[];
     } catch (e) {
         console.error(`Error parsing ${label}:`, e);
         return [];
@@ -306,7 +315,7 @@ async function fetchText(url: string, label: string): Promise<string> {
 export async function fetchDatasetSources(baseUrl?: string): Promise<DatasetSources> {
     const policyDataUrl = resolveDataUrl('data/policy_data.xlsx', baseUrl);
     const targetsDataUrl = resolveDataUrl('data/targets_data.csv', baseUrl);
-    const climateTargetsDataUrl = resolveDataUrl('data/climate_targets_data.xlsx', baseUrl);
+    const climateTargetsDataUrl = resolveDataUrl('data/climate_targets_data.csv', baseUrl);
     const evDataUrl = resolveDataUrl('data/ev_data.xlsx', baseUrl);
 
     const [policyCsv, targetsCsv, climateTargetsCsv, evCsv] = await Promise.all([
@@ -319,14 +328,9 @@ export async function fetchDatasetSources(baseUrl?: string): Promise<DatasetSour
         fetchArrayBuffer(targetsDataUrl, 'targets data').then((ab) =>
             parseSpreadsheetOrCsv(ab, 'targets data')
         ),
-        fetchArrayBuffer(climateTargetsDataUrl, 'climate targets data').then((ab) => {
-            const wb = XLSX.read(ab, { type: 'array' });
-            const sheetName =
-                wb.SheetNames.find((name) => name.toLowerCase().includes('target')) ||
-                wb.SheetNames[0];
-            const csvText = XLSX.utils.sheet_to_csv(wb.Sheets[sheetName]);
-            return d3.csvParse(csvText) as Record<string, unknown>[];
-        }),
+        fetchArrayBuffer(climateTargetsDataUrl, 'climate targets data').then((ab) =>
+            parseSpreadsheetOrCsv(ab, 'climate targets data')
+        ),
         fetchArrayBuffer(evDataUrl, 'EV data').then((ab) => {
             const wb = XLSX.read(ab, { type: 'array' });
             const dataSheetName = wb.SheetNames.length > 1 ? wb.SheetNames[1] : wb.SheetNames[0];
