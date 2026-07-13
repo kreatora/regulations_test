@@ -1,9 +1,11 @@
 """
-Extracts the build-regulations workbook into a single JSON payload that the
-front-end Build Codes view can consume directly.
+Extracts the build-regulations workbook into public/data/build_regulations.json.
 
-Run from repo root:
-    python3 scripts/extract_build_regulations.py
+Preferred entry point (Node, no openpyxl version issues):
+    npm run extract:regulations
+
+Python alternative:
+    python scripts/extract_build_regulations.py
 """
 from __future__ import annotations
 import json
@@ -198,7 +200,6 @@ def parse_sheet(df: pd.DataFrame, kind: str):
                 "replaced_by_row",
                 "replacing_policy_row",
             )),
-            "last_update": clean_str(get(row, "last_update", "last update")),
             "notes_updated_laws": clean_str(get(row, "notes_updated_laws", "notes - updated laws")),
             "validated": clean_str(get(row, "Validated_by_experts", "validated_by_experts")),
         }
@@ -217,8 +218,15 @@ def parse_sheet(df: pd.DataFrame, kind: str):
 def parse_wpa(df: pd.DataFrame):
     out = []
     for idx, row in df.iterrows():
-        nuts = normalize_nuts(row.get("NUTS")) or normalize_nuts(row.get("NUTS_NAME"))
-        if not nuts:
+        nuts = normalize_nuts(row.get("NUTS"))
+        country = normalize_country(row.get("COUNTRY"))
+        indicator = clean_str(row.get("INDICATOR"))
+        if not nuts or not country or not indicator:
+            continue
+        source_link = clean_str(row.get("SOURCE_LINK"))
+        text_original = clean_str(row.get("TEXT_ORIGINAL"))
+        text_translation = clean_str(row.get("TEXT_TRANSLATION"))
+        if source_link and source_link.upper() in {"N/A", "NA"} and not text_original and not text_translation:
             continue
         added_in_version = clean_str(row.get("added_in_version")) or "V1.0"
         status_changed_in_version = clean_str(row.get("status_changed_in_version")) or added_in_version
@@ -230,11 +238,11 @@ def parse_wpa(df: pd.DataFrame):
             "status_changed_in_version": status_changed_in_version,
             "nuts": nuts,
             "nuts_name": clean_str(row.get("NUTS_NAME")),
-            "country": normalize_country(row.get("COUNTRY")),
-            "indicator": clean_str(row.get("INDICATOR")),
-            "source_link": clean_str(row.get("SOURCE_LINK")),
-            "text_original": clean_str(row.get("TEXT_ORIGINAL")),
-            "text_translation": clean_str(row.get("TEXT_TRANSLATION")),
+            "country": country,
+            "indicator": indicator,
+            "source_link": source_link,
+            "text_original": text_original,
+            "text_translation": text_translation,
             "status": "active",
             "active": "active",
         })

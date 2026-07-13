@@ -30,7 +30,6 @@ const BUILD_REGULATIONS_EXPORT_HEADERS = [
     'year_decision',
     'year_ended',
     'status',
-    'supersedes_policy',
     'policy_effect',
     'installation_type',
     'installation_scale',
@@ -62,7 +61,6 @@ const BUILD_REGULATIONS_EXPORT_HEADERS = [
     'inactive_detail',
     'notes_updated_laws',
     'validated',
-    'last_update',
     'record_type',
     'serial_number',
     'added_in_version',
@@ -128,6 +126,7 @@ function formatBuildRegulationCell(key: BuildRegulationExportKey, value: unknown
     if (typeof value !== 'string') return value;
     if (key === 'technology') return formatTechnologyLabel(value);
     if (key === 'variable') return formatVariableLabel(value);
+    if (key === 'installation_type') return capitalizeWords(value.replace(/_/g, ' '));
     return capitalizeWords(value);
 }
 
@@ -153,9 +152,21 @@ function formatBuildRegulationExportRow(source: Record<string, unknown>): Record
 }
 
 function flattenBuildRegulationRule(rule: Record<string, unknown>): Record<string, unknown> {
-    const { values, ...rest } = rule;
+    const {
+        values,
+        kind,
+        row_index: _rowIndex,
+        policy_id: _policyId,
+        policy_type_raw: _policyTypeRaw,
+        active: _active,
+        overwritten_by_row: _overwrittenByRow,
+        supersedes_policy: _supersedesPolicy,
+        last_update: _lastUpdate,
+        ...rest
+    } = rule;
     const flat: Record<string, unknown> = {
         record_type: 'regulation',
+        technology: kind ?? null,
         ...rest,
     };
     if (Array.isArray(values)) {
@@ -174,7 +185,7 @@ function flattenBuildRegulationRule(rule: Record<string, unknown>): Record<strin
 function flattenWindPriorityArea(area: Record<string, unknown>): Record<string, unknown> {
     return formatBuildRegulationExportRow({
         record_type: 'wind_priority_area',
-        kind: 'wind_priority_area',
+        technology: 'wind_priority_area',
         country: area.country ?? null,
         nuts: area.nuts ?? null,
         nuts_name: area.nuts_name ?? null,
@@ -192,10 +203,19 @@ function flattenWindPriorityArea(area: Record<string, unknown>): Record<string, 
 function buildRegulationsExportRows(sources: DatasetSources): Record<string, unknown>[] {
     const rules = (sources.buildRegulationsRows || []).filter((row) => row.kind !== 'wind_priority_area');
     const windPriorityAreas = (sources.buildRegulationsRows || []).filter((row) => row.kind === 'wind_priority_area');
+    const compareExportRows = (a: Record<string, unknown>, b: Record<string, unknown>) => (
+        String(a.country ?? '').localeCompare(String(b.country ?? ''))
+        || String(a.nuts ?? '').localeCompare(String(b.nuts ?? ''))
+        || String(a.technology ?? '').localeCompare(String(b.technology ?? ''))
+        || String(a.variable ?? '').localeCompare(String(b.variable ?? ''))
+        || Number(a.year_decision ?? 0) - Number(b.year_decision ?? 0)
+    );
     return [
         ...rules.map(flattenBuildRegulationRule),
         ...windPriorityAreas.map(flattenWindPriorityArea),
-    ].map(presentBuildRegulationExportRow);
+    ]
+        .sort(compareExportRows)
+        .map(presentBuildRegulationExportRow);
 }
 
 function resolveBuildRegulationsHeaders(_rows: Record<string, unknown>[]): string[] {
