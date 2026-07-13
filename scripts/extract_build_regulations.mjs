@@ -16,6 +16,7 @@ const EXCEL_PATH_CANDIDATES = [
 ];
 
 const SUPPORTED_COUNTRIES = new Set(['Germany', 'Greece', 'Ireland', 'France']);
+const WIND_PRIORITY_VARIABLE = '16_priority area';
 const BUILD_REGULATIONS_XLSX_HEADERS = [
     'Technology',
     'Country',
@@ -54,6 +55,7 @@ const BUILD_REGULATIONS_XLSX_HEADERS = [
     'Text Translation',
     'Miscellaneous',
     'Inactive Detail',
+    'Supersedes Policy',
     'Notes Updated Laws',
     'Validated',
     'Record Type',
@@ -116,6 +118,33 @@ function normalizeNuts(value) {
     if (!raw || isPlaceholder(raw)) return null;
     const nuts = raw.replace(/\s+/g, '').toUpperCase();
     return /^[A-Z]{2}[A-Z0-9]*$/.test(nuts) ? nuts : null;
+}
+
+function buildNutsNameLookup(rows, colmap) {
+    const lookup = new Map();
+    for (const row of rows) {
+        const nuts = normalizeNuts(getCell(row, colmap, 'NUTS'));
+        const nutsName = cleanStr(getCell(row, colmap, 'NUTS_Name', 'NUTS_NAME', 'nuts_name'));
+        if (!nuts || !nutsName) continue;
+        const key = nutsName.trim().toLowerCase();
+        if (!lookup.has(key)) lookup.set(key, nuts);
+    }
+    return lookup;
+}
+
+function resolveNuts(row, colmap, lookup) {
+    const direct = normalizeNuts(getCell(row, colmap, 'NUTS'));
+    if (direct) return direct;
+    const nutsName = cleanStr(getCell(row, colmap, 'NUTS_Name', 'NUTS_NAME', 'nuts_name'));
+    if (!nutsName) return null;
+    return lookup.get(nutsName.trim().toLowerCase()) || null;
+}
+
+function resolvePolicyId(serialNumber, sourceId, payload) {
+    if (serialNumber) return serialNumber;
+    const source = cleanStr(sourceId);
+    if (source && /^S\d+$/i.test(source)) return source;
+    return `gen_${createHash('sha1').update(payload).digest('hex').slice(0, 12)}`;
 }
 
 function normalizeNutsName(value, nuts) {
@@ -213,13 +242,95 @@ function compareWpa(a, b) {
     );
 }
 
+function hasWindPriorityRule(rules, nuts) {
+    return rules.some(
+        (rule) => rule.kind === 'wind'
+            && rule.nuts === nuts
+            && rule.variable === WIND_PRIORITY_VARIABLE,
+    );
+}
+
+function wpaToWindRule(area) {
+    return {
+        kind: 'wind',
+        row_index: area.row_index,
+        serial_number: area.serial_number,
+        added_in_version: area.added_in_version || 'V1.0',
+        status_changed_in_version: area.status_changed_in_version || area.added_in_version || 'V1.0',
+        policy_id: area.serial_number || `wpa_${area.nuts}`,
+        policy_effect: 'promoting',
+        policy_type_raw: 'Promoting',
+        nuts: area.nuts,
+        nuts_name: area.nuts_name,
+        country: area.country,
+        year_decision: null,
+        year_ended: null,
+        location_or_characteristics: null,
+        variable: WIND_PRIORITY_VARIABLE,
+        installation_type: 'wind_onshore',
+        installation_scale: null,
+        min_or_max: null,
+        multiple_conditions: null,
+        values: [],
+        legally_binding: null,
+        explicitly_mentioned: null,
+        source_name: null,
+        source_id: null,
+        source_section: null,
+        source_link: area.source_link,
+        source_alternative: null,
+        text_original: area.text_original,
+        text_translation: area.text_translation,
+        miscellaneous: area.indicator,
+        status: area.status || 'active',
+        active: area.active || 'active',
+        inactive_detail: null,
+        supersedes_policy: null,
+        overwritten_by_row: null,
+        notes_updated_laws: null,
+        validated: null,
+    };
+}
+
+function deriveWindPriorityAreas(rules) {
+    return rules
+        .filter((rule) => rule.kind === 'wind' && rule.variable === WIND_PRIORITY_VARIABLE)
+        .map((rule) => ({
+            kind: 'wind_priority_area',
+            row_index: rule.row_index,
+            serial_number: rule.serial_number,
+            added_in_version: rule.added_in_version,
+            status_changed_in_version: rule.status_changed_in_version,
+            nuts: rule.nuts,
+            nuts_name: rule.nuts_name,
+            country: rule.country,
+            indicator: rule.miscellaneous || 'Wind Priority Area (WPA)',
+            source_link: rule.source_link,
+            text_original: rule.text_original,
+            text_translation: rule.text_translation,
+            status: rule.status || rule.active || 'active',
+            active: rule.active || rule.status || 'active',
+        }))
+        .sort(compareWpa);
+}
+
+function mergeWindPriorityAreas(baseRules, wpaRows) {
+    const merged = [...baseRules];
+    for (const area of wpaRows) {
+        const asWind = wpaToWindRule(area);
+        if (!hasWindPriorityRule(merged, asWind.nuts)) {
+            merged.push(asWind);
+        }
+    }
+    return merged.sort(compareRules);
+}
+
 function formatTechnologyLabel(value) {
     if (!value) return null;
     const normalized = String(value).trim().toLowerCase();
-    if (normalized === 'wind') return 'Wind';
+    if (normalized === 'wind' || normalized === 'wind_priority_area') return 'Wind';
     if (normalized === 'solar') return 'Solar';
     if (normalized === 'ev') return 'Electric Vehicles';
-    if (normalized === 'wind_priority_area') return 'Wind Priority Area';
     return capitalizeWords(String(value));
 }
 
@@ -257,6 +368,7 @@ function flattenRuleForWorkbook(rule) {
         'Text Translation': rule.text_translation || null,
         Miscellaneous: rule.miscellaneous || null,
         'Inactive Detail': rule.inactive_detail ? capitalizeWords(rule.inactive_detail) : null,
+        'Supersedes Policy': rule.supersedes_policy || null,
         'Notes Updated Laws': rule.notes_updated_laws ? capitalizeWords(rule.notes_updated_laws) : null,
         Validated: rule.validated ? capitalizeWords(rule.validated) : null,
         'Record Type': 'Regulation',
@@ -275,56 +387,8 @@ function flattenRuleForWorkbook(rule) {
     return row;
 }
 
-function flattenWpaForWorkbook(area) {
-    return {
-        Technology: 'Wind Priority Area',
-        Country: area.country || null,
-        Nuts: area.nuts || null,
-        'Nuts Name': area.nuts_name || null,
-        Variable: formatVariableLabel(area.indicator),
-        'Year Decision': null,
-        'Year Ended': null,
-        Status: area.status ? capitalizeWords(area.status) : 'Active',
-        'Policy Effect': null,
-        'Installation Type': null,
-        'Installation Scale': null,
-        'Location Or Characteristics': null,
-        'Min Or Max': null,
-        'Multiple Conditions': null,
-        'Legally Binding': null,
-        'Explicitly Mentioned': null,
-        'Value 1': null,
-        'Unit 1': null,
-        'Condition 1': null,
-        'Value 2': null,
-        'Unit 2': null,
-        'Condition 2': null,
-        'Value 3': null,
-        'Unit 3': null,
-        'Condition 3': null,
-        'Value 4': null,
-        'Unit 4': null,
-        'Condition 4': null,
-        'Source Name': null,
-        'Source Id': null,
-        'Source Section': null,
-        'Source Link': area.source_link || null,
-        'Source Alternative': null,
-        'Text Original': area.text_original || null,
-        'Text Translation': area.text_translation || null,
-        Miscellaneous: null,
-        'Inactive Detail': null,
-        'Notes Updated Laws': null,
-        Validated: null,
-        'Record Type': 'Wind Priority Area',
-        'Serial Number': area.serial_number || null,
-        'Added In Version': area.added_in_version || 'V1.0',
-        'Status Changed In Version': area.status_changed_in_version || area.added_in_version || 'V1.0',
-    };
-}
-
-function buildWorkbookRows(rules, wpa) {
-    return [...rules.map(flattenRuleForWorkbook), ...wpa.map(flattenWpaForWorkbook)].sort(
+function buildWorkbookRows(rules) {
+    return rules.map(flattenRuleForWorkbook).sort(
         (a, b) =>
             String(a.Country || '').localeCompare(String(b.Country || ''))
             || String(a.Nuts || '').localeCompare(String(b.Nuts || ''))
@@ -337,15 +401,16 @@ function buildWorkbookRows(rules, wpa) {
 function parseSheet(rows, kind) {
     if (!rows.length) return [];
     const colmap = buildColmap(Object.keys(rows[0] || {}));
+    const nutsNameLookup = buildNutsNameLookup(rows, colmap);
     const rules = [];
 
     rows.forEach((row, index) => {
         const country = normalizeCountry(getCell(row, colmap, 'Country'));
-        const nuts = normalizeNuts(getCell(row, colmap, 'NUTS'));
+        const nuts = resolveNuts(row, colmap, nutsNameLookup);
         const variable = normalizeVariable(getCell(row, colmap, 'Variable', 'variable'));
         if (!country || !SUPPORTED_COUNTRIES.has(country) || !nuts || !variable) return;
 
-        const statusRaw = normalizeStatus(getCell(row, colmap, 'status', 'active_inactive', 'active/inactive'));
+        const statusRaw = normalizeStatus(getCell(row, colmap, 'status', 'active_inactive', 'active/inactive', 'Status'));
         const addedInVersion = cleanStr(getCell(row, colmap, 'added_in_version')) || 'V1.0';
         const statusChangedInVersion = cleanStr(getCell(row, colmap, 'status_changed_in_version')) || addedInVersion;
         const serialNumber = cleanStr(getCell(row, colmap, 'serial_number', 'serial number'));
@@ -357,6 +422,7 @@ function parseSheet(rows, kind) {
             'constraining_promoting ',
             'constraining/promoting',
             'type of policy',
+            'Constraining_Promoting',
         ));
         const policyEffect = normalizePolicyEffect(policyTypeRaw);
 
@@ -367,19 +433,15 @@ function parseSheet(rows, kind) {
         const yearEnded = yearEndedRaw && !/^n\/?a$/i.test(yearEndedRaw)
             ? cleanNum(yearEndedRaw)
             : null;
-        let policyId = serialNumber || sourceId;
-        if (!policyId) {
-            const payload = [
-                kind,
-                country,
-                nuts,
-                variable,
-                String(yearDecision || ''),
-                sourceName || '',
-                cleanStr(getCell(row, colmap, 'Text_translation', 'text_translation')) || '',
-            ].join('|');
-            policyId = `gen_${createHash('sha1').update(payload).digest('hex').slice(0, 12)}`;
-        }
+        const policyId = resolvePolicyId(serialNumber, sourceId, [
+            kind,
+            country,
+            nuts,
+            variable,
+            String(yearDecision || ''),
+            sourceName || '',
+            cleanStr(getCell(row, colmap, 'Text_translation', 'text_translation')) || '',
+        ].join('|'));
 
         const rule = {
             kind,
@@ -516,7 +578,8 @@ function main() {
     const solar = parseSheet(sheetRows('Solar regulations'), 'solar');
     const ev = parseSheet(sheetRows('EV charging regulations'), 'ev');
     const wpa = parseWpa(sheetRows('WPA_GR'));
-    const rules = [...wind, ...solar, ...ev].sort(compareRules);
+    const rules = mergeWindPriorityAreas([...wind, ...solar, ...ev], wpa);
+    const windPriorityAreas = deriveWindPriorityAreas(rules);
     const summary = summarize(rules);
 
     const output = {
@@ -524,12 +587,12 @@ function main() {
             source: path,
             generated_at: new Date().toISOString(),
             rule_count: rules.length,
-            wind_priority_area_count: wpa.length,
+            wind_priority_area_count: windPriorityAreas.length,
             ...summary,
             sheets: ['Wind regulations', 'Solar regulations', 'EV charging regulations', 'WPA_GR'],
         },
         rules,
-        wind_priority_areas: wpa,
+        wind_priority_areas: windPriorityAreas,
     };
 
     const publicPath = join('public', 'data', 'build_regulations.json');
@@ -541,13 +604,13 @@ function main() {
     const payload = `${JSON.stringify(output, null, 2)}\n`;
     writeFileSync(publicPath, payload, 'utf8');
     copyFileSync(publicPath, docsPath);
-    const workbookRows = buildWorkbookRows(rules, wpa);
+    const workbookRows = buildWorkbookRows(rules);
     const exportWorkbook = XLSX.utils.book_new();
     const sheet = XLSX.utils.json_to_sheet(workbookRows, { header: BUILD_REGULATIONS_XLSX_HEADERS });
     XLSX.utils.book_append_sheet(exportWorkbook, sheet, 'Building_Regulations');
     XLSX.writeFile(exportWorkbook, publicWorkbookPath, { compression: true });
     copyFileSync(publicWorkbookPath, docsWorkbookPath);
-    console.log(`Wrote ${publicPath}: ${rules.length} rules, ${wpa.length} wind-priority-area rows.`);
+    console.log(`Wrote ${publicPath}: ${rules.length} rules, ${windPriorityAreas.length} wind-priority-area rows.`);
     console.log(`Wrote ${docsWorkbookPath}: ${workbookRows.length} export rows.`);
     console.log('Countries:', summary.by_country);
 }

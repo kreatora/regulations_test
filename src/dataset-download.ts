@@ -59,6 +59,7 @@ const BUILD_REGULATIONS_EXPORT_HEADERS = [
     'text_translation',
     'miscellaneous',
     'inactive_detail',
+    'supersedes_policy',
     'notes_updated_laws',
     'validated',
     'record_type',
@@ -109,10 +110,9 @@ function capitalizeWords(value: string): string {
 
 function formatTechnologyLabel(value: string): string {
     const normalized = value.trim().toLowerCase();
-    if (normalized === 'wind') return 'Wind';
+    if (normalized === 'wind' || normalized === 'wind_priority_area') return 'Wind';
     if (normalized === 'solar') return 'Solar';
     if (normalized === 'ev') return 'Electric Vehicles';
-    if (normalized === 'wind_priority_area') return 'Wind Priority Area';
     return capitalizeWords(value);
 }
 
@@ -160,7 +160,6 @@ function flattenBuildRegulationRule(rule: Record<string, unknown>): Record<strin
         policy_type_raw: _policyTypeRaw,
         active: _active,
         overwritten_by_row: _overwrittenByRow,
-        supersedes_policy: _supersedesPolicy,
         last_update: _lastUpdate,
         ...rest
     } = rule;
@@ -182,27 +181,8 @@ function flattenBuildRegulationRule(rule: Record<string, unknown>): Record<strin
     return formatBuildRegulationExportRow(flat);
 }
 
-function flattenWindPriorityArea(area: Record<string, unknown>): Record<string, unknown> {
-    return formatBuildRegulationExportRow({
-        record_type: 'wind_priority_area',
-        technology: 'wind_priority_area',
-        country: area.country ?? null,
-        nuts: area.nuts ?? null,
-        nuts_name: area.nuts_name ?? null,
-        variable: area.indicator ?? null,
-        status: area.status ?? area.active ?? 'active',
-        source_link: area.source_link ?? null,
-        text_original: area.text_original ?? null,
-        text_translation: area.text_translation ?? null,
-        serial_number: area.serial_number ?? null,
-        added_in_version: area.added_in_version ?? 'V1.0',
-        status_changed_in_version: area.status_changed_in_version ?? area.added_in_version ?? 'V1.0',
-    });
-}
-
 function buildRegulationsExportRows(sources: DatasetSources): Record<string, unknown>[] {
-    const rules = (sources.buildRegulationsRows || []).filter((row) => row.kind !== 'wind_priority_area');
-    const windPriorityAreas = (sources.buildRegulationsRows || []).filter((row) => row.kind === 'wind_priority_area');
+    const rules = sources.buildRegulationsRows || [];
     const compareExportRows = (a: Record<string, unknown>, b: Record<string, unknown>) => (
         String(a.country ?? '').localeCompare(String(b.country ?? ''))
         || String(a.nuts ?? '').localeCompare(String(b.nuts ?? ''))
@@ -210,10 +190,8 @@ function buildRegulationsExportRows(sources: DatasetSources): Record<string, unk
         || String(a.variable ?? '').localeCompare(String(b.variable ?? ''))
         || Number(a.year_decision ?? 0) - Number(b.year_decision ?? 0)
     );
-    return [
-        ...rules.map(flattenBuildRegulationRule),
-        ...windPriorityAreas.map(flattenWindPriorityArea),
-    ]
+    return rules
+        .map(flattenBuildRegulationRule)
         .sort(compareExportRows)
         .map(presentBuildRegulationExportRow);
 }
@@ -238,12 +216,8 @@ function resolveDataUrl(relativePath: string, baseUrl?: string): string {
 
 function parseBuildRegulationsPayload(data: {
     rules?: Record<string, unknown>[];
-    wind_priority_areas?: Record<string, unknown>[];
 }): Record<string, unknown>[] {
-    return [
-        ...(data.rules || []),
-        ...(data.wind_priority_areas || []),
-    ];
+    return data.rules || [];
 }
 
 async function fetchBuildRegulations(baseUrl?: string): Promise<{

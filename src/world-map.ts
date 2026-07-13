@@ -1350,7 +1350,6 @@ Promise.all([
     console.log('EV CSV rows:', evCsv.length);
     const buildRegulationsRows = [
         ...(buildRegulationsData?.rules || []),
-        ...(buildRegulationsData?.wind_priority_areas || []),
     ];
     console.log('Build regulations rows:', buildRegulationsRows.length);
     console.log('First few targets rows:', targetsCsv.slice(0, 3));

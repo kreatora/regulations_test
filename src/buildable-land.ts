@@ -167,7 +167,10 @@ async function loadPromotedAreaCountries(baseUrl: string): Promise<void> {
     if (promotedAreaLoadDone) return;
     try {
         const data = await fetch(`${baseUrl}data/build_regulations.json`).then(r => r.ok ? r.json() : null);
-        const wpa: Array<{ country?: string }> = data?.wind_priority_areas ?? [];
+        const wpa: Array<{ country?: string }> = (data?.rules ?? []).filter(
+            (row: { kind?: string; variable?: string }) =>
+                row.kind === 'wind' && row.variable === '16_priority area',
+        );
         const iso2s = new Set<string>();
         for (const row of wpa) {
             const iso2 = iso2ForRegulationCountry(String(row.country ?? ''));
