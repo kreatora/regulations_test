@@ -16,6 +16,51 @@ const EXCEL_PATH_CANDIDATES = [
 ];
 
 const SUPPORTED_COUNTRIES = new Set(['Germany', 'Greece', 'Ireland', 'France']);
+const BUILD_REGULATIONS_XLSX_HEADERS = [
+    'Technology',
+    'Country',
+    'Nuts',
+    'Nuts Name',
+    'Variable',
+    'Year Decision',
+    'Year Ended',
+    'Status',
+    'Policy Effect',
+    'Installation Type',
+    'Installation Scale',
+    'Location Or Characteristics',
+    'Min Or Max',
+    'Multiple Conditions',
+    'Legally Binding',
+    'Explicitly Mentioned',
+    'Value 1',
+    'Unit 1',
+    'Condition 1',
+    'Value 2',
+    'Unit 2',
+    'Condition 2',
+    'Value 3',
+    'Unit 3',
+    'Condition 3',
+    'Value 4',
+    'Unit 4',
+    'Condition 4',
+    'Source Name',
+    'Source Id',
+    'Source Section',
+    'Source Link',
+    'Source Alternative',
+    'Text Original',
+    'Text Translation',
+    'Miscellaneous',
+    'Inactive Detail',
+    'Notes Updated Laws',
+    'Validated',
+    'Record Type',
+    'Serial Number',
+    'Added In Version',
+    'Status Changed In Version',
+];
 
 function findExcel() {
     const found = EXCEL_PATH_CANDIDATES.find((path) => existsSync(path));
@@ -165,6 +210,127 @@ function compareWpa(a, b) {
         String(a.country).localeCompare(String(b.country))
         || String(a.nuts).localeCompare(String(b.nuts))
         || String(a.indicator || '').localeCompare(String(b.indicator || ''))
+    );
+}
+
+function formatTechnologyLabel(value) {
+    if (!value) return null;
+    const normalized = String(value).trim().toLowerCase();
+    if (normalized === 'wind') return 'Wind';
+    if (normalized === 'solar') return 'Solar';
+    if (normalized === 'ev') return 'Electric Vehicles';
+    if (normalized === 'wind_priority_area') return 'Wind Priority Area';
+    return capitalizeWords(String(value));
+}
+
+function formatVariableLabel(value) {
+    if (!value) return null;
+    return capitalizeWords(String(value).replace(/^\d+_/, '').replace(/_/g, ' '));
+}
+
+function flattenRuleForWorkbook(rule) {
+    const row = {
+        Technology: formatTechnologyLabel(rule.kind),
+        Country: rule.country || null,
+        Nuts: rule.nuts || null,
+        'Nuts Name': rule.nuts_name || null,
+        Variable: formatVariableLabel(rule.variable),
+        'Year Decision': rule.year_decision ?? null,
+        'Year Ended': rule.year_ended ?? null,
+        Status: rule.status ? capitalizeWords(rule.status) : null,
+        'Policy Effect': rule.policy_effect ? capitalizeWords(rule.policy_effect) : null,
+        'Installation Type': rule.installation_type
+            ? capitalizeWords(String(rule.installation_type).replace(/_/g, ' '))
+            : null,
+        'Installation Scale': rule.installation_scale || null,
+        'Location Or Characteristics': rule.location_or_characteristics || null,
+        'Min Or Max': rule.min_or_max ? capitalizeWords(rule.min_or_max) : null,
+        'Multiple Conditions': rule.multiple_conditions || null,
+        'Legally Binding': rule.legally_binding ? capitalizeWords(rule.legally_binding) : null,
+        'Explicitly Mentioned': rule.explicitly_mentioned ? capitalizeWords(rule.explicitly_mentioned) : null,
+        'Source Name': rule.source_name || null,
+        'Source Id': rule.source_id || null,
+        'Source Section': rule.source_section || null,
+        'Source Link': rule.source_link || null,
+        'Source Alternative': rule.source_alternative || null,
+        'Text Original': rule.text_original || null,
+        'Text Translation': rule.text_translation || null,
+        Miscellaneous: rule.miscellaneous || null,
+        'Inactive Detail': rule.inactive_detail ? capitalizeWords(rule.inactive_detail) : null,
+        'Notes Updated Laws': rule.notes_updated_laws ? capitalizeWords(rule.notes_updated_laws) : null,
+        Validated: rule.validated ? capitalizeWords(rule.validated) : null,
+        'Record Type': 'Regulation',
+        'Serial Number': rule.serial_number || null,
+        'Added In Version': rule.added_in_version || 'V1.0',
+        'Status Changed In Version': rule.status_changed_in_version || rule.added_in_version || 'V1.0',
+    };
+
+    (rule.values || []).slice(0, 4).forEach((entry, index) => {
+        const slot = index + 1;
+        row[`Value ${slot}`] = entry?.value ?? null;
+        row[`Unit ${slot}`] = entry?.unit ?? null;
+        row[`Condition ${slot}`] = entry?.condition ? capitalizeWords(entry.condition) : null;
+    });
+
+    return row;
+}
+
+function flattenWpaForWorkbook(area) {
+    return {
+        Technology: 'Wind Priority Area',
+        Country: area.country || null,
+        Nuts: area.nuts || null,
+        'Nuts Name': area.nuts_name || null,
+        Variable: formatVariableLabel(area.indicator),
+        'Year Decision': null,
+        'Year Ended': null,
+        Status: area.status ? capitalizeWords(area.status) : 'Active',
+        'Policy Effect': null,
+        'Installation Type': null,
+        'Installation Scale': null,
+        'Location Or Characteristics': null,
+        'Min Or Max': null,
+        'Multiple Conditions': null,
+        'Legally Binding': null,
+        'Explicitly Mentioned': null,
+        'Value 1': null,
+        'Unit 1': null,
+        'Condition 1': null,
+        'Value 2': null,
+        'Unit 2': null,
+        'Condition 2': null,
+        'Value 3': null,
+        'Unit 3': null,
+        'Condition 3': null,
+        'Value 4': null,
+        'Unit 4': null,
+        'Condition 4': null,
+        'Source Name': null,
+        'Source Id': null,
+        'Source Section': null,
+        'Source Link': area.source_link || null,
+        'Source Alternative': null,
+        'Text Original': area.text_original || null,
+        'Text Translation': area.text_translation || null,
+        Miscellaneous: null,
+        'Inactive Detail': null,
+        'Notes Updated Laws': null,
+        Validated: null,
+        'Record Type': 'Wind Priority Area',
+        'Serial Number': area.serial_number || null,
+        'Added In Version': area.added_in_version || 'V1.0',
+        'Status Changed In Version': area.status_changed_in_version || area.added_in_version || 'V1.0',
+    };
+}
+
+function buildWorkbookRows(rules, wpa) {
+    return [...rules.map(flattenRuleForWorkbook), ...wpa.map(flattenWpaForWorkbook)].sort(
+        (a, b) =>
+            String(a.Country || '').localeCompare(String(b.Country || ''))
+            || String(a.Nuts || '').localeCompare(String(b.Nuts || ''))
+            || String(a.Technology || '').localeCompare(String(b.Technology || ''))
+            || String(a.Variable || '').localeCompare(String(b.Variable || ''))
+            || Number(a['Year Decision'] || 0) - Number(b['Year Decision'] || 0)
     );
 }
 
@@ -368,12 +534,21 @@ function main() {
 
     const publicPath = join('public', 'data', 'build_regulations.json');
     const docsPath = join('docs', 'data', 'build_regulations.json');
+    const publicWorkbookPath = join('public', 'data', 'build_regulations.xlsx');
+    const docsWorkbookPath = join('docs', 'data', 'build_regulations.xlsx');
     mkdirSync(join('public', 'data'), { recursive: true });
     mkdirSync(join('docs', 'data'), { recursive: true });
     const payload = `${JSON.stringify(output, null, 2)}\n`;
     writeFileSync(publicPath, payload, 'utf8');
     copyFileSync(publicPath, docsPath);
+    const workbookRows = buildWorkbookRows(rules, wpa);
+    const exportWorkbook = XLSX.utils.book_new();
+    const sheet = XLSX.utils.json_to_sheet(workbookRows, { header: BUILD_REGULATIONS_XLSX_HEADERS });
+    XLSX.utils.book_append_sheet(exportWorkbook, sheet, 'Building_Regulations');
+    XLSX.writeFile(exportWorkbook, publicWorkbookPath, { compression: true });
+    copyFileSync(publicWorkbookPath, docsWorkbookPath);
     console.log(`Wrote ${publicPath}: ${rules.length} rules, ${wpa.length} wind-priority-area rows.`);
+    console.log(`Wrote ${docsWorkbookPath}: ${workbookRows.length} export rows.`);
     console.log('Countries:', summary.by_country);
 }
 
